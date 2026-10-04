@@ -62,3 +62,12 @@ for (let i = 0; i < 4; i++) meta.ranked.decks.push(meta.ranked.decks[0]);
 assert.ok(E.applyMeta(meta));
 assert.equal(E.META[0].cards.length, 8);
 console.log('server + refresh tests passed:', JSON.stringify({ rankedDecks: agg.ranked.decks.length, battleRamEvoPower: E.C['battle-ram'].ev, topDeck: E.META[0].n }));
+
+// card list normalisation
+{
+  const { createRequire } = await import('node:module');
+  const { toCards } = createRequire(import.meta.url)('../api/cards.js');
+  const out = toCards({ items: [{ id: 26000000, name: 'Knight', elixirCost: 3, rarity: 'common', iconUrls: { medium: 'a.png', evolutionMedium: 'b.png', heroMedium: 'c.png' } }], supportItems: [{ id: 159000000, name: 'Tower Princess', iconUrls: { medium: 't.png' } }] });
+  if (out.cards[0].evo !== 'b.png' || out.cards[0].hero !== 'c.png' || out.towers[0].id !== 159000000) throw new Error('toCards failed');
+  console.log('card list test passed');
+}

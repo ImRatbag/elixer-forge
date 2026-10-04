@@ -33,10 +33,40 @@ const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
+/* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
+const ART={},TOWER_ART={};
+const nkey=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+function applyArt(j){
+  if(!j||!Array.isArray(j.cards))return false;
+  const byName={};CARDS.forEach(c=>byName[nkey(c.name)]=c.id);
+  for(const c of j.cards){
+    const k=byName[nkey(c.name)]||ID_TO_CARD[c.id];if(!k||!C[k])continue;
+    if(c.icon)ART[k]={base:c.icon,evo:c.evo||c.icon,hero:c.hero||c.icon};
+    // The API is the authority on card IDs: correct ours where they differ so deck links and tag lookups stay exact.
+    if(c.id&&byName[nkey(c.name)]===k&&CARD_IDS[k]!==c.id){delete ID_TO_CARD[CARD_IDS[k]];CARD_IDS[k]=c.id;ID_TO_CARD[c.id]=k;}
+  }
+  const tn={};TOWERS.forEach(t=>tn[nkey(t.name)]=t.id);
+  for(const t of j.towers||[]){const k=tn[nkey(t.name)];if(!k)continue;if(t.id)TOWER[k].tid=t.id;if(t.icon)TOWER_ART[k]=t.icon;}
+  return true;
+}
+function artImg(id,form,cls){
+  const a=ART[id];if(!a)return '';
+  const src=form==='evo'?a.evo:form==='hero'?a.hero:a.base;
+  return `<img class="${cls}" src="${esc(src)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`;
+}
+async function loadArt(){
+  const cached=store.get('ef2-art',null);
+  if(cached&&applyArt(cached.data)&&Date.now()-cached.at<7*864e5)return true;
+  try{const r=await fetch('api/cards');if(!r.ok)return !!cached;const j=await r.json();
+    if(applyArt(j)){store.set('ef2-art',{at:Date.now(),data:j});return true;}}catch(e){}
+  return !!cached;
+}
+
 /* ---------- server detection (tag lookup only works on a deployed copy with the API function) ---------- */
 async function detectApi(){
   try{const r=await fetch('api/health',{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();state.api=!!j.ok;}catch(e){state.api=false;}
   renderPlayers();
+  if(state.api&&await loadArt()){document.documentElement.classList.add('has-art');rerender();}
 }
 async function lookupTag(key,raw){
   const tag=String(raw||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
@@ -202,7 +232,7 @@ function renderEditor(){
     <div class="body"><p class="hint" style="margin:0 0 10px">${help}</p>
       <div class="tools" style="padding:0 0 10px"><input type="search" id="ed-search" placeholder="Search" value="${esc(editor.q)}" aria-label="Search cards"><button class="btn sm" type="button" data-ed="all">Own all</button><button class="btn sm" type="button" data-ed="none">Own none</button></div>
       <div class="ogrid">${items.map(x=>{const name=x.tower?TOWER[x.id].name:C[x.id].name;const rc=x.tower?'champion':(editor.tab==='base'?rarityOf(C[x.id]):editor.tab==='evo'?'epic':'rare');const m=x.tower?name.split(' ').map(w=>w[0]).join(''):MONO[x.id];
-        return `<button type="button" class="own" aria-pressed="${x.on}" data-own="${x.id}" style="--rc:var(--r-${rc})"><span class="tick" aria-hidden="true">${x.on?'✓':''}</span><span class="m" aria-hidden="true">${esc(m)}</span><span class="n">${editor.tab==='evo'?'Evo ':editor.tab==='hero'?'Hero ':''}${esc(name)}</span></button>`;}).join('')||'<p class="hint">No matching card</p>'}</div></div>
+        return `<button type="button" class="own" aria-pressed="${x.on}" data-own="${x.id}" style="--rc:var(--r-${rc})"><span class="tick" aria-hidden="true">${x.on?'✓':''}</span>${(x.tower?(TOWER_ART[x.id]?`<img class="oart" src="${esc(TOWER_ART[x.id])}" alt="" loading="lazy" onerror="this.remove()">`:''):artImg(x.id,editor.tab==='base'?null:editor.tab,'oart'))||`<span class="m" aria-hidden="true">${esc(m)}</span>`}<span class="n">${editor.tab==='evo'?'Evo ':editor.tab==='hero'?'Hero ':''}${esc(name)}</span></button>`;}).join('')||'<p class="hint">No matching card</p>'}</div></div>
     <footer><span class="hint" style="margin-right:auto">Changes save as you tap.</span><button class="btn" type="button" data-ed="code">Paste a share code</button><button class="btn primary" type="button" data-ed="close">Done</button></footer></div>`;
 }
 $('sheet').addEventListener('click',e=>{
@@ -340,7 +370,8 @@ async function forge(){
   }catch(e){showErr('The search hit an error: '+e.message);}
   btn.disabled=false;btn.textContent=duo?'Forge team':'Forge decks';
 }
-$('go').addEventListener('click',forge);
+// On phones the results sit below the settings, so bring them into view once the button is pressed.
+$('go').addEventListener('click',()=>{const r=forge();if(matchMedia('(max-width:900px)').matches)Promise.resolve(r).then(()=>document.querySelector('.tabs').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'}));});
 
 /* ---------- analysis text ---------- */
 function prosCons(d){
@@ -384,7 +415,7 @@ function tile(o,levels,ref){
   return `<div class="tile ${f||''}" style="--rc:var(--r-${rar})"><div class="inner">
     <div class="drop" aria-label="${c.e} elixir"><span>${c.e}</span></div>
     ${o.slot?`<span class="slot">${o.slot}</span>`:''}${L!=null?`<span class="lvl ${low?'low':''}">Lv ${L}</span>`:''}
-    <span class="mono" aria-hidden="true">${esc(MONO[o.id])}</span>
+    ${artImg(o.id,f,'art')||`<span class="mono" aria-hidden="true">${esc(MONO[o.id])}</span>`}
     ${f?`<span class="badge ${f}">${formLabel[f]}</span>`:''}
     <span class="tname">${esc(c.name)}</span>
     <span class="tsub" title="${RNAME[rar]} ${TYPE_NAME[c.type]}">${TYPE_ICON[c.type]}${RNAME[rar]}</span>
@@ -403,7 +434,7 @@ function towerFor(key,sc,ids,duo){
 function towerHTML(t){
   const tw=TOWER[t.id];
   const alt=!t.chosen&&t.rec.alts.length?' '+t.rec.alts.map(a=>TOWER[a].name).join(' or ')+' could also suit this deck.':'';
-  return `<div class="tower"><span>Tower troop: <b>${tw.name}</b></span><span class="hint">${esc(tw.note)}${alt}</span></div>`;
+  return `<div class="tower">${TOWER_ART[tw.id]?`<img class="tart" src="${esc(TOWER_ART[tw.id])}" alt="" loading="lazy" onerror="this.remove()">`:''}<span>Tower troop: <b>${tw.name}</b></span><span class="hint">${esc(tw.note)}${alt}</span></div>`;
 }
 function linkBtn(ids,forms,towerId){
   const od=orderDeck(ids,forms),href=deckLink(od,towerId);
@@ -564,6 +595,7 @@ function setView(v,quiet){
   else if(state.mode==='1v1'&&state.last.length){renderDecks(state.last);setStatus(state.last.length+' decks');}
   else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
 }
+function rerender(){setView(state.view);}
 ['gen','meta','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
 function setMode(m){
   state.mode=m;store.set('ef2-mode',m);
