@@ -412,10 +412,21 @@ function archLabel(ids){
 function tile(o,levels,ref){
   const c=C[o.id],f=o.form,rar=rarityOf(c);
   const L=levels&&levels[o.id];const low=L!=null&&ref&&ref-L>=1.5;
+  const a=ART[o.id];
+  if(a){ // picture tile: the official card image carries the name, rarity and Evo/Hero look by itself
+    const src=f==='evo'?a.evo:f==='hero'?a.hero:a.base;
+    const label=(f==='evo'?'Evo ':f==='hero'?'Hero ':'')+c.name;
+    return `<div class="tile pic" title="${esc(label)}">
+      <div class="picbox"><img class="art" src="${esc(src)}" alt="${esc(label)}, ${c.e} elixir" loading="lazy" decoding="async" onerror="this.closest('.tile').classList.add('noart');this.remove()">
+        <span class="fallname" aria-hidden="true">${esc(label)}</span>
+        <div class="drop" aria-hidden="true"><span>${c.e}</span></div></div>
+      <div class="cap">${o.slot?`<span class="capslot ${f||''}">${o.slot}</span>`:''}${L!=null?`<span class="caplvl ${low?'low':''}">Lv ${L}</span>`:''}</div>
+    </div>`;
+  }
   return `<div class="tile ${f||''}" style="--rc:var(--r-${rar})"><div class="inner">
     <div class="drop" aria-label="${c.e} elixir"><span>${c.e}</span></div>
     ${o.slot?`<span class="slot">${o.slot}</span>`:''}${L!=null?`<span class="lvl ${low?'low':''}">Lv ${L}</span>`:''}
-    ${artImg(o.id,f,'art')||`<span class="mono" aria-hidden="true">${esc(MONO[o.id])}</span>`}
+    <span class="mono" aria-hidden="true">${esc(MONO[o.id])}</span>
     ${f?`<span class="badge ${f}">${formLabel[f]}</span>`:''}
     <span class="tname">${esc(c.name)}</span>
     <span class="tsub" title="${RNAME[rar]} ${TYPE_NAME[c.type]}">${TYPE_ICON[c.type]}${RNAME[rar]}</span>
@@ -423,7 +434,7 @@ function tile(o,levels,ref){
 }
 function tilesHTML(ids,forms,levels){
   const order=orderDeck(ids,forms);const ref=levels?levelRef(levels):0;
-  return `<div class="grid8">${order.map(o=>tile(o,levels,ref)).join('')}</div>`;
+  return `<div class="grid8${ART[order[0].id]?' pics':''}">${order.map(o=>tile(o,levels,ref)).join('')}</div>`;
 }
 function towerFor(key,sc,ids,duo){
   const r=state.rules[key],cs=colSets(prof(key));
