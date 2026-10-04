@@ -11,6 +11,6 @@ page=(shell.replace('/*STYLE*/',(src/'styles.css').read_text())
 full=('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
       '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">\n'
       '<meta name="description" content="Build Clash Royale decks and 2v2 team pairs from the cards you actually own.">\n'
-      '<meta name="theme-color" content="#1b1029">\n<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon.svg" type="image/svg+xml">\n</head>\n<body>\n'+page+'\n</body>\n</html>\n')
+      '<meta name="theme-color" content="#0c1728">\n<meta property="og:title" content="Elixir Forge">\n<meta property="og:description" content="Clash Royale decks and 2v2 teams built from the cards, Evos and Heroes you actually own. Enter a player tag to start.">\n<meta property="og:type" content="website">\n<meta name="twitter:card" content="summary">\n<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon.svg" type="image/svg+xml">\n</head>\n<body>\n'+page+'\n</body>\n</html>\n')
 (root/'index.html').write_text(full)
 print('built',len(page)//1024,'KB')

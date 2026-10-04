@@ -35,7 +35,7 @@ Netlify or Cloudflare work too; only the two files in `api/` need adapting to th
 
 ## Before a public launch
 
-- **Remove the personal presets.** In `src/data.js` set `PRESET_PLAYERS` to `[]`, then run `python3 build.py`. New visitors then start with an empty profile and a prompt to set up their collection.
+- **Starting profiles.** `PRESET_PLAYERS` in `src/data.js` is empty, so each visitor starts with a blank profile and a prompt to load their player tag. Add entries there only for a private copy.
 - **Supercell Fan Content Policy** (<https://supercell.com/en/fan-content-policy/>): the app must stay free. No paywalls, subscriptions or in-app purchases; ads and voluntary donations are allowed. Don't use "Clash Royale" in your domain or social handles. Keep the disclaimer that is already in the footer.
 - **Card art:** on a deployed copy the app shows the official card pictures, linked from Supercell's API (`api/cards.js`), which the Fan Content Policy allows unmodified. Without the server it falls back to lettered tiles.
 - **Privacy:** the app stores collections only in the visitor's browser. Tag lookups send the tag to your server and Supercell's API. If you ever add accounts or emails, publish a privacy policy and handle younger players properly (PIPEDA in Canada, COPPA for US users).
@@ -46,6 +46,10 @@ Netlify or Cloudflare work too; only the two files in `api/` need adapting to th
 - New card: add a row to `RAW` in `src/data.js` (id, name, elixir, type, role tags, ratings), its official ID to `CARD_IDS`, then `python3 build.py`. The comment at the top of `RAW` explains the role letters.
 - New combos: add lines to `SYN_RAW` (`card-a,card-b,weight 1-3,why it works`).
 - Run `npm test` after changes.
+
+## Staying in step with the game
+
+On load the app reads Supercell's card list (`api/cards.js`). It takes card and tower troop IDs from it, and switches on any Evo or Hero the game has that the card table doesn't yet, with an estimated rating that the weekly refresh replaces with measured numbers.
 
 ## Known limits
 

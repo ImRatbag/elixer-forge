@@ -515,6 +515,24 @@ function deckFromMeta(d){
   const wins=cards.map(x=>x.split(':')[0]).filter(i=>has(C[i],'W')).map(i=>C[i].name);
   return{n:d.name||(wins.join(' + ')||'Control')+' deck',wr:d.games?Math.round(d.wins/d.games*1000)/10:(d.wr??null),games:d.games||null,cards};
 }
+/* Keeps the card table in step with the game. payload = {ids:{cardKey:officialId}, forms:[{id,evo,hero}]}.
+   A form the game has but our table doesn't (a newly released Evo or Hero) is switched on with an estimated
+   rating one step above the base card; the weekly refresh replaces the estimate with measured numbers. */
+function syncCards(payload){
+  const added=[];
+  for(const [k,id] of Object.entries((payload&&payload.ids)||{})){
+    if(!C[k]||!id||CARD_IDS[k]===id)continue;
+    delete ID_TO_CARD[CARD_IDS[k]];CARD_IDS[k]=id;ID_TO_CARD[id]=k;
+  }
+  for(const f of (payload&&payload.forms)||[]){
+    const c=C[f.id];if(!c||isChamp(c))continue;
+    const est=v=>Math.max(5,Math.min(8,v+1));
+    if(f.evo&&!c.ev&&!c.ev2){c.ev=est(c.p);c.ev2=est(c.p2);EVO_CARDS.push(c.id);added.push({id:c.id,form:'evo'});}
+    if(f.hero&&!c.he&&!c.he2){c.he=est(c.p);c.he2=est(c.p2);HERO_CARDS.push(c.id);added.push({id:c.id,form:'hero'});}
+  }
+  if(added.length){memo=new Map();scCache=new Map();}
+  return added;
+}
 function applyMeta(meta){
   if(!meta||meta.version!==1)return false;
   for(const [mode,fp,fe,fh] of [['ranked','p','ev','he'],['duo','p2','ev2','he2']]){

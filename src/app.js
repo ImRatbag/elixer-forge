@@ -36,14 +36,25 @@ const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
 const ART={},TOWER_ART={};
 const nkey=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+let NEW_FORMS=[];
 function applyArt(j){
   if(!j||!Array.isArray(j.cards))return false;
   const byName={};CARDS.forEach(c=>byName[nkey(c.name)]=c.id);
+  const ids={},forms=[];
   for(const c of j.cards){
-    const k=byName[nkey(c.name)]||ID_TO_CARD[c.id];if(!k||!C[k])continue;
+    const named=byName[nkey(c.name)],k=named||ID_TO_CARD[c.id];if(!k||!C[k])continue;
     if(c.icon)ART[k]={base:c.icon,evo:c.evo||c.icon,hero:c.hero||c.icon};
-    // The API is the authority on card IDs: correct ours where they differ so deck links and tag lookups stay exact.
-    if(c.id&&byName[nkey(c.name)]===k&&CARD_IDS[k]!==c.id){delete ID_TO_CARD[CARD_IDS[k]];CARD_IDS[k]=c.id;ID_TO_CARD[c.id]=k;}
+    if(named&&c.id)ids[k]=c.id; // the API is the authority on card IDs
+    forms.push({id:k,evo:!!c.evo,hero:!!c.hero});
+  }
+  const payload={ids,forms};
+  const added=syncCards(payload);
+  const w=getWorker();if(w){const id=++jobId;jobs[id]={res(){},rej(){}};w.postMessage({id,kind:'cards',args:payload});}
+  if(added.length){
+    NEW_FORMS=NEW_FORMS.concat(added);
+    // A profile that hasn't been set up owns everything, including forms released since the card table was built.
+    profiles.forEach(p=>{if(p.source==='unset')added.forEach(x=>{const list=x.form==='evo'?p.col.evo:p.col.hero;if(!list.includes(x.id))list.push(x.id);});});
+    saveProfiles();
   }
   const tn={};TOWERS.forEach(t=>tn[nkey(t.name)]=t.id);
   for(const t of j.towers||[]){const k=tn[nkey(t.name)];if(!k)continue;if(t.id)TOWER[k].tid=t.id;if(t.icon)TOWER_ART[k]=t.icon;}
@@ -66,7 +77,7 @@ async function loadArt(){
 async function detectApi(){
   try{const r=await fetch('api/health',{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();state.api=!!j.ok;}catch(e){state.api=false;}
   renderPlayers();
-  if(state.api&&await loadArt()){document.documentElement.classList.add('has-art');rerender();}
+  if(state.api&&await loadArt()){document.documentElement.classList.add('has-art');renderPlayers();if(setDataNote.last)setDataNote(...setDataNote.last);if(state.last.length||state.lastDuo.length)rerender();}
 }
 async function lookupTag(key,raw){
   const tag=String(raw||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
@@ -137,7 +148,14 @@ function playerHTML(key){
     </details>
   </div>`;
 }
+function welcomeHTML(){
+  const p=prof('A');
+  if(p.source!=='unset'||store.get('ef2-welcomed',false))return '';
+  return `<div class="welcome" id="welcome"><div><b>Build from the cards you own</b><span>${state.api?'Enter your player tag under Players and press Load. You\'ll find the tag under your name on your in-game profile.':'Press Set up collection under Players and tick the Evolutions and Heroes you\'ve unlocked.'} Until then, decks assume you own everything.</span></div><button class="btn sm" type="button" id="welcome-x">Got it</button></div>`;
+}
+document.addEventListener('click',e=>{if(e.target.id==='welcome-x'){store.set('ef2-welcomed',true);const w=$('welcome');if(w)w.remove();}});
 function renderPlayers(){
+  const ws=$('welcomeslot');if(ws)ws.innerHTML=welcomeHTML();
   const keys=state.mode==='duo'?['A','B']:['A'];
   $('players').innerHTML=keys.map(playerHTML).join('<div style="height:10px"></div>');
   keys.forEach(renderChips);
@@ -326,6 +344,7 @@ function getWorker(){
     const src=$('engine').textContent+`
 self.onmessage=e=>{const{id,kind,args}=e.data;try{
   if(kind==='meta'){applyMeta(args);self.postMessage({id,res:true});return;}
+  if(kind==='cards'){syncCards(args);self.postMessage({id,res:true});return;}
   memo=new Map();scCache=new Map();
   const res=kind==='duo'?generateDuo(args):generate(args);self.postMessage({id,res});
 }catch(err){self.postMessage({id,error:String(err&&err.message||err)});}};`;
@@ -370,6 +389,13 @@ async function forge(){
   }catch(e){showErr('The search hit an error: '+e.message);}
   btn.disabled=false;btn.textContent=duo?'Forge team':'Forge decks';
 }
+/* Phones: a floating Forge button whenever the main one has scrolled out of view. */
+(function(){const fab=$('go-fab'),go=$('go');if(!fab||!('IntersectionObserver' in window))return;
+  let vis=true;const upd=()=>{fab.hidden=vis||!matchMedia('(max-width:900px)').matches||!$('sheet').hidden;fab.textContent=go.textContent;fab.disabled=go.disabled;};
+  new IntersectionObserver(es=>{vis=es[0].isIntersecting;upd();}).observe(go);
+  new MutationObserver(upd).observe(go,{childList:true,characterData:true,subtree:true,attributes:true});
+  new MutationObserver(upd).observe($('sheet'),{attributes:true});
+  fab.addEventListener('click',()=>go.click());})();
 // On phones the results sit below the settings, so bring them into view once the button is pressed.
 $('go').addEventListener('click',()=>{const r=forge();if(matchMedia('(max-width:900px)').matches)Promise.resolve(r).then(()=>document.querySelector('.tabs').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'}));});
 
@@ -420,7 +446,7 @@ function tile(o,levels,ref){
       <div class="picbox"><img class="art" src="${esc(src)}" alt="${esc(label)}, ${c.e} elixir" loading="lazy" decoding="async" onerror="this.closest('.tile').classList.add('noart');this.remove()">
         <span class="fallname" aria-hidden="true">${esc(label)}</span>
         <div class="drop" aria-hidden="true"><span>${c.e}</span></div></div>
-      <div class="cap">${o.slot?`<span class="capslot ${f||''}">${o.slot}</span>`:''}${L!=null?`<span class="caplvl ${low?'low':''}">Lv ${L}</span>`:''}</div>
+      <div class="cap">${o.slot?`<span class="capslot ${f||''}">${o.slot}</span>`:''}${low?`<span class="caplvl low" title="Lower level than the rest of this deck">Lv ${L}</span>`:''}</div>
     </div>`;
   }
   return `<div class="tile ${f||''}" style="--rc:var(--r-${rar})"><div class="inner">
@@ -530,7 +556,7 @@ function renderDuo(pairs){
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(p.A))} with ${esc(archLabel(p.B))}</h2>
         <div class="dmeta"><span>Team synergy <b>${p.t.pct}%</b></span><span>Combos between decks <b>${p.t.cross.filter(x=>!x.meta).length}</b></span></div></div>
         <div class="score"><span class="num">${Math.max(1,Math.min(99,Math.round(p.s*0.62)))}</span><small>Team score</small></div></div>
-      ${half(p.A,p.sa,'A',lvA,ta)}${half(p.B,p.sb,'B',lvB,tb)}
+      <div class="pair">${half(p.A,p.sa,'A',lvA,ta)}${half(p.B,p.sb,'B',lvB,tb)}</div>
       <p class="plan"><b>Game plan</b>${esc(gamePlan(p,N))}</p>
       <div class="actions"><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>
       <details class="why"><summary>Why these decks work together</summary>
@@ -622,8 +648,10 @@ $('mode-duo').addEventListener('click',()=>setMode('duo'));
 
 /* ---------- data freshness ---------- */
 function setDataNote(date,live){
+  setDataNote.last=[date,live];
   $('datachip').textContent='Meta data: '+date;
   $('datanote').textContent='Card strength comes from '+(live?'Supercell\'s official API battle data':'RoyaleAPI\'s 7-day stats')+' as of '+date+': Ranked numbers drive 1v1, 2v2 numbers drive team mode. Low-usage cards are pulled toward average so a small sample can\'t dominate.';
+  if(NEW_FORMS.length)$('datanote').textContent+=' '+NEW_FORMS.length+' newer Evo or Hero form'+(NEW_FORMS.length>1?'s were':' was')+' picked up from the game ('+NEW_FORMS.slice(0,6).map(x=>displayName(x.id,x.form)).join(', ')+(NEW_FORMS.length>6?' and more':'')+'); their strength is estimated until the weekly refresh measures it.';
 }
 async function loadMeta(){
   setDataNote(DATA_DATE,false);
@@ -635,5 +663,4 @@ async function loadMeta(){
 
 /* ---------- start ---------- */
 setMode(state.mode);
-detectApi();
-loadMeta().then(()=>forge());
+Promise.all([detectApi(),loadMeta()]).then(()=>forge());

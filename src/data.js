@@ -399,12 +399,6 @@ const COUNTERS={
 /* What a spell does to your deck: these cards die to it. */
 const SPELL_VULN={'fireball':'fb','lightning':'fb','poison':'swarm','the-log':'small','zap':'small','arrows':'small','barbarian-barrel':'small','giant-snowball':'small','goblin-curse':'small','tornado':null,'earthquake':'bld','rocket':'fb','void':'fb','vines':null,'royal-delivery':'small'};
 
-/* Presets for this copy of the app: Alex and Jack's collections (Evos/Heroes they do NOT have).
-   For a public release, set PRESET_PLAYERS to [] and every visitor starts with an empty profile. */
-const PRESET_PLAYERS=[
- {key:'alex',name:'Alex',missingEvo:['hunter','royal-recruits','lumberjack','battle-ram','inferno-dragon','barbarians','furnace','skeleton-army','witch','pekka','bats','royal-giant','executioner','baby-dragon','dart-goblin','musketeer','valkyrie','mega-knight','goblin-drill'],
-  missingHero:['giant','valkyrie','mega-minion','mini-pekka','dark-prince','wizard','tombstone','balloon']},
- {key:'jack',name:'Jack',missingEvo:['princess','minion-horde','royal-giant','zap','witch','goblin-giant','battle-ram'],
-  missingHero:['ice-wizard','mini-pekka','balloon','ice-golem','giant']}
-];
+/* Optional starting profiles: [{key,name,missingEvo:[ids],missingHero:[ids]}]. Empty for the public site, so every visitor starts fresh. */
+const PRESET_PLAYERS=[];
 const DATA_DATE='Sept 30, 2026';

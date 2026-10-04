@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert';
 const src = readFileSync(new URL('../src/data.js', import.meta.url), 'utf8') + readFileSync(new URL('../src/engine.js', import.meta.url), 'utf8');
-const E = new Function(src + '; return {generate,generateDuo,collectionToRules,C,isChamp,EVO_CARDS,HERO_CARDS,PRESET_PLAYERS};')();
+const E = new Function(src + '; return {generate,generateDuo,collectionToRules,C,isChamp,EVO_CARDS,HERO_CARDS,syncCards,CARD_IDS,ID_TO_CARD};')();
 let decks = 0;
 function check(d, col, locked = []) {
   decks++;
@@ -17,7 +17,12 @@ function check(d, col, locked = []) {
   }
   locked.forEach(id => assert.ok(d.ids.includes(id)));
 }
-const cols = E.PRESET_PLAYERS.map(p => ({ base: null, evo: new Set(E.EVO_CARDS.filter(i => !p.missingEvo.includes(i))), hero: new Set(E.HERO_CARDS.filter(i => !p.missingHero.includes(i))) }));
+// Two realistic partial collections (Evos and Heroes each player has NOT unlocked).
+const FIXTURES = [
+  { missingEvo: ['hunter','royal-recruits','lumberjack','battle-ram','inferno-dragon','barbarians','furnace','skeleton-army','witch','pekka','bats','royal-giant','executioner','baby-dragon','dart-goblin','musketeer','valkyrie','mega-knight','goblin-drill'], missingHero: ['giant','valkyrie','mega-minion','mini-pekka','dark-prince','wizard','tombstone','balloon'] },
+  { missingEvo: ['princess','minion-horde','royal-giant','zap','witch','goblin-giant','battle-ram'], missingHero: ['ice-wizard','mini-pekka','balloon','ice-golem','giant'] },
+];
+const cols = FIXTURES.map(p => ({ base: null, evo: new Set(E.EVO_CARDS.filter(i => !p.missingEvo.includes(i))), hero: new Set(E.HERO_CARDS.filter(i => !p.missingHero.includes(i))) }));
 for (const col of cols) for (const style of ['any', 'beatdown', 'hyperbait', 'cycle']) {
   const r = E.collectionToRules(col);
   E.generate({ locked: [], forms: {}, exclude: r.exclude, ban: r.ban, style, maxAvg: 4.3, count: 3, maxChamps: 1 }).forEach(d => check(d, col));
@@ -31,3 +36,16 @@ for (const [x, y] of [['flex', 'flex'], ['attack', 'defend']]) {
   });
 }
 console.log('engine rule tests passed:', decks, 'decks checked');
+
+// syncCards: a newly released form is switched on, IDs follow the API, champions never gain a Hero form.
+{
+  const before = E.EVO_CARDS.length, hadEvo = !!E.C['hog-rider'].ev;
+  const added = E.syncCards({ ids: { knight: 26999999 }, forms: [{ id: 'hog-rider', evo: true, hero: false }, { id: 'knight', evo: true, hero: true }, { id: 'golden-knight', evo: false, hero: true }] });
+  assert.equal(E.CARD_IDS.knight, 26999999); assert.equal(E.ID_TO_CARD[26999999], 'knight');
+  if (!hadEvo) { assert.ok(E.C['hog-rider'].ev >= 5); assert.equal(E.EVO_CARDS.length, before + 1); assert.ok(added.some(x => x.id === 'hog-rider' && x.form === 'evo')); }
+  assert.ok(!added.some(x => x.id === 'golden-knight'));
+  const col = { base: null, evo: new Set(['hog-rider']), hero: new Set() };
+  const r = E.collectionToRules(col);
+  E.generate({ locked: ['hog-rider'], forms: {}, exclude: r.exclude, ban: r.ban, style: 'any', maxAvg: 4.3, count: 2, maxChamps: 1 }).forEach(d => check(d, col, ['hog-rider']));
+  console.log('syncCards test passed');
+}
