@@ -5,7 +5,7 @@
   "description": "Clash Royale deck and 2v2 team builder that uses each player's real collection.",
   "engines": { "node": ">=18" },
   "scripts": {
-    "build": "python3 build.py",
+    "build-page": "python3 build.py",
     "test": "node test/server.test.mjs && node test/engine.test.mjs",
     "refresh-meta": "node scripts/refresh-meta.mjs"
   }
