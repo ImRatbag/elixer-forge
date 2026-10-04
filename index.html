@@ -1,0 +1,1833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Build Clash Royale decks and 2v2 team pairs from the cards you actually own.">
+<meta name="theme-color" content="#1b1029">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+</head>
+<body>
+<title>Elixir Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800;900&display=swap">
+<style>
+/* Layout: header bar; on wide screens a 380px build column beside the results column, stacked on phones.
+   The one bold element is the card tile: rarity-framed, monogram art window, elixir drop, name plate. */
+:root{
+  --bg:#f3eff8; --panel:#ffffff; --sunk:#ebe5f3; --line:#d8cfe6; --fg:#24163a; --muted:#6c5d85;
+  --elixir:#c0259f; --elixir-ink:#ffffff; --gold:#b98a12; --evo:#7046e6; --hero:#c86a12; --champ:#b08a0f;
+  --good:#1e8a4f; --bad:#c3364a; --focus:#c0259f;
+  --r-common:#7d8aa6; --r-rare:#e08a2e; --r-epic:#a14ee0; --r-legendary:#18a7b8; --r-champion:#d2a62a;
+  --display:"Lilita One","Arial Rounded MT Bold","Trebuchet MS",sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1b1029; --panel:#261639; --sunk:#160c22; --line:#3d2a57; --fg:#f4edfb; --muted:#b5a5ca;
+  --elixir:#e650cc; --elixir-ink:#1b1029; --gold:#f2c14e; --evo:#a98cff; --hero:#ffa24a; --champ:#f0cc55;
+  --good:#5bd08f; --bad:#ff7f8e; --focus:#f2c14e;
+  --r-common:#a7b4cf; --r-rare:#f7a650; --r-epic:#c784ff; --r-legendary:#48d6e6; --r-champion:#f0cc55; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1b1029; --panel:#261639; --sunk:#160c22; --line:#3d2a57; --fg:#f4edfb; --muted:#b5a5ca;
+  --elixir:#e650cc; --elixir-ink:#1b1029; --gold:#f2c14e; --evo:#a98cff; --hero:#ffa24a; --champ:#f0cc55;
+  --good:#5bd08f; --bad:#ff7f8e; --focus:#f2c14e;
+  --r-common:#a7b4cf; --r-rare:#f7a650; --r-epic:#c784ff; --r-legendary:#48d6e6; --r-champion:#f0cc55; color-scheme:dark}
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5;margin:0;padding-inline:16px;padding-block:0 56px}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1200px;margin:0 auto}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:18px 14px}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand svg{width:34px;height:34px;flex:none}
+.brand h1{font-family:var(--display);font-weight:400;font-size:clamp(26px,4.5vw,34px);line-height:1;margin:0}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.seg{display:inline-grid;grid-auto-flow:column;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:7px 14px;font-weight:800;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--fg);box-shadow:0 1px 3px rgba(20,8,40,.18)}
+.datachip{font-size:13px;color:var(--muted)}
+
+/* layout */
+.layout{display:grid;grid-template-columns:380px minmax(0,1fr);gap:22px;align-items:start}
+@media (max-width:900px){.layout{grid-template-columns:1fr}}
+.build{display:grid;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 10px);max-height:calc(100vh - 20px);overflow:auto;padding-bottom:4px;scrollbar-width:thin}
+@media (max-width:900px){.build{position:static;max-height:none;overflow:visible}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;display:grid;gap:12px;min-width:0}
+.panel h2{font-family:var(--display);font-weight:400;font-size:19px;margin:0;line-height:1.1}
+.lbl{font-weight:800;font-size:13px;color:var(--muted);display:block;margin-bottom:4px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.field{display:grid;gap:4px;min-width:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type=search],input[type=text],select{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:9px 11px;width:100%;min-width:0}
+details>summary{cursor:pointer;font-weight:800;list-style:none;display:flex;align-items:center;gap:6px}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;margin-right:2px}
+details[open]>summary::before{transform:rotate(45deg)}
+@media (prefers-reduced-motion:reduce){details>summary::before{transition:none}}
+
+/* player card */
+.player{border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px;background:var(--panel)}
+.player.b{border-color:color-mix(in srgb,var(--evo) 45%,var(--line))}
+.phead{display:flex;align-items:center;gap:8px}
+.pbadge{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-family:var(--display);color:#fff;background:var(--elixir);flex:none}
+.player.b .pbadge{background:var(--evo)}
+.pname{flex:1;min-width:0;font-weight:800;font-size:16px;background:transparent;border:1px solid transparent;border-radius:8px;padding:4px 6px}
+.pname:hover,.pname:focus{border-color:var(--line);background:var(--sunk)}
+.pswitch{width:auto;padding:5px 8px;font-size:13px}
+.colsum{display:grid;gap:6px}
+.meter{display:grid;grid-template-columns:72px 1fr auto;align-items:center;gap:8px;font-size:13px}
+.meter .bar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;border:1px solid var(--line)}
+.meter .bar i{display:block;height:100%;background:var(--elixir);border-radius:99px}
+.meter.h .bar i{background:var(--hero)} .meter.e .bar i{background:var(--evo)}
+.meter b{font-variant-numeric:tabular-nums}
+.source{font-size:13px;padding:7px 9px;border-radius:9px;background:var(--sunk);color:var(--muted)}
+.source.warn{color:var(--fg);background:color-mix(in srgb,var(--gold) 22%,var(--sunk))}
+.tagrow{display:grid;grid-template-columns:1fr auto;gap:8px}
+.btn{border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:8px 12px;font-weight:800;cursor:pointer;text-decoration:none;color:var(--fg);display:inline-flex;align-items:center;gap:6px;justify-content:center;white-space:nowrap}
+.btn:hover{border-color:var(--elixir)}
+.btn.primary{background:var(--elixir);border-color:var(--elixir);color:var(--elixir-ink)}
+.btn.sm{padding:5px 9px;font-size:13px;border-radius:8px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.go{font-family:var(--display);font-size:21px;letter-spacing:.3px;background:var(--elixir);color:var(--elixir-ink);border:0;border-radius:14px;padding:13px;cursor:pointer;box-shadow:inset 0 -4px 0 rgba(0,0,0,.22);width:100%}
+.go:active{transform:translateY(1px);box-shadow:inset 0 -2px 0 rgba(0,0,0,.22)}
+.go[disabled]{opacity:.7;cursor:progress}
+.err{color:var(--bad);font-weight:700;font-size:14px;margin:0}
+
+/* pickers & chips */
+.picker{position:relative}
+.matches{list-style:none;margin:4px 0 0;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:10px;max-height:260px;overflow:auto;position:absolute;left:0;right:0;z-index:20;box-shadow:0 12px 30px rgba(20,8,40,.25)}
+.matches button{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;width:100%;padding:7px 8px;border-radius:7px;box-sizing:border-box}
+.matches button:hover,.matches button:focus-visible{background:var(--sunk)}
+.matches .forms{margin-left:auto;display:flex;gap:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 10px;font-weight:700;font-size:14px;max-width:100%}
+.chip select{width:auto;padding:2px 6px;border-radius:999px;font-size:12px}
+.chip button{all:unset;cursor:pointer;width:22px;height:22px;display:grid;place-items:center;border-radius:50%;color:var(--muted)}
+.chip button:hover{background:var(--line);color:var(--fg)}
+.badge{font-weight:900;font-size:11px;letter-spacing:.02em;border-radius:6px;padding:1px 6px;color:#fff;align-self:flex-start;line-height:1.5}
+.badge.evo{background:var(--evo)} .badge.hero{background:var(--hero)} .badge.champ{background:var(--champ);color:#2b1d00}
+
+/* results */
+.results{display:grid;gap:16px;min-width:0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font-weight:800;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.status{color:var(--muted);font-size:14px;margin:0}
+.deck{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:grid;gap:14px;min-width:0}
+.dhead{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:flex-start}
+.dtitle{font-family:var(--display);font-weight:400;font-size:23px;line-height:1.1;margin:0;text-wrap:balance}
+.dmeta{display:flex;gap:4px 14px;flex-wrap:wrap;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:4px}
+.dmeta b{color:var(--fg)}
+.score{margin-left:auto;text-align:right}
+.score .num{font-family:var(--display);font-size:30px;line-height:1;color:var(--elixir);font-variant-numeric:tabular-nums}
+.score small{display:block;color:var(--muted);font-size:12px;font-weight:700}
+.who{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin:0;font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.who .tag{font-family:var(--display);font-size:19px;color:var(--elixir)}
+.duodeck.b .who .tag{color:var(--evo)}
+.who .dn{color:var(--fg);font-weight:800}
+.role{font-weight:800;font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--fg)}
+.duodeck{display:grid;gap:8px;min-width:0}
+
+/* the card tile */
+.grid8{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:540px){.grid8{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}
+.tile{--rc:var(--r-common);position:relative;border-radius:14px;padding:3px;background:linear-gradient(160deg,var(--rc),color-mix(in srgb,var(--rc) 45%,var(--panel)));min-width:0}
+.tile .inner{position:relative;border-radius:11px;background:linear-gradient(180deg,color-mix(in srgb,var(--rc) 26%,var(--sunk)) 0%,var(--sunk) 70%);min-height:112px;display:flex;flex-direction:column;justify-content:flex-end;padding:22px 9px 8px;overflow:hidden}
+.tile.evo{box-shadow:0 0 0 2px var(--evo)} .tile.hero{box-shadow:0 0 0 2px var(--hero)} .tile.champ{box-shadow:0 0 0 2px var(--champ)}
+.mono{position:absolute;right:6px;top:12px;font-family:var(--display);font-size:46px;line-height:1;color:var(--rc);opacity:.35;pointer-events:none}
+.drop{position:absolute;top:-7px;left:-5px;width:30px;height:30px;background:var(--elixir);color:#fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:grid;place-items:center;box-shadow:0 2px 0 rgba(0,0,0,.25);z-index:2}
+.drop span{transform:rotate(45deg);font-family:var(--display);font-size:16px;line-height:1}
+.slot{position:absolute;top:6px;right:8px;left:30px;text-align:right;font-size:11px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lvl{position:absolute;top:6px;left:30px;font-size:11px;font-weight:900;color:var(--muted)}
+.lvl.low{color:var(--bad)}
+.tile .badge{position:relative;margin-bottom:3px}
+.tname{position:relative;font-weight:900;font-size:14px;line-height:1.15;overflow-wrap:break-word;hyphens:auto}
+.tsub{position:relative;font-size:12px;font-weight:800;color:var(--rc);display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden}
+.tsub svg{width:13px;height:13px;flex:none}
+.tile.empty{--rc:var(--line)}
+.tile.empty .inner{align-items:center;justify-content:center;color:var(--muted);font-weight:800;font-size:13px;text-align:center}
+
+.tower{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:14px}
+.tower b{font-weight:900}
+.tower .hint{flex-basis:100%}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.why{border-top:1px dashed var(--line);padding-top:10px}
+.why>summary{color:var(--muted)}
+.why[open]>summary{margin-bottom:10px}
+.synbreak{margin:0 0 10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:620px){.pc{grid-template-columns:1fr}}
+.pc h3{font-size:14px;font-weight:900;margin:0 0 6px}
+.pc h3.good{color:var(--good)} .pc h3.bad{color:var(--bad)}
+.pc ul{margin:0;padding:0;list-style:none;display:grid;gap:7px;font-size:14px}
+.pc li{display:grid;gap:1px} .pc li span{color:var(--muted)}
+.plan{margin:0;background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:14px}
+.plan b{margin-right:6px}
+.miss{margin:0;font-size:13px;color:var(--bad);font-weight:700}
+.empty-state{background:var(--panel);border:1px dashed var(--line);border-radius:16px;padding:22px;text-align:center;color:var(--muted)}
+.empty-state b{display:block;color:var(--fg);font-size:17px;margin-bottom:4px}
+.wl{display:flex;gap:8px;align-items:center;font-size:14px;font-variant-numeric:tabular-nums}
+.wl strong{font-family:var(--display);font-weight:400;font-size:20px}
+.foot{color:var(--muted);font-size:13px;max-width:78ch;margin-top:30px;display:grid;gap:8px}
+.foot p{margin:0}
+
+/* collection editor */
+.overlay{position:fixed;inset:0;background:rgba(15,6,28,.55);z-index:50;display:grid;place-items:center;padding:16px}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px;width:min(860px,100%);max-height:calc(100vh - 32px);display:grid;grid-template-rows:auto auto 1fr auto;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.sheet header{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}
+.sheet header h2{font-family:var(--display);font-weight:400;font-size:22px;margin:0;margin-right:auto}
+.sheet .tools{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 10px;align-items:center}
+.sheet .tools input{flex:1;min-width:160px}
+.sheet .body{overflow:auto;padding:4px 16px 16px}
+.sheet footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.ogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.own{--rc:var(--r-common);all:unset;box-sizing:border-box;cursor:pointer;border-radius:12px;border:2px solid var(--line);background:var(--sunk);padding:8px;display:grid;gap:2px;min-height:74px;position:relative;opacity:.55}
+.own[aria-pressed="true"]{opacity:1;border-color:var(--rc);background:linear-gradient(180deg,color-mix(in srgb,var(--rc) 24%,var(--sunk)),var(--sunk))}
+.own .m{font-family:var(--display);font-size:24px;line-height:1;color:var(--rc)}
+.own .n{font-weight:800;font-size:13px;line-height:1.2}
+.own .tick{position:absolute;top:6px;right:7px;width:18px;height:18px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:900}
+.own[aria-pressed="true"] .tick{background:var(--rc);border-color:var(--rc);color:#fff}
+.own:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-weight:800;z-index:60;font-size:14px;max-width:calc(100% - 32px)}
+.codebox{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px 10px;user-select:all;word-break:break-all}
+.layout>*,.build>*,.player,.phead,.colsum{min-width:0}
+.pname{width:0}
+.pswitch{max-width:42%;flex:none}
+
+</style>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3c6 8 12 14 12 21a12 12 0 0 1-24 0C8 17 14 11 20 3z" fill="var(--elixir)"/><path d="M15 25a5 5 0 0 0 5 5" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".8"/></svg>
+      <div><h1>Elixir Forge</h1><p>Clash Royale decks built from the cards you actually own</p></div>
+    </div>
+    <div class="seg" role="group" aria-label="Game mode">
+      <button type="button" id="mode-1v1" aria-pressed="true">1v1</button>
+      <button type="button" id="mode-duo" aria-pressed="false">2v2</button>
+    </div>
+    <span class="datachip" id="datachip"></span>
+  </header>
+
+  <div class="layout">
+    <aside class="build" aria-label="Build settings">
+      <section class="panel" aria-labelledby="players-h">
+        <h2 id="players-h">Players</h2>
+        <div id="players"></div>
+      </section>
+
+      <section class="panel" aria-labelledby="opts-h">
+        <h2 id="opts-h">Search</h2>
+        <div class="field duo-only" hidden>
+          <label class="lbl" for="priority">Build for</label>
+          <select id="priority">
+            <option value="balanced" selected>Balanced: strong cards that work as a team</option>
+            <option value="synergy">Team synergy first, off-meta is fine</option>
+            <option value="meta">Meta strength first</option>
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="lbl" for="maxavg">Max average elixir</label>
+            <select id="maxavg"><option value="3.0">3.0</option><option value="3.4">3.4</option><option value="3.8">3.8</option><option value="4.3" selected>4.3</option><option value="5">No limit</option></select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="count" id="count-lbl">Number of decks</label>
+            <select id="count"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>8</option></select>
+          </div>
+        </div>
+        <label class="field" style="grid-template-columns:auto 1fr;align-items:center;gap:8px"><input type="checkbox" id="levelmatch" checked> <span>Match card levels <span class="hint" id="levelhint"></span></span></label>
+        <details id="vsbox">
+          <summary>Build against an opponent's deck</summary>
+          <div class="field picker" style="margin-top:8px">
+            <label class="lbl" for="vs">Their cards</label>
+            <input id="vs" type="search" placeholder="Add up to 8 cards you keep losing to" autocomplete="off">
+            <ul class="matches" id="vs-matches" hidden></ul>
+            <div class="chips" id="vs-chips"></div>
+            <p class="hint">Decks will favour answers to their win conditions and avoid cards their spells wipe out.</p>
+          </div>
+        </details>
+        <button class="go" id="go" type="button">Forge decks</button>
+        <p class="err" id="err" hidden></p>
+      </section>
+
+      <details class="panel">
+        <summary>Deck rules</summary>
+        <p class="hint">8 cards. Three special slots, always filled when you own enough: an Evo slot, a Hero slot (Hero or Champion) and a Wild slot. At most 2 Evos or 2 Hero/Champions, 1 Champion per deck, and each card in one form only. In 2v2 the two decks may share up to 2 cards.</p>
+      </details>
+    </aside>
+
+    <main class="results">
+      <div class="tabs" role="tablist" aria-label="Results">
+        <button role="tab" id="tab-gen" aria-selected="true">Your decks</button>
+        <button role="tab" id="tab-meta" aria-selected="false">Top decks</button>
+        <button role="tab" id="tab-saved" aria-selected="false">Saved</button>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+      <div id="out" class="results"></div>
+      <footer class="foot">
+        <p id="datanote"></p>
+        <p>Your collections, saved decks and results are stored only in this browser. Looking up a player tag sends that tag to the Elixir Forge server, which asks Supercell's official API for the public profile.</p>
+        <p>This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy: www.supercell.com/fan-content-policy.</p>
+      </footer>
+    </main>
+  </div>
+</div>
+<div class="overlay" id="sheet" hidden></div>
+<div class="toast" id="toast" hidden role="status"></div>
+<script id="engine">
+
+/* id|name|elixir|type(t troop,s spell,b building)|tags|power|evoPower|heroPower
+   tags: W win condition, T tank, A hits air, S splash, s small spell, F big spell, B building role, K tank killer, M mini tank, X swarm, C champion */
+const RAW=`skeletons|Skeletons|1|t|X|6|6|0|7|6|0
+ice-spirit|Ice Spirit|1|t|A|5|5|0|4|5|0
+fire-spirit|Fire Spirit|1|t|AS|5|0|0|2|0|0
+electro-spirit|Electro Spirit|1|t|A|6|0|0|6|0|0
+heal-spirit|Heal Spirit|1|t|A|8|0|0|4|0|0
+goblins|Goblins|2|t|X|6|0|7|4|0|8
+bomber|Bomber|2|t|S|6|6|0|4|5|0
+spear-goblins|Spear Goblins|2|t|AX|6|0|0|3|0|0
+bats|Bats|2|t|AX|4|7|0|5|8|0
+berserker|Berserker|2|t||6|0|8|6|0|5
+ice-golem|Ice Golem|2|t|M|6|0|5|3|0|6
+suspicious-bush|Suspicious Bush|2|t|W|7|0|0|8|0|0
+wall-breakers|Wall Breakers|2|t|W|6|6|0|3|7|0
+zap|Zap|2|s|s|6|8|0|6|8|0
+giant-snowball|Giant Snowball|2|s|s|6|6|0|2|5|0
+the-log|The Log|2|s|s|4|0|0|7|0|0
+barbarian-barrel|Barbarian Barrel|2|s|s|8|0|7|10|0|8
+rage|Rage|2|s||6|0|0|2|0|0
+goblin-curse|Goblin Curse|2|s|s|7|0|0|6|0|0
+knight|Knight|3|t|M|5|7|5|4|7|4
+archers|Archers|3|t|A|5|6|0|4|5|0
+minions|Minions|3|t|AX|7|0|0|5|0|0
+goblin-gang|Goblin Gang|3|t|X|6|0|0|6|0|0
+skeleton-barrel|Skeleton Barrel|3|t|W|5|7|0|5|10|0
+firecracker|Firecracker|3|t|AS|4|4|0|2|6|0
+cannon|Cannon|3|b|B|4|6|0|4|7|0
+arrows|Arrows|3|s|s|6|0|0|6|0|0
+royal-delivery|Royal Delivery|3|s|s|5|0|0|3|0|0
+mega-minion|Mega Minion|3|t|AK|6|0|6|5|0|7
+dart-goblin|Dart Goblin|3|t|A|5|5|0|6|5|0
+elixir-golem|Elixir Golem|3|t|WT|6|0|0|1|0|0
+tombstone|Tombstone|3|b|BX|5|0|7|5|0|8
+earthquake|Earthquake|3|s|s|6|0|0|5|0|0
+skeleton-army|Skeleton Army|3|t|XK|4|7|0|3|5|0
+guards|Guards|3|t|X|6|0|0|6|0|0
+goblin-barrel|Goblin Barrel|3|s|W|4|6|0|3|7|0
+tornado|Tornado|3|s|s|7|0|0|7|0|0
+clone|Clone|3|s||5|0|0|1|0|0
+vines|Vines|3|s|s|6|0|0|6|0|0
+void|Void|3|s|F|6|0|0|3|0|0
+ice-wizard|Ice Wizard|3|t|AS|6|0|6|5|0|9
+princess|Princess|3|t|AS|6|6|0|5|7|0
+miner|Miner|3|t|W|6|0|0|4|0|0
+bandit|Bandit|3|t|M|8|0|0|9|0|0
+royal-ghost|Royal Ghost|3|t|S|7|8|0|8|10|0
+fisherman|Fisherman|3|t||7|0|0|5|0|0
+spirit-empress|Spirit Empress|3|t|S|6|0|0|9|0|0
+little-prince|Little Prince|3|t|AC|7|0|0|8|0|0
+valkyrie|Valkyrie|4|t|SM|5|4|4|2|5|7
+musketeer|Musketeer|4|t|A|5|6|5|4|9|6
+mini-pekka|Mini P.E.K.K.A|4|t|K|6|0|5|3|0|3
+hog-rider|Hog Rider|4|t|W|4|0|0|6|0|0
+battle-ram|Battle Ram|4|t|W|6|8|0|5|10|0
+zappies|Zappies|4|t|A|7|0|0|8|0|0
+flying-machine|Flying Machine|4|t|A|7|0|0|8|0|0
+battle-healer|Battle Healer|4|t||6|0|0|3|0|0
+goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
+minion-giant|Minion Giant|4|t|W|8|0|0|10|0|0
+rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
+bomb-tower|Bomb Tower|4|b|BS|7|0|0|5|0|0
+furnace|Furnace|4|b|BAS|8|6|0|9|10|0
+goblin-cage|Goblin Cage|4|b|BK|6|7|0|6|7|0
+fireball|Fireball|4|s|F|6|0|0|5|0|0
+baby-dragon|Baby Dragon|4|t|AS|6|7|0|4|10|0
+dark-prince|Dark Prince|4|t|SM|7|0|6|6|0|7
+hunter|Hunter|4|t|AK|7|6|0|5|5|0
+goblin-drill|Goblin Drill|4|b|W|5|6|0|4|7|0
+freeze|Freeze|4|s||7|0|0|3|0|0
+poison|Poison|4|s|F|6|0|0|10|0|0
+lumberjack|Lumberjack|4|t|K|6|6|0|7|10|0
+inferno-dragon|Inferno Dragon|4|t|AK|6|7|0|4|9|0
+electro-wizard|Electro Wizard|4|t|A|7|0|0|9|0|0
+night-witch|Night Witch|4|t||7|0|0|5|0|0
+magic-archer|Magic Archer|4|t|AS|5|0|5|3|0|4
+mother-witch|Mother Witch|4|t|A|8|0|0|10|0|0
+phoenix|Phoenix|4|t|A|7|0|0|8|0|0
+mighty-miner|Mighty Miner|4|t|KC|6|0|0|6|0|0
+skeleton-king|Skeleton King|4|t|SC|7|0|0|5|0|0
+golden-knight|Golden Knight|4|t|MC|7|0|0|10|0|0
+mortar|Mortar|4|b|W|6|8|0|4|7|0
+tesla|Tesla|4|b|BA|4|5|0|3|5|0
+skeleton-dragons|Skeleton Dragons|4|t|AS|7|0|0|5|0|0
+barbarians|Barbarians|5|t|KX|6|7|0|2|3|0
+minion-horde|Minion Horde|5|t|AXK|5|7|0|2|6|0
+rascals|Rascals|5|t|AM|8|0|0|7|0|0
+giant|Giant|5|t|WT|7|0|7|3|0|5
+wizard|Wizard|5|t|AS|4|6|4|2|8|5
+royal-hogs|Royal Hogs|5|t|W|6|6|0|2|6|0
+inferno-tower|Inferno Tower|5|b|BK|5|0|0|3|0|0
+goblin-hut|Goblin Hut|4|b|B|7|0|0|8|0|0
+balloon|Balloon|5|t|W|6|0|6|5|0|5
+witch|Witch|5|t|AS|4|5|0|1|4|0
+prince|Prince|5|t||5|0|0|4|0|0
+bowler|Bowler|5|t|S|7|0|7|7|0|9
+executioner|Executioner|5|t|AS|5|5|0|4|7|0
+cannon-cart|Cannon Cart|5|t|M|9|0|0|9|0|0
+electro-dragon|Electro Dragon|5|t|AS|5|6|0|4|7|0
+ram-rider|Ram Rider|5|t|W|6|0|0|7|0|0
+goblin-machine|Goblin Machine|5|t|W|6|0|0|5|0|0
+ronin|Ronin|5|t|KM|6|0|0|10|0|0
+graveyard|Graveyard|5|s|W|7|0|0|6|0|0
+archer-queen|Archer Queen|5|t|AKC|6|0|0|6|0|0
+monk|Monk|5|t|MC|6|0|0|6|0|0
+goblinstein|Goblinstein|5|t|WTC|7|0|0|10|0|0
+elite-barbarians|Elite Barbarians|6|t|K|5|7|0|3|6|0
+royal-giant|Royal Giant|6|t|WT|6|9|0|3|5|0
+giant-skeleton|Giant Skeleton|6|t|T|7|0|0|8|0|0
+goblin-giant|Goblin Giant|6|t|WTA|6|7|0|4|6|0
+x-bow|X-Bow|6|b|W|6|0|0|2|0|0
+lightning|Lightning|6|s|F|7|0|0|10|0|0
+elixir-collector|Elixir Collector|6|b|B|7|0|0|2|0|0
+rocket|Rocket|6|s|F|5|0|0|2|0|0
+barbarian-hut|Barbarian Hut|6|b|B|6|0|0|4|0|0
+sparky|Sparky|6|t|SK|7|0|0|3|0|0
+boss-bandit|Boss Bandit|6|t|WMC|5|0|0|6|0|0
+royal-recruits|Royal Recruits|7|t|XM|6|7|0|4|7|0
+pekka|P.E.K.K.A|7|t|KT|6|6|0|3|4|0
+electro-giant|Electro Giant|7|t|WT|7|0|0|5|0|0
+lava-hound|Lava Hound|7|t|WT|7|0|0|6|0|0
+mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
+golem|Golem|8|t|WT|7|0|0|5|0|0
+three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0`;
+
+const CARDS=RAW.trim().split('\n').map(l=>{const[id,name,e,type,tags,p,ev,he,p2,ev2,he2]=l.split('|');return{id,name,e:+e,type,tags,p:+p,ev:+ev,he:+he,p2:+p2,ev2:+ev2,he2:+he2}});
+const C={};CARDS.forEach(c=>C[c.id]=c);
+const has=(c,t)=>c.tags.includes(t);
+const isChamp=c=>has(c,'C');
+
+const ARCH={'hog-rider':['cycle'],'royal-giant':['cycle','beatdown'],'mortar':['siege'],'x-bow':['siege'],'goblin-barrel':['bait','hyperbait'],'goblin-drill':['bait','cycle','hyperbait'],'miner':['control','cycle'],'graveyard':['control'],'balloon':['air','beatdown'],'lava-hound':['air','beatdown'],'minion-giant':['air','cycle'],'golem':['beatdown'],'giant':['beatdown'],'electro-giant':['beatdown'],'goblin-giant':['beatdown'],'elixir-golem':['beatdown'],'battle-ram':['bridge'],'ram-rider':['bridge'],'royal-hogs':['bridge','cycle'],'wall-breakers':['cycle','bridge','hyperbait'],'skeleton-barrel':['bait','air','hyperbait'],'goblinstein':['control','beatdown'],'boss-bandit':['bridge'],'goblin-machine':['bridge'],'suspicious-bush':['bait','hyperbait']};
+const STYLE_NAME={hyperbait:'Hyperbait',cycle:'Cycle',beatdown:'Beatdown',bridge:'Bridge Spam',bait:'Bait',siege:'Siege',control:'Control',air:'Air'};
+
+const SYN_RAW=`hog-rider,earthquake,3,Earthquake melts the building that would pull Hog and chips the tower in the same push
+hog-rider,cannon,2,Cannon defends for 3 elixir so Hog can counter-push
+hog-rider,musketeer,2,The 2.6 core: Musketeer covers air while Hog pressures
+hog-rider,ice-golem,2,Ice Golem tanks in front of Hog and slows defenders
+hog-rider,fireball,2,Fireball clears the support troops that stop Hog
+hog-rider,tesla,2,Tesla holds the line while you cycle back to Hog
+hog-rider,skeletons,2,One-elixir cycle gets Hog back in hand faster
+hog-rider,firecracker,2,Firecracker cleans up swarms that surround Hog
+hog-rider,the-log,2,Log clears Skeleton Army and Goblins in front of Hog
+hog-rider,mighty-miner,2,Mighty Miner shreds tanks then swaps lanes to split pressure
+goblin-barrel,princess,3,Log bait: both demand the same small spell
+goblin-barrel,goblin-gang,3,Two goblin threats overload the opponent's small spell
+goblin-barrel,dart-goblin,2,Another Log target, so the Barrel connects more often
+goblin-barrel,skeleton-army,2,Skeleton Army baits out the spell that would stop the Barrel
+goblin-barrel,inferno-tower,2,Inferno handles tanks so the bait pieces stay on offense
+goblin-barrel,knight,2,Knight tanks the counter-push in cheap bait decks
+goblin-barrel,the-log,2,Log clears their swarm defense from your Barrel
+goblin-barrel,rocket,2,Rocket finishes towers the Barrel chips down
+goblin-barrel,wall-breakers,2,Split-lane bait threats that punish slow rotations
+princess,dart-goblin,2,Two long-range chip cards that both bait the Log
+x-bow,tesla,3,Tesla protects X-Bow from Hog and Ram on defense
+x-bow,archers,2,Archers guard X-Bow from air and medium troops
+x-bow,the-log,2,Log knocks back troops walking at your X-Bow
+x-bow,knight,2,Knight tanks for X-Bow placed at the bridge
+x-bow,skeletons,2,Cheap distraction keeps X-Bow locked on the tower
+mortar,cannon-cart,3,Cannon Cart turns into a building that soaks damage beside Mortar
+mortar,rascals,2,Rascals tank and protect Mortar's blind spot
+mortar,goblin-gang,2,Swarm defends the space Mortar can't hit
+mortar,skeleton-barrel,2,Skeleton Barrel adds a second lane of chip while Mortar sieges
+mortar,fireball,2,Fireball clears the troops that rush your Mortar
+mortar,miner,2,Miner tanks Mortar shells at the tower
+golem,night-witch,3,Night Witch behind Golem is the classic beatdown push
+golem,baby-dragon,2,Baby Dragon clears swarms that try to stop Golem
+golem,lumberjack,3,Lumberjack's Rage boosts the whole push behind Golem
+golem,elixir-collector,2,Pump funds the 8-elixir Golem pushes
+golem,tornado,2,Tornado pulls defenders into Golem's death damage
+golem,lightning,2,Lightning removes Inferno Tower in front of Golem
+golem,skeleton-dragons,2,Splash air support that rides behind Golem
+golem,electro-dragon,2,Chain lightning resets Infernos targeting Golem
+lava-hound,balloon,3,LavaLoon: Hound tanks, Balloon takes the tower
+lava-hound,miner,2,Miner tanks for Lava Pups at the tower
+lava-hound,tombstone,2,Tombstone defends ground pushes in air decks
+lava-hound,fireball,2,Fireball clears Musketeer and Wizard under Hound
+lava-hound,mega-minion,2,Mega Minion adds air DPS behind Hound
+lava-hound,skeleton-dragons,2,Splash air support behind Hound
+balloon,freeze,2,Freeze locks defenders so Balloon connects
+balloon,lumberjack,3,Lumberjack's Rage speeds Balloon to the tower
+balloon,ice-golem,2,Ice Golem pulls defenders away from Balloon
+balloon,miner,2,Miner soaks tower shots while Balloon drops bombs
+miner,poison,3,Miner Poison: chip the tower and clear its defenders together
+miner,wall-breakers,2,Miner draws defense so Wall Breakers reach the tower
+miner,bats,2,Bats ride behind Miner for fast chip
+graveyard,poison,3,Poison kills the troops that clear Graveyard skeletons
+graveyard,tornado,2,Tornado pulls defenders off your Graveyard
+graveyard,baby-dragon,2,Baby Dragon tanks and splashes for Graveyard
+graveyard,knight,2,Knight tanks the tower while skeletons spawn
+graveyard,ice-wizard,2,Ice Wizard slows the defenders under Graveyard
+graveyard,skeleton-king,2,Skeleton King's ability stacks with Graveyard skeletons
+battle-ram,bandit,3,Two dashing bridge threats in quick succession
+battle-ram,golden-knight,2,Golden Knight dashes behind Ram to clean up
+battle-ram,electro-wizard,2,E-Wiz resets Infernos that target Ram
+battle-ram,royal-ghost,2,Invisible Ghost escorts the Ram across the bridge
+battle-ram,pekka,2,P.E.K.K.A defends, then Ram punishes the other lane
+battle-ram,ronin,2,Ronin wins melee duels then supports a Ram counter-push
+bandit,royal-ghost,3,Invisible and dashing threats that are hard to answer at once
+bandit,golden-knight,2,Double dash pressure at the bridge
+bandit,ronin,2,Ronin defends melee pushes and Bandit counter-attacks
+bandit,electro-wizard,2,E-Wiz support makes Bandit hard to stop
+pekka,electro-wizard,2,P.E.K.K.A kills tanks while E-Wiz stuns swarms
+pekka,bandit,2,P.E.K.K.A Bridge Spam core
+royal-giant,fisherman,3,Fisherman pulls defenders and buildings away from Royal Giant
+royal-giant,hunter,2,Hunter shreds tanks and Mini P.E.K.K.A that defend RG
+royal-giant,royal-ghost,2,Ghost clears swarms around Royal Giant
+royal-giant,fireball,2,Fireball removes support behind their defense
+royal-giant,lightning,2,Lightning resets Inferno Tower targeting RG
+royal-giant,electro-spirit,1,Cheap stun-and-cycle to get RG back
+royal-giant,skeletons,1,Cheap cycle for a 6-elixir win condition
+minion-giant,goblinstein,2,Two building-targeters that split the defense
+minion-giant,rune-giant,2,Rune Giant tanks ground while Minion Giant flies in
+goblinstein,goblin-hut,2,Goblin Hut keeps pressure while Goblinstein builds a push
+royal-hogs,earthquake,3,Earthquake clears buildings the Hogs would get stuck on
+royal-hogs,royal-delivery,2,Royal Delivery defends cheaply in split-lane decks
+royal-hogs,archer-queen,2,Archer Queen cloaks behind split Hogs
+royal-hogs,cannon,2,Cannon defends while Hogs pressure both lanes
+royal-hogs,royal-recruits,2,Split-lane pressure from two directions
+royal-hogs,flying-machine,2,Ranged air support behind split Hogs
+giant,sparky,2,Giant tanks so Sparky gets her shot off
+giant,mini-pekka,2,Mini P.E.K.K.A defends then joins the Giant push
+giant,musketeer,2,Musketeer behind Giant is a classic push
+giant,prince,2,Prince charges behind the Giant
+giant,dark-prince,2,Dark Prince splashes swarms around Giant
+giant,graveyard,3,Giant Graveyard: tank in front, skeletons on the tower
+electro-giant,tornado,3,Tornado pulls troops into E-Giant's zap
+electro-giant,lightning,2,Lightning removes buildings and ranged troops
+electro-giant,bowler,2,Bowler pushes back the swarms E-Giant can't stop
+goblin-giant,sparky,3,Sparky rides behind the Spear Goblins on Goblin Giant
+executioner,tornado,3,Tornado gathers troops into Executioner's axe
+ice-wizard,tornado,2,Slow and pull for big defensive swings
+mega-knight,inferno-dragon,2,Mega Knight jumps swarms while Inferno Dragon melts tanks
+mega-knight,miner,2,Miner chip pairs with Mega Knight counter-pushes
+mega-knight,bats,2,Bats add fast DPS behind Mega Knight
+goblin-drill,bomber,2,Bomber clears swarms on defense in Drill cycle
+goblin-drill,earthquake,1,Earthquake plus Drill chips buildings and the tower
+wall-breakers,bandit,2,Fast bridge threats that punish elixir spending
+cannon,skeletons,2,Cheap defensive core for fast cycle
+elixir-collector,three-musketeers,3,Pump pays for the 9-elixir Three Musketeers
+three-musketeers,battle-ram,2,Split Musketeers behind a Battle Ram
+ram-rider,bandit,2,Two bridge threats that snare and dash
+skeleton-king,golem,2,Skeleton King gathers souls while Golem tanks
+goblin-barrel,skeleton-barrel,3,Hyperbait: two barrel threats the opponent's one small spell can't both answer
+skeleton-barrel,dart-goblin,2,Dart Goblin picks off defenders while Skeleton Barrel drops on the tower
+skeleton-barrel,royal-ghost,2,Royal Ghost clears the swarms that would stop Skeleton Barrel
+skeleton-barrel,suspicious-bush,2,Two cheap tower threats that bait the same spell
+goblin-barrel,suspicious-bush,2,Bush and Barrel overload the opponent's small spell
+skeleton-barrel,rascals,2,Rascals tank and the girls chip while skeletons land
+goblins,goblin-barrel,2,More goblins for one Log to answer
+freeze,skeleton-barrel,1,Freeze locks defenders under Skeleton Barrel
+rune-giant,little-prince,3,Rune Giant enchants Little Prince so his shots hit harder while she tanks in front
+hog-rider,tornado,2,Tornado drags defenders off the Hog's path
+giant-skeleton,battle-ram,2,Giant Skeleton's death bomb clears the defense right before Battle Ram connects`;
+const SYN={};
+const sk=(a,b)=>a<b?a+'|'+b:b+'|'+a;
+SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b)]={w:+w,why:r.join(',')}});
+
+/* Top Ranked decks, RoyaleAPI 7-day, week ending Sept 30 2026. ':evo' / ':hero' marks the form. */
+const META=[
+ {n:'GK Bandit Evo Ram',wr:55.4,cards:['battle-ram:evo','golden-knight','royal-ghost:evo','ronin','electro-wizard','bandit','furnace','arrows']},
+ {n:'Rune Giant Minion Giant 2.9 Cycle',wr:55.3,cards:['cannon:evo','little-prince','bats:evo','minion-giant','rune-giant','poison','skeletons','barbarian-barrel']},
+ {n:'Evo Mortar Cannon Cart Bait',wr:55.0,cards:['skeleton-barrel:evo','ice-wizard:hero','mortar:evo','cannon-cart','fireball','goblin-gang','rascals','barbarian-barrel']},
+ {n:'Goblinstein Evo Musketeer Goblin Hut',wr:53.7,cards:['royal-ghost:evo','goblinstein','musketeer:evo','minion-giant','fireball','goblin-hut','skeletons','barbarian-barrel']},
+ {n:'Goblinstein 3.3 Cycle',wr:53.5,cards:['archers:evo','goblinstein','skeletons:evo','minion-giant','lightning','electro-spirit','barbarian-barrel','bomb-tower']},
+ {n:'Golem Double Dragon Pump',wr:53.2,cards:['electro-dragon:evo','berserker:hero','elite-barbarians:evo','golem','skeleton-dragons','tornado','barbarian-barrel','elixir-collector']},
+ {n:'Hero Knight Log Bait',wr:52.9,cards:['goblin-barrel:evo','knight:hero','skeleton-army:evo','princess','dart-goblin','ice-spirit','the-log','inferno-tower']},
+ {n:'X-Bow Hero Knight 3.0',wr:51.8,cards:['archers:evo','knight:hero','tesla:evo','x-bow','fireball','skeletons','electro-spirit','the-log']},
+ {n:'Graveyard Evo Baby Dragon Tornado',wr:51.3,cards:['baby-dragon:evo','tombstone:hero','ice-wizard:hero','graveyard','knight','poison','tornado','barbarian-barrel']},
+ {n:'Evo Royal Giant Fisherman Hunter',wr:51.4,cards:['royal-giant:evo','barbarian-barrel:hero','royal-ghost:evo','hunter','fisherman','fireball','skeletons','electro-spirit']},
+ {n:'Hog Mighty Miner 2.8',wr:51.0,cards:['firecracker:evo','mighty-miner','tesla:evo','hog-rider','earthquake','skeletons','electro-spirit','barbarian-barrel']},
+ {n:'Evo Royal Hogs Archer Queen',wr:50.8,cards:['royal-hogs:evo','archer-queen','cannon:evo','earthquake','skeletons','ice-spirit','royal-delivery','the-log']}
+];
+/* Top 2v2 decks (RoyaleAPI, Normal Battle 2v2, 7 days to Sept 30 2026). Samples are small, so win rates run high. */
+const META2=[
+ {n:'Rune Giant Evo Cannon Evo Bats',wr:70.4,cards:['barbarian-barrel','bats:evo','cannon:evo','little-prince','minion-giant','poison','rune-giant','skeletons']},
+ {n:'Boss Bandit Evo Furnace',wr:70.0,cards:['boss-bandit','fireball','firecracker:evo','furnace:evo','goblin-curse','guards','lightning','ronin']},
+ {n:'GK Bandit Evo Ram E-Wiz',wr:68.5,cards:['arrows','bandit','battle-ram:evo','electro-wizard','furnace','golden-knight','ronin','royal-ghost:evo']},
+ {n:'Goblinstein Evo Musketeer Goblin Hut',wr:67.6,cards:['barbarian-barrel','fireball','goblin-hut','goblinstein','minion-giant','musketeer:evo','royal-ghost:evo','skeletons']},
+ {n:'Goblinstein 3.3 Cycle',wr:64.3,cards:['archers:evo','barbarian-barrel','bomb-tower','electro-spirit','goblinstein','lightning','minion-giant','skeletons:evo']},
+ {n:'Graveyard Evo Baby Dragon Tornado',wr:62.2,cards:['baby-dragon:evo','barbarian-barrel','graveyard','ice-wizard:hero','knight','poison','tombstone:hero','tornado']},
+ {n:'Giant Skeleton Evo Ram Hero Wizard',wr:60.8,cards:['barbarian-barrel','battle-ram:evo','giant-skeleton','mother-witch','royal-ghost:evo','vines','wizard:hero','zappies']},
+ {n:'Golem Double Dragon Pump',wr:59.9,cards:['barbarian-barrel','berserker:hero','electro-dragon:evo','elite-barbarians:evo','elixir-collector','golem','skeleton-dragons','tornado']},
+ {n:'Hog Evo Executioner Hero Goblins',wr:58.0,cards:['executioner:evo','goblins:hero','hog-rider','ice-spirit','rocket','the-log','tornado','valkyrie:evo']},
+ {n:'Hog Hero Musketeer 2.6',wr:null,cards:['cannon:evo','fireball','hog-rider','ice-golem','ice-spirit','musketeer:hero','skeletons:evo','the-log']}
+];
+/* More of this week's top Ranked decks, used only for combo data. */
+const META_EXTRA=[
+ ['bandit','battle-ram','electro-wizard','furnace','giant-skeleton','golden-knight','heal-spirit','royal-ghost'],
+ ['barbarian-barrel','cannon-cart','fireball','goblin-gang','goblinstein','minion-horde','mortar','mother-witch'],
+ ['barbarian-barrel','cannon-cart','fireball','ice-wizard','minions','mortar','rascals','skeleton-barrel'],
+ ['bandit','battle-ram','electro-wizard','golden-knight','mother-witch','ronin','royal-ghost','zap'],
+ ['cannon','dart-goblin','goblin-barrel','ice-spirit','princess','skeleton-army','valkyrie','wall-breakers'],
+ ['goblin-curse','golem','inferno-dragon','miner','night-witch','skeleton-army','skeleton-king','zap'],
+ ['goblin-cage','inferno-dragon','little-prince','minion-giant','poison','rune-giant','skeletons','zap'],
+ ['fireball','inferno-dragon','lava-hound','rune-giant','skeleton-dragons','tombstone','valkyrie','zap'],
+ ['fireball','goblin-cage','goblin-demolisher','inferno-dragon','little-prince','miner','rune-giant','zap'],
+ ['bats','fireball','goblin-hut','ice-wizard','minion-giant','ronin','skeletons','zap']
+];
+// Pairs seen together in this week's top decks get a small synergy bonus.
+META.concat(META2).concat(META_EXTRA.map(c=>({cards:c}))).forEach(d=>{const ids=d.cards.map(x=>x.split(':')[0]);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const k=sk(ids[i],ids[j]);if(!SYN[k])SYN[k]={w:0.5,why:'Played together in a top Ranked deck this week',meta:true};}});
+const RARITY={};
+`rare:heal-spirit ice-golem suspicious-bush mega-minion dart-goblin elixir-golem tombstone earthquake valkyrie musketeer mini-pekka hog-rider battle-ram zappies flying-machine battle-healer goblin-demolisher minion-giant bomb-tower furnace goblin-cage fireball giant wizard royal-hogs inferno-tower goblin-hut barbarian-hut elixir-collector rocket three-musketeers
+epic:wall-breakers barbarian-barrel rage goblin-curse skeleton-army guards goblin-barrel tornado clone vines void baby-dragon dark-prince hunter rune-giant goblin-drill freeze poison balloon witch prince bowler executioner cannon-cart electro-dragon giant-skeleton goblin-giant x-bow lightning pekka electro-giant golem
+legendary:the-log ice-wizard princess miner bandit royal-ghost fisherman lumberjack inferno-dragon electro-wizard night-witch magic-archer mother-witch phoenix ram-rider graveyard sparky lava-hound mega-knight ronin spirit-empress goblin-machine`.split('\n').forEach(l=>{const[r,ids]=l.split(':');ids.split(' ').forEach(id=>RARITY[id]=r);});
+const rarityOf=c=>isChamp(c)?'champion':RARITY[c.id]||'common';
+const RNAME={common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary',champion:'Champion'};
+const ICON={
+ t:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 2l7.5 7.5-1.4 1.4L1.6 3.4V2zm10.4 8.1l1 1-1.7 1.7 1.3 1.3-.9.9-1.3-1.3-1.7 1.7-1-1 1.7-1.7-1.3-1.3.9-.9 1.3 1.3z"/></svg>',
+ s:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1l1.8 4.6L14.5 6l-3.6 3 1.1 4.8L8 11.2 4 13.8 5.1 9 1.5 6l4.7-.4z"/></svg>',
+ b:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 2h2.5v2H6V2h4v2h1.5V2H14v5h-1.5v7h-9V7H2zm4.5 7v5h3V9z"/></svg>'
+};
+const typeName={t:'Troop',s:'Spell',b:'Building'};
+// Original monogram per card (initials), so cards are quick to tell apart at a glance.
+const MONO={};
+(function(){
+  const FIXED={'royal-giant':'RG','rune-giant':'RuG','golem':'Gm'};
+  Object.assign(MONO,FIXED);
+  const used=new Set(Object.values(FIXED));
+  const cap=x=>x[0].toUpperCase()+x.slice(1).toLowerCase();
+  const order=[...CARDS].sort((x,y)=>y.p-x.p);
+  for(const c of order){
+    if(FIXED[c.id])continue;
+    const w=c.name.replace(/\./g,'').split(/[\s-]+/).filter(x=>x&&x.toLowerCase()!=='the');
+    const cands=[];
+    if(w.length===1){const t=w[0];for(let i=1;i<t.length;i++)cands.push(cap(t[0]+t[i]));cands.push(cap(t.slice(0,3)));}
+    else{const I=w.slice(0,2).map(x=>x[0].toUpperCase()).join('');cands.push(I);
+      const l=w[1];for(let i=1;i<l.length;i++)cands.push(I[0]+l[0].toUpperCase()+l[i].toLowerCase());
+      cands.push(w[0][0].toUpperCase()+(w[0][1]||'').toLowerCase()+l[0].toUpperCase());}
+    const pick=cands.find(x=>!used.has(x))||c.id.slice(0,3);
+    used.add(pick);MONO[c.id]=pick;
+  }
+})();
+const mono=c=>MONO[c.id];
+const WIN_COUNTER={'hog-rider':'Buildings and Tornado stop Hog cold','royal-giant':'Inferno Tower and swarms like Skeleton Army shut down Royal Giant','golem':'Inferno Tower and P.E.K.K.A punish a slow Golem push','giant':'Inferno Tower and Mini P.E.K.K.A melt Giant','electro-giant':'Ranged troops and buildings out-range E-Giant','goblin-giant':'Inferno Tower and Mini P.E.K.K.A handle Goblin Giant','lava-hound':'Splash air defense (Wizard, Executioner) shreds Lava Pups','balloon':'Musketeer, Hunter and buildings catch Balloon early','minion-giant':'Strong air defense and buildings stall Minion Giant','mortar':'Heavy tanks and big spells get through Mortar','x-bow':'Heavy tanks and big spells get through X-Bow','goblin-barrel':'A well-timed Log or Zap wipes the Barrel','goblin-drill':'Cheap swarms and Log answer the Drill','skeleton-barrel':'Small spells and air troops answer Skeleton Barrel','graveyard':'Poison and splash troops clear Graveyard','miner':'Cheap troops at the tower stop Miner chip','battle-ram':'Swarms and a building stop Battle Ram before it connects','ram-rider':'Swarms and buildings stop Ram Rider','royal-hogs':'Splash troops and Earthquake punish split Hogs','wall-breakers':'Log and cheap troops pop Wall Breakers','goblinstein':'Inferno Tower and kiting distract Goblinstein','boss-bandit':'Ronin, swarms and stuns stop Boss Bandit','goblin-machine':'Buildings and swarms handle Goblin Machine','elixir-golem':'Gives elixir back when defended badly','suspicious-bush':'Any small spell clears Suspicious Bush'};
+
+/* Official Clash Royale card IDs (used for "Open in Clash Royale" deck links and to read player collections).
+   Verified against RoyaleAPI deck links, Sept 30 2026. A deployed app also refreshes these from Supercell's /v1/cards. */
+const CARD_IDS={
+'knight':26000000,'archers':26000001,'goblins':26000002,'giant':26000003,'pekka':26000004,'minions':26000005,'balloon':26000006,'witch':26000007,
+'barbarians':26000008,'golem':26000009,'skeletons':26000010,'valkyrie':26000011,'skeleton-army':26000012,'bomber':26000013,'musketeer':26000014,
+'baby-dragon':26000015,'prince':26000016,'wizard':26000017,'mini-pekka':26000018,'spear-goblins':26000019,'giant-skeleton':26000020,'hog-rider':26000021,
+'minion-horde':26000022,'ice-wizard':26000023,'royal-giant':26000024,'guards':26000025,'princess':26000026,'dark-prince':26000027,'three-musketeers':26000028,
+'lava-hound':26000029,'ice-spirit':26000030,'fire-spirit':26000031,'miner':26000032,'sparky':26000033,'bowler':26000034,'lumberjack':26000035,
+'battle-ram':26000036,'inferno-dragon':26000037,'ice-golem':26000038,'mega-minion':26000039,'dart-goblin':26000040,'goblin-gang':26000041,
+'electro-wizard':26000042,'elite-barbarians':26000043,'hunter':26000044,'executioner':26000045,'bandit':26000046,'royal-recruits':26000047,
+'night-witch':26000048,'bats':26000049,'royal-ghost':26000050,'ram-rider':26000051,'zappies':26000052,'rascals':26000053,'cannon-cart':26000054,
+'mega-knight':26000055,'skeleton-barrel':26000056,'flying-machine':26000057,'wall-breakers':26000058,'royal-hogs':26000059,'goblin-giant':26000060,
+'fisherman':26000061,'magic-archer':26000062,'electro-dragon':26000063,'firecracker':26000064,'mighty-miner':26000065,'elixir-golem':26000067,
+'battle-healer':26000068,'skeleton-king':26000069,'archer-queen':26000072,'golden-knight':26000074,'monk':26000077,'skeleton-dragons':26000080,
+'mother-witch':26000083,'electro-spirit':26000084,'electro-giant':26000085,'phoenix':26000087,'little-prince':26000093,'goblin-demolisher':26000095,
+'goblin-machine':26000096,'suspicious-bush':26000097,'goblinstein':26000099,'rune-giant':26000101,'berserker':26000102,'boss-bandit':26000103,
+'ronin':26000106,'minion-giant':26000107,
+'cannon':27000000,'goblin-hut':27000001,'mortar':27000002,'inferno-tower':27000003,'bomb-tower':27000004,'barbarian-hut':27000005,'tesla':27000006,
+'elixir-collector':27000007,'x-bow':27000008,'tombstone':27000009,'furnace':27000010,'goblin-cage':27000012,'goblin-drill':27000013,
+'fireball':28000000,'arrows':28000001,'rage':28000002,'rocket':28000003,'goblin-barrel':28000004,'freeze':28000005,'lightning':28000007,'zap':28000008,
+'poison':28000009,'graveyard':28000010,'the-log':28000011,'tornado':28000012,'clone':28000013,'earthquake':28000014,'barbarian-barrel':28000015,
+'heal-spirit':28000016,'giant-snowball':28000017,'royal-delivery':28000018,'void':28000023,'goblin-curse':28000024,'spirit-empress':28000025,'vines':28000026
+};
+const ID_TO_CARD={};Object.entries(CARD_IDS).forEach(([k,v])=>ID_TO_CARD[v]=k);
+
+/* Tower troops. Ratings: RoyaleAPI 7 days to Sept 30 2026 (Ranked / 2v2). Tower Princess ID verified; others best known. */
+const TOWERS=[
+ {id:'tower-princess',name:'Tower Princess',tid:159000000,r:50,r2:49,use:94,note:'All-round default: steady damage on air and ground. The pick for almost every deck.'},
+ {id:'royal-chef',name:'Royal Chef',tid:159000004,r:47,r2:41,use:2,note:'Cooks pancakes that level up a nearby troop. Pays off in troop-heavy beatdown and bridge-spam decks, weaker on pure defense.'},
+ {id:'dagger-duchess',name:'Dagger Duchess',tid:159000002,r:43,r2:42,use:3,note:'Fast burst of daggers, then a reload. Good at stopping quick rushes, weaker against long sieges.'},
+ {id:'cannoneer',name:'Cannoneer',tid:159000001,r:43,r2:38,use:1,note:'Huge single shots that punish tanks, but slow, so swarms and cycle decks get through.'}
+];
+const TOWER={};TOWERS.forEach(t=>TOWER[t.id]=t);
+
+/* Good answers to each win condition, used for matchup analysis and "build against a deck". */
+const COUNTERS={
+'hog-rider':['cannon','tesla','tornado','inferno-tower','bomb-tower','goblin-cage','mini-pekka','skeletons','guards','ronin','goblin-hut','tombstone','furnace'],
+'royal-giant':['inferno-tower','inferno-dragon','mini-pekka','skeleton-army','guards','barbarians','goblin-cage','hunter','ronin','pekka'],
+'golem':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','elite-barbarians','minion-horde'],
+'giant':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','minion-horde','ronin'],
+'electro-giant':['pekka','mini-pekka','skeleton-army','barbarians','hunter','tornado','lightning','minion-horde'],
+'goblin-giant':['inferno-tower','inferno-dragon','mini-pekka','pekka','executioner','valkyrie','bowler','minion-horde'],
+'elixir-golem':['inferno-tower','pekka','mini-pekka','executioner','bowler','valkyrie'],
+'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde'],
+'balloon':['musketeer','hunter','archers','tesla','inferno-tower','bats','minions','electro-wizard','little-prince','mega-minion','inferno-dragon'],
+'minion-giant':['musketeer','electro-wizard','inferno-dragon','hunter','archers','tesla','inferno-tower','bats','little-prince','mega-minion'],
+'mortar':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
+'x-bow':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
+'goblin-barrel':['the-log','zap','arrows','barbarian-barrel','giant-snowball','valkyrie','bomber','firecracker','goblin-curse','dark-prince'],
+'goblin-drill':['valkyrie','skeletons','knight','bomber','the-log','guards','tornado','dark-prince'],
+'skeleton-barrel':['the-log','zap','arrows','bats','minions','firecracker','barbarian-barrel','spear-goblins'],
+'graveyard':['poison','valkyrie','baby-dragon','wizard','bowler','executioner','mother-witch','bomber','dark-prince'],
+'miner':['knight','skeletons','mini-pekka','valkyrie','guards','bats','ice-golem','goblins'],
+'battle-ram':['skeleton-army','guards','goblin-gang','cannon','tesla','inferno-tower','ronin','mini-pekka','goblin-cage','tombstone'],
+'ram-rider':['skeleton-army','guards','cannon','inferno-tower','mini-pekka','goblin-cage','tombstone'],
+'royal-hogs':['valkyrie','bowler','executioner','wizard','baby-dragon','firecracker','bomb-tower','dark-prince'],
+'wall-breakers':['the-log','zap','skeletons','bats','goblins','giant-snowball','arrows'],
+'goblinstein':['inferno-tower','inferno-dragon','mini-pekka','pekka','hunter','ronin'],
+'boss-bandit':['ronin','skeleton-army','guards','mini-pekka','pekka','goblin-cage'],
+'goblin-machine':['inferno-tower','mini-pekka','pekka','skeleton-army','goblin-cage'],
+'suspicious-bush':['the-log','zap','arrows','skeletons','barbarian-barrel']
+};
+/* What a spell does to your deck: these cards die to it. */
+const SPELL_VULN={'fireball':'fb','lightning':'fb','poison':'swarm','the-log':'small','zap':'small','arrows':'small','barbarian-barrel':'small','giant-snowball':'small','goblin-curse':'small','tornado':null,'earthquake':'bld','rocket':'fb','void':'fb','vines':null,'royal-delivery':'small'};
+
+/* Presets for this copy of the app: Alex and Jack's collections (Evos/Heroes they do NOT have).
+   For a public release, set PRESET_PLAYERS to [] and every visitor starts with an empty profile. */
+const PRESET_PLAYERS=[
+ {key:'alex',name:'Alex',missingEvo:['hunter','royal-recruits','lumberjack','battle-ram','inferno-dragon','barbarians','furnace','skeleton-army','witch','pekka','bats','royal-giant','executioner','baby-dragon','dart-goblin','musketeer','valkyrie','mega-knight','goblin-drill'],
+  missingHero:['giant','valkyrie','mega-minion','mini-pekka','dark-prince','wizard','tombstone','balloon']},
+ {key:'jack',name:'Jack',missingEvo:['princess','minion-horde','royal-giant','zap','witch','goblin-giant','battle-ram'],
+  missingHero:['ice-wizard','mini-pekka','balloon','ice-golem','giant']}
+];
+const DATA_DATE='Sept 30, 2026';
+
+/* ---------- special-slot assignment ---------- */
+let memo=new Map();
+const NOBAN=new Set();
+function assignForms(ids,ctx){
+  const key=(ctx.tag||'')+[...ids].sort().join(',');
+  if(memo.has(key))return memo.get(key);
+  const done=v=>(memo.set(key,v),v);
+  const mand=[],opts=[];
+  for(const id of ids){
+    const c=C[id],f=ctx.forms[id]||'any',ban=(ctx.ban&&ctx.ban[id])||NOBAN;
+    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)*0.75});continue;}
+    if(f==='evo'){if(!c.ev||ban.has('evo'))return done(null);mand.push({id,form:'evo',v:evP(c,ctx)});continue;}
+    if(f==='hero'){if(!c.he||ban.has('hero'))return done(null);mand.push({id,form:'hero',v:heP(c,ctx)});continue;}
+    if(f==='normal'){if(ban.has('normal'))return done(null);continue;}
+    if(c.ev&&!ban.has('evo'))opts.push({id,form:'evo',v:evP(c,ctx)});
+    if(c.he&&!ban.has('hero'))opts.push({id,form:'hero',v:heP(c,ctx)});
+    if(ban.has('normal')&&!opts.some(o=>o.id===id))return done(null);
+  }
+  // Cards whose normal version is blocked may only appear in a special slot.
+  const mustSpecial=ids.filter(id=>ctx.ban&&ctx.ban[id]&&ctx.ban[id].has('normal')&&!isChamp(C[id]));
+  if(mand.filter(m=>m.form==='champ').length>ctx.maxChamps)return done(null);
+  if(mand.length>3)return done(null);
+  // Fill all 3 special slots whenever the player owns enough Evos/Heroes. Only a player who doesn't
+  // (a new account) gets fewer, and every empty slot costs the deck heavily so full decks always win.
+  let best=null;
+  for(let total=3;total>=mand.length&&!best;total--){
+    const need=total-mand.length;
+    const test=sel=>{
+      const all=mand.concat(sel);
+      const e=all.filter(x=>x.form==='evo').length,h=all.length-e;
+      if(e>2||h>2)return;
+      if(total===3&&(e<1||h<1))return;
+      if(mustSpecial.some(id=>!all.some(x=>x.id===id)))return;
+      const v=all.reduce((a,x)=>a+x.v,0);
+      if(!best||v>best.value)best={specials:all,value:v,empty:3-total};
+    };
+    const rec=(start,sel)=>{
+      if(sel.length===need){test(sel);return;}
+      for(let i=start;i<opts.length;i++){if(sel.some(s=>s.id===opts[i].id))continue;rec(i+1,sel.concat(opts[i]));}
+    };
+    rec(0,[]);
+  }
+  return done(best);
+}
+
+/* ---------- deck scoring ---------- */
+function counts(cards){
+  const nonSpell=cards.filter(c=>c.type!=='s');
+  return{
+    wc:cards.filter(c=>has(c,'W')).length,
+    air:nonSpell.filter(c=>has(c,'A')).length,
+    splash:nonSpell.filter(c=>has(c,'S')).length,
+    small:cards.filter(c=>c.type==='s'&&has(c,'s')).length,
+    big:cards.filter(c=>c.type==='s'&&has(c,'F')).length,
+    spells:cards.filter(c=>c.type==='s'&&!has(c,'W')).length,
+    kill:cards.filter(c=>has(c,'K')).length,
+    bld:cards.filter(c=>c.type==='b').length,
+    cheap:cards.filter(c=>c.e<=2).length,
+    champs:cards.filter(isChamp).length,
+    sum:cards.reduce((a,c)=>a+c.e,0)
+  };
+}
+function fitsStyle(cards,style){return style==='any'||cards.some(c=>has(c,'W')&&(ARCH[c.id]||[]).includes(style));}
+
+
+/* Synergy model. Based on deck-building guides: synergy is (1) direct combos where one card amplifies or covers
+   for another, (2) support for the win condition, (3) the deck covering each other's weaknesses (complementary roles),
+   minus (4) shared weaknesses, where one spell or counter answers several of your cards at once. */
+const SMALL_VULN=new Set('suspicious-bush rascals skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
+const FB_VULN=new Set('musketeer wizard witch executioner electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch night-witch flying-machine zappies hunter three-musketeers rascals mega-minion goblin-demolisher spirit-empress little-prince'.split(' '));
+const BAIT_CORE=new Set(['goblin-barrel','goblin-drill','skeleton-barrel','suspicious-bush']);
+function synergyOf(ids,k,pairs){
+  const cards=ids.map(i=>C[i]);
+  // Each card is scored by its single strongest link (3 = core combo). A card with no partner adds nothing,
+  // so a deck only reaches 100% when every card has a real reason to be there.
+  const bestLink={};ids.forEach(i=>bestLink[i]=0);
+  for(const p of pairs){bestLink[p.a]=Math.max(bestLink[p.a],p.w);bestLink[p.b]=Math.max(bestLink[p.b],p.w);}
+  let combo=ids.reduce((a,i)=>a+bestLink[i]/3,0)/8;
+  const notes=[];
+  const small=ids.filter(i=>SMALL_VULN.has(i)).length;
+  const fb=ids.filter(i=>FB_VULN.has(i)).length;
+  const bait=ids.some(i=>BAIT_CORE.has(i));
+  if(bait&&small>=3){combo+=0.15;notes.push(small+' cards share the same spell answer, which overloads it (bait)');}
+  const comboS=Math.min(1,combo);
+  const loose=ids.filter(i=>bestLink[i]===0).map(i=>C[i].name);
+  if(loose.length)notes.push('No direct combo partner: '+loose.join(', '));
+  let best=0;
+  for(const p of pairs)if(has(C[p.a],'W')||has(C[p.b],'W'))best=Math.max(best,p.w);
+  const wcS=best>=3?1:best>=2?0.75:best>=1?0.45:best>0?0.3:0;
+  if(!best)notes.push('No card directly supports the win condition');
+  const roles=[k.air>=2,k.splash>=1,k.small>=1,k.big>=1,k.kill>=1,k.cheap>=2];
+  const covS=roles.filter(Boolean).length/roles.length;
+  let weak=1;
+  if(!bait){if(small>=4){weak-=0.45;notes.push(small+' cards die to one Log or Zap');}else if(small===3){weak-=0.25;notes.push('3 cards die to one Log or Zap');}else if(small===2)weak-=0.1;}
+  if(fb>=3){weak-=0.4;notes.push(fb+' cards die to one Fireball');}else if(fb===2){weak-=0.2;notes.push('2 support cards die to one Fireball');}
+  if(k.air<2){weak-=0.3;}
+  const tanks=cards.filter(c=>has(c,'T')).length;if(tanks>2){weak-=0.2;notes.push('Too many tanks fighting for elixir');}
+  weak=Math.max(0,weak);
+  const pct=Math.round(100*(0.5*comboS+0.2*wcS+0.15*covS+0.15*weak));
+  return{pct,parts:{combo:Math.round(comboS*100),wc:Math.round(wcS*100),cov:Math.round(covS*100),weak:Math.round(weak*100)},notes};
+}
+
+/* Card strength per mode: Ranked (1v1) ratings, or 2v2 ratings in Duo mode. Both come from RoyaleAPI's
+   7-day stats, with low-usage cards pulled toward average so a small sample can't dominate. */
+const pw=(c,ctx)=>ctx.duo?c.p2:c.p;
+const evP=(c,ctx)=>ctx&&ctx.duo?c.ev2:c.ev;
+const heP=(c,ctx)=>ctx&&ctx.duo?c.he2:c.he;
+function scoreDeck(ids,ctx){
+  const cards=ids.map(i=>C[i]);
+  const k=counts(cards);
+  const forms=assignForms(ids,ctx);
+  let s=cards.reduce((a,c)=>a+pw(c,ctx),0)/8*(ctx.wPow||6);
+  let syn=0;const pairs=[];
+  for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const x=SYN[sk(ids[i],ids[j])];if(x){syn+=x.w;pairs.push({a:ids[i],b:ids[j],...x});}}
+  if(!forms)s-=60;else s+=forms.value*1.3-forms.empty*25;
+  if(k.wc===0)s-=40;else if(k.wc>2)s-=18*(k.wc-2);
+  const wins=ids.filter(i=>has(C[i],'W'));
+  const clash=wins.length>=2&&!((SYN[sk(wins[0],wins[1])]||{}).w>=2)&&!(ctx.style==='hyperbait'&&wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'));
+  const baitPair=wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'||i==='miner');
+  if(clash&&!(ctx.style==='hyperbait'&&baitPair))s-=ctx.role==='attack'?5:10;
+  if(k.air<2)s-=10*(2-k.air);else if(k.air>=3)s+=2;
+  if(k.splash<1)s-=8;
+  if(k.small<1)s-=8;
+  if(k.big<1&&ctx.style!=='hyperbait')s-=4;
+  if(k.spells>3)s-=6*(k.spells-3);
+  if(k.kill<1)s-=6;
+  if(k.bld>2)s-=6*(k.bld-2);
+  if(k.cheap<2)s-=4;
+  const avg=k.sum/8;
+  if(avg>ctx.maxAvg)s-=(avg-ctx.maxAvg)*40;
+  if(avg<2.5)s-=(2.5-avg)*30;
+  const bigTanks=cards.filter(c=>has(c,'T')&&c.e>=6).length;
+  if(bigTanks>1)s-=8*(bigTanks-1);
+  if(!fitsStyle(cards,ctx.style))s-=40;
+  else if(ctx.style!=='any'){const off=cards.filter(c=>has(c,'W')&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id)).length;s-=12*off;}
+  if(ctx.style==='hyperbait'){
+    const sv=ids.filter(i=>SMALL_VULN.has(i)).length,bw=ids.filter(i=>BAIT_CORE.has(i)||i==='wall-breakers').length;
+    s+=Math.min(5,Math.max(0,sv-3))*3+(bw>=2?6:-6);
+    if(avg>3.0)s-=(avg-3.0)*30;
+  }
+  if(ctx.role==='defend'){
+    if(k.air>=3)s+=4; if(k.kill>=2)s+=4; if(k.bld>=1)s+=3; if(k.splash>=2)s+=3;
+    if(cards.some(c=>has(c,'W')&&has(c,'T')&&c.e>=5))s-=14;
+    if(avg>3.7)s-=(avg-3.7)*20;
+  }else if(ctx.role==='attack'){
+    if(cards.some(c=>has(c,'T')))s+=4;
+    if(cards.some(c=>has(c,'W')&&c.e>=4))s+=3;
+    if(k.wc===2&&!clash)s+=5;
+    if(k.big>=1)s+=2;
+  }
+  // Card levels: a card well below the player's usual level loses to same-cost cards in matchmaking.
+  let lv=null;
+  if(ctx.levels&&ctx.levelW){
+    const under=[];let pen=0;
+    for(const id of ids){const L=ctx.levels[id];if(L==null)continue;const d=ctx.levelRef-L;if(d>0.5){pen+=Math.min(d,4);if(d>=1.5)under.push({id,L});}}
+    s-=pen*2.4*ctx.levelW;
+    const known=ids.map(i=>ctx.levels[i]).filter(x=>x!=null);
+    lv={avg:known.length?known.reduce((a,b)=>a+b,0)/known.length:null,under};
+  }
+  // Matchup: reward answers to the opponent's win conditions and avoid cards their spells wipe out.
+  let vs=null;
+  if(ctx.vs&&ctx.vs.length){vs=matchup(ids,ctx.vs);s+=vs.score*(ctx.vsW||1);}
+  const sy=synergyOf(ids,k,pairs);
+  if(clash){sy.pct=Math.max(0,sy.pct-10);sy.notes.push('Two win conditions ('+C[wins[0]].name+', '+C[wins[1]].name+') that don\'t support each other');}
+  s+=sy.pct*(ctx.wSyn||0.32);
+  return{s,forms,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs};
+}
+
+function addHeur(c,deck,ctx){
+  const cards=deck.map(i=>C[i]);const k=counts(cards);
+  let v=pw(c,ctx);
+  for(const d of deck){const x=SYN[sk(c.id,d)];if(x)v+=x.w*2.2;}
+  if(ctx.levels&&ctx.levelW&&ctx.levels[c.id]!=null){const d=ctx.levelRef-ctx.levels[c.id];if(d>0.5)v-=Math.min(d,4)*2*ctx.levelW;}
+  if(ctx.vs&&ctx.vs.length){for(const w of ctx.vs){const cs=COUNTERS[w];if(cs&&cs.includes(c.id))v+=3;}}
+  if(ctx.role==='defend'){if(c.type!=='s'&&(has(c,'A')||has(c,'K')||has(c,'S'))||c.type==='b')v+=2;if(has(c,'W')&&has(c,'T')&&c.e>=5)v-=8;}
+  else if(ctx.role==='attack'){if(has(c,'W')||has(c,'T'))v+=2;}
+  if(ctx.style==='hyperbait'&&(SMALL_VULN.has(c.id)||BAIT_CORE.has(c.id)))v+=2;
+  if(ctx.partner){
+    const shared=deck.filter(d=>ctx.partner.includes(d)).length;
+    for(const d of ctx.partner){if(d===c.id)v-=shared>=2?40:2;const x=SYN[sk(c.id,d)];if(x&&!x.meta)v+=x.w*1.8;}
+    const pc=ctx.partner.map(i=>C[i]);
+    if(has(c,'W')&&pc.some(p=>p.id===c.id))v-=6;
+    if(has(c,'T')&&c.e>=6&&pc.some(p=>has(p,'T')&&p.e>=6))v-=8;
+  }
+  const formPot=isChamp(c)?pw(c,ctx)*0.75:Math.max(evP(c,ctx),heP(c,ctx));
+  v+=formPot*0.35;
+  if(has(c,'W')){if(k.wc===0)v+=6;else if(k.wc>=2)v-=10;else v-=3;
+    if(ctx.style!=='any'&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id))v-=8;}
+  if(c.type!=='s'&&has(c,'A')&&k.air<2)v+=3;
+  if(c.type!=='s'&&has(c,'S')&&k.splash<1)v+=3;
+  if(c.type==='s'&&has(c,'s')&&k.small<1)v+=3;
+  if(c.type==='s'&&has(c,'F')&&k.big<1)v+=2;
+  if(c.type==='s'&&!has(c,'W')&&k.spells>=3)v-=6;
+  if(has(c,'K')&&k.kill<1)v+=3;
+  if(c.type==='b'&&k.bld>=2)v-=6;
+  if(isChamp(c)&&k.champs>=ctx.maxChamps)v-=25;
+  const left=8-deck.length-1;
+  const proj=(k.sum+c.e+left*3.1)/8;
+  if(proj>ctx.maxAvg)v-=(proj-ctx.maxAvg)*15;
+  return v;
+}
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function generate(opts){
+  memo=new Map();
+  const ctx={forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null};
+  const locked=opts.locked;
+  const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
+  const found=new Map();
+  const RESTARTS=locked.length>=7?20:140;
+  for(let r=0;r<RESTARTS;r++){
+    let deck=[...locked];
+    const lc=deck.map(i=>C[i]);
+    let fixedN=locked.length;
+    if(deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
+      const wins=pool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style)));
+      if(wins.length){
+        const scored=wins.map(id=>({id,v:C[id].p+Math.random()*7})).sort((a,b)=>b.v-a.v);
+        deck.push(scored[0].id);fixedN=deck.length;
+      }
+    }
+    while(deck.length<8){
+      const cands=pool.filter(id=>!deck.includes(id)).map(id=>({id,v:addHeur(C[id],deck,ctx)+Math.random()*4}));
+      cands.sort((a,b)=>b.v-a.v);
+      if(!cands.length)break;
+      deck.push(cands[Math.random()*Math.min(3,cands.length)|0].id);
+    }
+    if(deck.length<8)continue;
+    let cur=scoreDeck(deck,ctx);
+    for(let pass=0;pass<2;pass++){
+      let improved=false;
+      for(let i=fixedN;i<8;i++){
+        const sample=shuffle(pool.filter(id=>!deck.includes(id))).slice(0,45);
+        for(const id of sample){
+          const trial=deck.slice();trial[i]=id;
+          const sc=scoreDeck(trial,ctx);
+          if(sc.s>cur.s+0.01){deck=trial;cur=sc;improved=true;}
+        }
+      }
+      if(!improved)break;
+    }
+    if(!cur.forms||cur.k.wc<1)continue;
+    const key=[...deck].sort().join(',');
+    if(!found.has(key))found.set(key,{ids:deck,...cur});
+  }
+  const all=[...found.values()].sort((a,b)=>b.s-a.s);
+  // Pick decks one at a time. A deck loses points for every free card already used in a picked deck,
+  // and for repeating a win condition, so one strong card can't flood every result.
+  const picked=[],uses={},seenWin=new Set();
+  const mainWin=d=>d.ids.filter(id=>has(C[id],'W')&&!locked.includes(id)).sort().join('+');
+  while(picked.length<opts.count&&picked.length<all.length){
+    let best=null,bestV=-1e9;
+    for(const d of all){
+      if(picked.includes(d))continue;
+      let v=d.s;
+      for(const id of d.ids)if(!locked.includes(id))v-=4*(uses[id]||0);
+      const w=mainWin(d);if(w&&seenWin.has(w))v-=10;
+      if(v>bestV){bestV=v;best=d;}
+    }
+    picked.push(best);seenWin.add(mainWin(best));
+    best.ids.forEach(id=>uses[id]=(uses[id]||0)+1);
+  }
+  return picked;
+}
+
+/* ---------- 2v2 Duo engine ---------- */
+const PRIORITY={balanced:{wPow:6,wSyn:0.32,wTeam:0.6},synergy:{wPow:3.5,wSyn:0.45,wTeam:0.95},meta:{wPow:7,wSyn:0.25,wTeam:0.4}};
+let scCache=new Map();
+function scoreCached(ids,ctx){const key=ctx.tag+[...ids].sort().join(',');let v=scCache.get(key);if(!v){v=scoreDeck(ids,ctx);scCache.set(key,v);}return v;}
+const isBeatdown=(ids,avg)=>ids.some(i=>has(C[i],'T')&&has(C[i],'W')&&C[i].e>=5)||avg>=3.95;
+function teamAnalysis(A,B,sa,sb,names){
+  const NAMES=names||{A:'Player 1',B:'Player 2'};
+  const all=A.concat(B);
+  const cross=[];
+  for(const a of A)for(const b of B){if(a===b||B.includes(a)||A.includes(b))continue;const x=SYN[sk(a,b)];if(x)cross.push({a,b,...x});}
+  const best={};A.forEach(i=>best['A'+i]=0);B.forEach(i=>best['B'+i]=0);
+  for(const p of sa.pairs){best['A'+p.a]=Math.max(best['A'+p.a],p.w);best['A'+p.b]=Math.max(best['A'+p.b],p.w);}
+  for(const p of sb.pairs){best['B'+p.a]=Math.max(best['B'+p.a],p.w);best['B'+p.b]=Math.max(best['B'+p.b],p.w);}
+  for(const p of cross){best['A'+p.a]=Math.max(best['A'+p.a],p.w);best['B'+p.b]=Math.max(best['B'+p.b],p.w);}
+  const combo=Object.values(best).reduce((a,w)=>a+w/3,0)/16;
+  const wcOf=(ids,own,side)=>{let m=0;const wins=ids.filter(i=>has(C[i],'W'));
+    for(const p of own)if(wins.includes(p.a)||wins.includes(p.b))m=Math.max(m,p.w);
+    for(const p of cross)if(wins.includes(side==='A'?p.a:p.b))m=Math.max(m,p.w);
+    return m>=3?1:m>=2?0.75:m>=1?0.45:m>0?0.3:0;};
+  const wc=(wcOf(A,sa.pairs,'A')+wcOf(B,sb.pairs,'B'))/2;
+  const ka=sa.k,kb=sb.k;
+  const air=ka.air+kb.air,splash=ka.splash+kb.splash,kill=ka.kill+kb.kill,big=ka.big+kb.big;
+  const tanky=all.filter(i=>has(C[i],'T')||has(C[i],'M')).length;
+  const cov=[air>=5,splash>=3,kill>=2,big>=2,ka.small>=1&&kb.small>=1,tanky>=2];
+  const covS=cov.filter(Boolean).length/cov.length;
+  const notes=[];let comp=1;
+  const bdA=isBeatdown(A,sa.avg),bdB=isBeatdown(B,sb.avg);
+  if(bdA&&bdB){comp-=0.4;notes.push('Both decks are beatdown, so early pressure can overrun the team while both players build pushes');}
+  const winsA=A.filter(i=>has(C[i],'W')),winsB=B.filter(i=>has(C[i],'W'));
+  const sameWin=winsA.filter(i=>winsB.includes(i));
+  if(sameWin.length){comp-=0.3;notes.push('Same win condition in both decks ('+sameWin.map(i=>C[i].name).join(', ')+'): one set of counters stops both players');}
+  const dup=A.filter(i=>B.includes(i));
+  if(dup.length>2){comp-=0.6;notes.push('Both decks run '+dup.map(i=>C[i].name).join(', ')+'; only 2 shared cards are allowed');}
+  else comp-=dup.length*0.05;
+  // Each deck must hold its own when the partner is out of cycle: air defense plus a tank answer.
+  const selfDef=k=>k.air>=2&&(k.kill>=1||k.bld>=1);
+  // An Attacker deck is allowed to lean on its Defender partner.
+  if(!selfDef(ka)&&sa.role!=='attack'){comp-=0.25;notes.push(NAMES.A+' can\'t defend alone (needs 2+ air defenders and a tank answer), so it struggles whenever '+NAMES.B+' is out of cycle');}
+  if(!selfDef(kb)&&sb.role!=='attack'){comp-=0.25;notes.push(NAMES.B+' can\'t defend alone (needs 2+ air defenders and a tank answer), so it struggles whenever '+NAMES.A+' is out of cycle');}
+  if(sa.role==='defend'&&sb.role==='defend'){comp-=0.3;notes.push('Both decks are set to Defender, so the team has little pressure');}
+  if(sa.role==='attack'&&sb.role==='attack'&&!selfDef(ka)&&!selfDef(kb)){comp-=0.4;notes.push('Both decks are set to Attacker and neither defends well alone');}
+  comp=Math.max(0,comp);
+  let weak=1;
+  const fb=all.filter(i=>FB_VULN.has(i)).length;
+  const bait=all.some(i=>BAIT_CORE.has(i));
+  const small=all.filter(i=>SMALL_VULN.has(i)).length;
+  if(fb>=5){weak-=0.4;notes.push(fb+' of the team\'s 16 cards die to Fireball; clumped together, one spell wipes the shared defense');}else if(fb===4)weak-=0.2;
+  if(!bait&&small>=6){weak-=0.3;notes.push(small+' team cards die to Log or Zap');}
+  if(air<5){weak-=0.3;notes.push('Only '+air+' cards across both decks hit air, so double air pushes are a problem');}
+  weak=Math.max(0,weak);
+  const pct=Math.round(100*(0.4*Math.min(1,combo)+0.15*wc+0.15*covS+0.15*comp+0.15*weak));
+  const selfA=selfDef(ka),selfB=selfDef(kb);
+  return{selfA,selfB,pct,parts:{combo:Math.round(Math.min(1,combo)*100),wc:Math.round(wc*100),cov:Math.round(covS*100),comp:Math.round(comp*100),weak:Math.round(weak*100)},notes,cross,bdA,bdB,dup,sameWin};
+}
+function teamScore(A,B,ctxA,ctxB,w){
+  const sa=scoreCached(A,ctxA),sb=scoreCached(B,ctxB);
+  const t=teamAnalysis(A,B,sa,sb,w.names);
+  const extra=Math.max(0,t.dup.length-2);
+  return{s:(sa.s+sb.s)/2+t.pct*w.wTeam-1.5*Math.min(2,t.dup.length)-30*extra-8*t.sameWin.length-(t.bdA&&t.bdB&&!(sa.role==='attack'||sb.role==='attack')?10:0),sa,sb,t};
+}
+function buildDeck(side,ctx,pool,objective,partner){
+  let deck=[...side.locked];let fixedN=deck.length;
+  const lc=deck.map(i=>C[i]);
+  if(deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
+    const wins=pool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style))&&!(partner&&partner.includes(id)));
+    if(wins.length){const sc=wins.map(id=>{let v=pw(C[id],ctx)+Math.random()*7;if(partner)for(const p of partner){const x=SYN[sk(id,p)];if(x&&!x.meta)v+=x.w*1.5;}return{id,v};}).sort((a,b)=>b.v-a.v);deck.push(sc[0].id);fixedN=deck.length;}
+  }
+  const hctx={...ctx,partner};
+  while(deck.length<8){
+    const cands=pool.filter(id=>!deck.includes(id)).map(id=>({id,v:addHeur(C[id],deck,hctx)+Math.random()*4})).sort((a,b)=>b.v-a.v);
+    if(!cands.length)return null;
+    deck.push(cands[Math.random()*Math.min(3,cands.length)|0].id);
+  }
+  return improve(deck,fixedN,pool,objective,2);
+}
+function improve(deck,fixedN,pool,objective,passes){
+  let cur=objective(deck);
+  for(let pass=0;pass<passes;pass++){
+    let improved=false;
+    for(let i=fixedN;i<8;i++){
+      const sample=shuffle(pool.filter(id=>!deck.includes(id))).slice(0,35);
+      for(const id of sample){const trial=deck.slice();trial[i]=id;const v=objective(trial);if(v>cur+0.01){deck=trial;cur=v;improved=true;}}
+    }
+    if(!improved)break;
+  }
+  return deck;
+}
+function generateDuo(o){
+  memo=new Map();scCache=new Map();
+  const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names};
+  const mk=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
+  const ctxA=mk('A',o.A),ctxB=mk('B',o.B);
+  const poolA=CARDS.filter(c=>!o.A.exclude.has(c.id)).map(c=>c.id);
+  const poolB=CARDS.filter(c=>!o.B.exclude.has(c.id)).map(c=>c.id);
+  // Lead with whichever side is more pinned down, then build the partner around it.
+  const flip=o.B.locked.length>o.A.locked.length;
+  const L=flip?{sd:o.B,ctx:ctxB,pool:poolB}:{sd:o.A,ctx:ctxA,pool:poolA};
+  const F=flip?{sd:o.A,ctx:ctxA,pool:poolA}:{sd:o.B,ctx:ctxB,pool:poolB};
+  const valid=(d,ctx)=>{const s=scoreCached(d,ctx);return s.forms&&s.k.wc>=1;};
+  const seeds=new Map();
+  const nSeeds=L.sd.locked.length>=8?1:18;
+  for(let r=0;r<nSeeds;r++){
+    const d=buildDeck(L.sd,L.ctx,L.pool,x=>scoreCached(x,L.ctx).s,null);
+    if(d&&valid(d,L.ctx))seeds.set([...d].sort().join(','),d);
+  }
+  const seedList=[...seeds.values()].sort((a,b)=>scoreCached(b,L.ctx).s-scoreCached(a,L.ctx).s);
+  const pickedSeeds=[];const seenW=new Set();
+  for(const d of seedList){const wk=d.filter(i=>has(C[i],'W')).sort().join('+');if(seenW.has(wk))continue;seenW.add(wk);pickedSeeds.push(d);if(pickedSeeds.length>=8)break;}
+  for(const d of seedList){if(pickedSeeds.length>=8)break;if(!pickedSeeds.includes(d))pickedSeeds.push(d);}
+  const ts=(l,f)=>flip?teamScore(f,l,ctxA,ctxB,w):teamScore(l,f,ctxA,ctxB,w);
+  const found=new Map();
+  const perSeed=pickedSeeds.length<=2?10:3;
+  for(const seed of pickedSeeds){
+    for(let r=0;r<perSeed;r++){
+      let lead=seed.slice();
+      let fol=buildDeck(F.sd,F.ctx,F.pool,x=>ts(lead,x).s,lead);
+      if(!fol)continue;
+      lead=improve(lead,L.sd.locked.length,L.pool,x=>ts(x,fol).s,1);
+      fol=improve(fol,F.sd.locked.length,F.pool,x=>ts(lead,x).s,1);
+      if(!valid(lead,L.ctx)||!valid(fol,F.ctx))continue;
+      if(lead.filter(i=>fol.includes(i)).length>2)continue;
+      const A=flip?fol:lead,B=flip?lead:fol;
+      const key=[...A].sort().join(',')+'/'+[...B].sort().join(',');
+      if(!found.has(key))found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});
+    }
+  }
+  const all=[...found.values()].sort((a,b)=>b.s-a.s);
+  const picked=[],uses={},seenPair=new Set();
+  const winKey=p=>p.A.filter(i=>has(C[i],'W')).sort().join('+')+'/'+p.B.filter(i=>has(C[i],'W')).sort().join('+');
+  while(picked.length<o.count&&picked.length<all.length){
+    let best=null,bv=-1e9;
+    for(const p of all){if(picked.includes(p))continue;let v=p.s;
+      for(const id of p.A)if(!o.A.locked.includes(id))v-=3*(uses[id]||0)*(has(C[id],'W')?2:1);
+      for(const id of p.B)if(!o.B.locked.includes(id))v-=3*(uses[id]||0)*(has(C[id],'W')?2:1);
+      if(seenPair.has(winKey(p)))v-=12;
+      if(v>bv){bv=v;best=p;}}
+    picked.push(best);seenPair.add(winKey(best));
+    best.A.concat(best.B).forEach(i=>uses[i]=(uses[i]||0)+1);
+  }
+  return picked;
+}
+
+
+/* ---------- Matchup against a known opponent deck ---------- */
+function matchup(mine,opp){
+  const notes=[];let score=0;const answers={};
+  const oppWins=opp.filter(i=>C[i]&&has(C[i],'W'));
+  for(const w of oppWins){
+    const cs=(COUNTERS[w]||[]).filter(i=>mine.includes(i));
+    answers[w]=cs;
+    score+=Math.min(cs.length,2)*4;
+    if(!cs.length){score-=6;notes.push('Nothing in this deck is a clean answer to '+C[w].name);}
+  }
+  const oppAir=opp.filter(i=>C[i]&&C[i].type!=='s'&&(['lava-hound','balloon','minion-giant','bats','minions','minion-horde','mega-minion','baby-dragon','inferno-dragon','electro-dragon','skeleton-dragons','phoenix','flying-machine'].includes(i))).length;
+  const myAir=mine.filter(i=>C[i].type!=='s'&&has(C[i],'A')).length;
+  if(oppAir>=3&&myAir<3){score-=8;notes.push('Their deck has '+oppAir+' air cards; you have only '+myAir+' that hit air');}
+  const spells=opp.filter(i=>SPELL_VULN[i]);
+  for(const sp of spells){
+    const kind=SPELL_VULN[sp];let hit=[];
+    if(kind==='fb')hit=mine.filter(i=>FB_VULN.has(i));
+    else if(kind==='small')hit=mine.filter(i=>SMALL_VULN.has(i));
+    else if(kind==='swarm')hit=mine.filter(i=>SMALL_VULN.has(i)||has(C[i],'X'));
+    else if(kind==='bld')hit=mine.filter(i=>C[i].type==='b');
+    if(hit.length>=3){score-=(hit.length-2)*2.5;notes.push(hit.length+' of your cards die to their '+C[sp].name+': '+hit.map(i=>C[i].name).join(', '));}
+  }
+  return{score,answers,notes,oppWins};
+}
+
+/* ---------- Tower troop recommendation ---------- */
+function pickTower(sc,owned,duo){
+  const own=(owned&&owned.length?owned:['tower-princess']).filter(x=>TOWER[x]);
+  const ids=sc.ids||[];
+  const nTroops=ids.filter(i=>C[i].type==='t').length;
+  const beat=ids.some(i=>has(C[i],'T')&&has(C[i],'W'))||sc.avg>=3.9;
+  const rate=t=>{const r=duo?t.r2:t.r;return 50+(r-50)*t.use/(t.use+3);};
+  let best=null;const alts=[];
+  for(const id of own){const t=TOWER[id];let v=rate(t);
+    if(id==='royal-chef'&&nTroops>=6&&beat){v+=1;alts.push(id);}
+    if(id==='dagger-duchess'&&sc.avg<=3.1){v+=1;alts.push(id);}
+    if(!best||v>best.v)best={id,v};}
+  return{id:best?best.id:'tower-princess',alts:alts.filter(a=>a!==(best&&best.id))};
+}
+
+/* ---------- Clash Royale deck link (opens the game's Copy Deck screen) ---------- */
+function deckLink(order,towerId,raw){
+  const ids=order.map(o=>CARD_IDS[o.id]).filter(Boolean);
+  if(ids.length!==8)return null;
+  const tt=(TOWER[towerId]||TOWER['tower-princess']).tid;
+  // slots: 1 marks a card played as its Evolution (the same format the game's own Share button writes).
+  const slots=order.map(o=>o.form==='evo'?1:0).join(';');
+  const deep='clashroyale://copyDeck?deck='+ids.join(';')+'&l=Royals&slots='+slots+'&tt='+tt;
+  return raw?deep:'https://link.clashroyale.com/en/?'+deep;
+}
+function orderDeck(ids,forms){
+  const sp=forms?forms.specials:[];
+  const evos=sp.filter(s=>s.form==='evo'),hcs=sp.filter(s=>s.form!=='evo');
+  const slots=[];
+  if(evos[0])slots.push({...evos[0],slot:'Evo slot'});
+  if(hcs[0])slots.push({...hcs[0],slot:'Hero slot'});
+  const wild=evos[1]||hcs[1];
+  if(wild)slots.push({...wild,slot:'Wild slot'});
+  const rest=ids.filter(id=>!sp.some(s=>s.id===id)).sort((a,b)=>C[a].e-C[b].e).map(id=>({id,form:isChamp(C[id])?'champ':null,slot:''}));
+  return slots.concat(rest);
+}
+
+/* ---------- Collection share codes ----------
+   A collection is {base:Set|null (null = owns every card), evo:Set, hero:Set, towers:Set}.
+   The code is version + three bitfields in base-36, using the card list order, so it stays short. */
+const EVO_CARDS=CARDS.filter(c=>c.ev).map(c=>c.id),HERO_CARDS=CARDS.filter(c=>c.he).map(c=>c.id),BASE_CARDS=CARDS.map(c=>c.id),TOWER_IDS=TOWERS.map(t=>t.id);
+function bitsToStr(list,set){let b=0n;list.forEach((id,i)=>{if(set.has(id))b|=1n<<BigInt(i);});return b.toString(36);}
+function strToBits(list,str){const set=new Set();let b;try{b=[...str].reduce((a,ch)=>a*36n+BigInt(parseInt(ch,36)),0n);}catch(e){return null;}list.forEach((id,i)=>{if(b&(1n<<BigInt(i)))set.add(id);});return set;}
+function encodeCollection(col){
+  const base=col.base?bitsToStr(BASE_CARDS,col.base):'a';
+  return ['ef1',bitsToStr(EVO_CARDS,col.evo),bitsToStr(HERO_CARDS,col.hero),base,bitsToStr(TOWER_IDS,col.towers||new Set(['tower-princess']))].join('-');
+}
+function decodeCollection(code){
+  const m=String(code).trim().toLowerCase().match(/^ef1-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)-([0-9a-z]+)$/);
+  if(!m)return null;
+  const evo=strToBits(EVO_CARDS,m[1]),hero=strToBits(HERO_CARDS,m[2]),base=m[3]==='a'?null:strToBits(BASE_CARDS,m[3]),towers=strToBits(TOWER_IDS,m[4]);
+  if(!evo||!hero||(m[3]!=='a'&&!base)||!towers)return null;
+  return{evo,hero,base,towers};
+}
+/* Turn a player's collection into generator inputs: cards they lack are excluded, forms they lack are banned. */
+function collectionToRules(col){
+  const exclude=new Set(),ban={};
+  if(col.base)BASE_CARDS.forEach(id=>{if(!col.base.has(id))exclude.add(id);});
+  const add=(id,f)=>{(ban[id]=ban[id]||new Set()).add(f);};
+  EVO_CARDS.forEach(id=>{if(!col.evo.has(id))add(id,'evo');});
+  HERO_CARDS.forEach(id=>{if(!col.hero.has(id))add(id,'hero');});
+  return{exclude,ban};
+}
+/* Level reference: the average of the player's 12 highest card levels. */
+function levelRef(levels){const v=Object.values(levels||{}).sort((a,b)=>b-a).slice(0,12);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0;}
+
+/* ---------- Live data: apply a meta.json produced by scripts/refresh-meta.mjs ----------
+   Card stats are keyed by official card id: {base:{rating,usage}|{games,wins,usage}, evo:{...}, hero:{...}}.
+   rating follows RoyaleAPI's scale (50 = average). Decks: {cards:["26000036:evo",...], games, wins}. */
+function ratingToPower(r,u){const rr=50+(r-50)*u/(u+3);return Math.max(1,Math.min(10,Math.round((rr-36)/2.2)));}
+function statPower(st){
+  if(!st)return null;
+  let r=st.rating;
+  if(r==null&&st.games)r=50+2.7*((st.wins/st.games)*100-50);
+  if(r==null)return null;
+  return ratingToPower(r,st.usage==null?3:st.usage);
+}
+function deckFromMeta(d){
+  const cards=d.cards.map(x=>{const[i,f]=String(x).split(':');const k=ID_TO_CARD[+i]||i;return f&&f!=='base'?k+':'+f:k;});
+  if(cards.length!==8||cards.some(x=>!C[x.split(':')[0]]))return null;
+  const wins=cards.map(x=>x.split(':')[0]).filter(i=>has(C[i],'W')).map(i=>C[i].name);
+  return{n:d.name||(wins.join(' + ')||'Control')+' deck',wr:d.games?Math.round(d.wins/d.games*1000)/10:(d.wr??null),games:d.games||null,cards};
+}
+function applyMeta(meta){
+  if(!meta||meta.version!==1)return false;
+  for(const [mode,fp,fe,fh] of [['ranked','p','ev','he'],['duo','p2','ev2','he2']]){
+    const m=meta[mode];if(!m||!m.cards)continue;
+    for(const [cid,st] of Object.entries(m.cards)){
+      const c=C[ID_TO_CARD[+cid]||cid];if(!c)continue;
+      const b=statPower(st.base);if(b!=null)c[fp]=b;
+      const e=statPower(st.evo);if(e!=null&&c.ev)c[fe]=e;
+      const h=statPower(st.hero);if(h!=null&&c.he)c[fh]=h;
+    }
+    if(Array.isArray(m.decks)){
+      const list=m.decks.map(deckFromMeta).filter(Boolean).slice(0,12);
+      if(list.length>=5){const target=mode==='ranked'?META:META2;target.length=0;list.forEach(x=>target.push(x));}
+    }
+  }
+  memo=new Map();scCache=new Map();
+  return true;
+}
+
+</script>
+<script>
+/* ================= Elixir Forge app ================= */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const formLabel={evo:'Evo',hero:'Hero',champ:'Champion',normal:'Normal'};
+const formsOf=c=>isChamp(c)?['champ']:[c.ev?'evo':null,c.he?'hero':null].filter(Boolean);
+const TYPE_ICON={t:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 2l7.5 7.5-1.4 1.4L1.6 3.4V2zm10.4 8.1l1 1-1.7 1.7 1.3 1.3-.9.9-1.3-1.3-1.7 1.7-1-1 1.7-1.7-1.3-1.3.9-.9 1.3 1.3z"/></svg>',s:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1l1.8 4.6L14.5 6l-3.6 3 1.1 4.8L8 11.2 4 13.8 5.1 9 1.5 6l4.7-.4z"/></svg>',b:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 2h2.5v2H6V2h4v2h1.5V2H14v5h-1.5v7h-9V7H2zm4.5 7v5h3V9z"/></svg>'};
+const TYPE_NAME={t:'Troop',s:'Spell',b:'Building'};
+const STYLE_OPTS=[['any','Any'],['cycle','Cycle'],['beatdown','Beatdown'],['bridge','Bridge spam'],['bait','Bait'],['hyperbait','Hyperbait'],['siege','Siege'],['control','Control'],['air','Air']];
+function displayName(id,form){const n=C[id].name;return form==='evo'?'Evo '+n:form==='hero'?'Hero '+n:n;}
+function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2200);}
+
+/* ---------- profiles (a player's collection) ---------- */
+const allEvo=()=>EVO_CARDS.slice(),allHero=()=>HERO_CARDS.slice();
+function newProfile(name,extra){return Object.assign({id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,tag:null,source:'unset',col:{base:null,evo:allEvo(),hero:allHero(),towers:TOWER_IDS.slice()},levels:null,updated:Date.now()},extra||{});}
+let profiles=store.get('ef2-profiles',null);
+if(!profiles||!profiles.length){
+  profiles=PRESET_PLAYERS.length?PRESET_PLAYERS.map(p=>newProfile(p.name,{source:'manual',col:{base:null,evo:EVO_CARDS.filter(i=>!p.missingEvo.includes(i)),hero:HERO_CARDS.filter(i=>!p.missingHero.includes(i)),towers:TOWER_IDS.slice()}})):[newProfile('Player 1'),newProfile('Player 2')];
+}
+let slots=store.get('ef2-slots',null);
+if(!slots||!profiles.find(p=>p.id===slots.A))slots={A:profiles[0].id,B:(profiles[1]||profiles[0]).id};
+if(!profiles.find(p=>p.id===slots.B))slots.B=profiles.find(p=>p.id!==slots.A)?.id||slots.A;
+function saveProfiles(){store.set('ef2-profiles',profiles);store.set('ef2-slots',slots);}
+saveProfiles();
+const prof=key=>profiles.find(p=>p.id===slots[key]);
+const colSets=p=>({base:p.col.base?new Set(p.col.base):null,evo:new Set(p.col.evo),hero:new Set(p.col.hero),towers:new Set(p.col.towers&&p.col.towers.length?p.col.towers:['tower-princess'])});
+
+/* tower troop IDs learned from earlier tag lookups */
+Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TOWER[k].tid=v;});
+
+/* ---------- app state ---------- */
+const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
+
+/* ---------- server detection (tag lookup only works on a deployed copy with the API function) ---------- */
+async function detectApi(){
+  try{const r=await fetch('api/health',{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();state.api=!!j.ok;}catch(e){state.api=false;}
+  renderPlayers();
+}
+async function lookupTag(key,raw){
+  const tag=String(raw||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
+  if(!/^[0289PYLQGRJCUV]{3,14}$/.test(tag)){showErr('That doesn\'t look like a player tag. Tags use only 0 2 8 9 P Y L Q G R J C U V, like #2PP.');return;}
+  if(!state.api){showErr('Player tag lookup needs the Elixir Forge server, which isn\'t running on this copy. Use Set up collection instead; it takes about a minute.');return;}
+  hideErr();setStatus('Looking up #'+tag+'…');
+  try{
+    const r=await fetch('api/player?tag='+encodeURIComponent(tag));const j=await r.json();
+    if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
+    const p=prof(key);
+    const base=[],evo=[],hero=[],levels={};
+    for(const c of j.cards){const k=ID_TO_CARD[c.id];if(!k||!C[k])continue;base.push(k);levels[k]=c.level;if(c.evo&&C[k].ev)evo.push(k);if(c.hero&&C[k].he)hero.push(k);}
+    // The API reports real tower troop IDs; keep them for deck links.
+    (j.towers||[]).forEach(t=>{const x=TOWERS.find(y=>y.name===t.name);if(x&&t.id)x.tid=t.id;});
+    store.set('ef2-towerids',Object.fromEntries(TOWERS.map(t=>[t.id,t.tid])));
+    const towers=(j.towers||[]).map(t=>TOWERS.find(x=>x.tid===t.id||x.name===t.name)).filter(Boolean).map(t=>t.id);
+    p.col={base,evo,hero,towers:towers.length?towers:['tower-princess']};p.levels=levels;p.tag=tag;p.source='tag';p.updated=Date.now();
+    if(/^Player \d$/.test(p.name)||!p.name)p.name=j.name||p.name;
+    saveProfiles();renderPlayers();setStatus('Loaded '+j.name+': '+base.length+' cards, '+evo.length+' Evos, '+hero.length+' Heroes.');
+  }catch(e){showErr(e.message||'Lookup failed. Check the tag and try again.');setStatus('');}
+}
+
+/* ---------- small UI helpers ---------- */
+function showErr(m){$('err').textContent=m;$('err').hidden=false;}
+function hideErr(){$('err').hidden=true;}
+function setStatus(t){$('status').textContent=t;}
+function relTime(t){const m=Math.round((Date.now()-t)/60000);if(m<2)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<48)return h+' h ago';return Math.round(h/24)+' days ago';}
+
+/* ---------- player cards ---------- */
+function meter(cls,label,have,total){const pct=total?Math.round(have/total*100):0;return `<div class="meter ${cls}"><span>${label}</span><span class="bar"><i style="width:${pct}%"></i></span><b>${have}/${total}</b></div>`;}
+function sourceLine(p){
+  if(p.source==='tag')return `<div class="source">Collection from player tag #${esc(p.tag)}, updated ${relTime(p.updated)}.</div>`;
+  if(p.source==='code')return `<div class="source">Collection from a share code, updated ${relTime(p.updated)}.</div>`;
+  if(p.source==='manual')return `<div class="source">Collection set up by hand, updated ${relTime(p.updated)}.</div>`;
+  return `<div class="source warn">Collection not set up yet, so decks assume this player owns every Evo and Hero.</div>`;
+}
+function playerHTML(key){
+  const p=prof(key),r=state.rules[key],duo=state.mode==='duo';
+  const cs=colSets(p);
+  const baseHave=cs.base?cs.base.size:BASE_CARDS.length;
+  const opts=profiles.map(x=>`<option value="${x.id}"${x.id===p.id?' selected':''}>${esc(x.name)}</option>`).join('');
+  const towerOpts=['auto',...TOWER_IDS.filter(t=>cs.towers.has(t))].map(t=>`<option value="${t}"${r.tower===t?' selected':''}>${t==='auto'?'Recommended for each deck':TOWER[t].name}</option>`).join('');
+  return `<div class="player ${key==='B'?'b':''}" data-key="${key}">
+    <div class="phead"><span class="pbadge" aria-hidden="true">${key==='A'?1:2}</span>
+      <input class="pname" id="pname-${key}" value="${esc(p.name)}" aria-label="Player name" maxlength="24">
+      <select class="pswitch" id="pswitch-${key}" aria-label="Switch player">${opts}<option value="__new">New player</option><option value="__code">Add from share code</option></select></div>
+    <div class="colsum">${meter('e','Evos',cs.evo.size,EVO_CARDS.length)}${meter('h','Heroes',cs.hero.size,HERO_CARDS.length)}${meter('','Cards',baseHave,BASE_CARDS.length)}</div>
+    ${sourceLine(p)}
+    <div class="field"><label class="lbl" for="tag-${key}">Player tag</label>
+      <div class="tagrow"><input type="text" id="tag-${key}" placeholder="#2PP" value="${p.tag?'#'+esc(p.tag):''}" autocomplete="off" spellcheck="false"><button class="btn" type="button" data-act="lookup">Load</button></div>
+      ${state.api===false?'<p class="hint">Tag lookup needs the Elixir Forge server, which isn\'t running on this copy. Set up the collection below instead.</p>':''}</div>
+    <div class="btns"><button class="btn" type="button" data-act="edit">Set up collection</button><button class="btn" type="button" data-act="share">Share code</button></div>
+    <details ${r.locks.length||r.exclude.size||r.style!=='any'||r.role!=='flex'?'open':''}><summary>Deck rules for ${esc(p.name)}</summary>
+      <div style="display:grid;gap:10px;margin-top:10px">
+        <div class="field picker"><label class="lbl" for="inc-${key}">Must include</label>
+          <input id="inc-${key}" type="search" placeholder="Type a card, e.g. Hog Rider" autocomplete="off" data-picker="inc" data-key="${key}">
+          <ul class="matches" id="inc-${key}-matches" hidden></ul><div class="chips" id="inc-${key}-chips"></div></div>
+        <div class="field picker"><label class="lbl" for="exc-${key}">Never use</label>
+          <input id="exc-${key}" type="search" placeholder="Cards to leave out" autocomplete="off" data-picker="exc" data-key="${key}">
+          <ul class="matches" id="exc-${key}-matches" hidden></ul><div class="chips" id="exc-${key}-chips"></div>
+          <p class="hint">Pick a version to block only the Evo, Hero or normal card.</p></div>
+        <div class="row2">
+          <div class="field"><label class="lbl" for="style-${key}">Playstyle</label><select id="style-${key}">${STYLE_OPTS.map(([v,t])=>`<option value="${v}"${r.style===v?' selected':''}>${t}</option>`).join('')}</select></div>
+          <div class="field"><label class="lbl" for="tower-${key}">Tower troop</label><select id="tower-${key}">${towerOpts}</select></div>
+        </div>
+        ${duo?`<div class="field"><label class="lbl" for="role-${key}">Team role</label><select id="role-${key}"><option value="flex"${r.role==='flex'?' selected':''}>Flexible: attacks and defends</option><option value="attack"${r.role==='attack'?' selected':''}>Attacker: leads the pushes</option><option value="defend"${r.role==='defend'?' selected':''}>Defender: holds both lanes</option></select></div>`:''}
+      </div>
+    </details>
+  </div>`;
+}
+function renderPlayers(){
+  const keys=state.mode==='duo'?['A','B']:['A'];
+  $('players').innerHTML=keys.map(playerHTML).join('<div style="height:10px"></div>');
+  keys.forEach(renderChips);
+  const anyLevels=keys.some(k=>prof(k).levels);
+  $('levelhint').textContent=anyLevels?'':'(needs a player tag)';
+}
+function chipFormsFor(key,c){const cs=colSets(prof(key));return formsOf(c).filter(f=>f==='champ'||(f==='evo'?cs.evo.has(c.id):cs.hero.has(c.id)));}
+function renderChips(key){
+  const r=state.rules[key];
+  const inc=$('inc-'+key+'-chips');if(!inc)return;
+  inc.innerHTML=r.locks.map((l,i)=>{const c=C[l.id];const fs=chipFormsFor(key,c);
+    if(l.form!=='any'&&l.form!=='normal'&&!fs.includes(l.form))l.form='any';
+    let sel='';if(isChamp(c))sel='<span class="badge champ">Champion</span>';
+    else if(fs.length)sel=`<select aria-label="Form for ${esc(c.name)}" data-lock="${i}"><option value="any"${l.form==='any'?' selected':''}>Any form</option>${fs.map(f=>`<option value="${f}"${l.form===f?' selected':''}>${formLabel[f]}</option>`).join('')}<option value="normal"${l.form==='normal'?' selected':''}>Normal</option></select>`;
+    return `<span class="chip">${esc(c.name)} ${sel}<button type="button" aria-label="Remove ${esc(c.name)}" data-rm="${i}">✕</button></span>`;}).join('');
+  $('exc-'+key+'-chips').innerHTML=[...r.exclude].map(([id,f])=>{const c=C[id];const fs=isChamp(c)?[]:formsOf(c);
+    const sel=fs.length?`<select aria-label="Which version of ${esc(c.name)} to block" data-exf="${id}"><option value="all"${f==='all'?' selected':''}>All versions</option>${fs.map(x=>`<option value="${x}"${f===x?' selected':''}>${formLabel[x]} only</option>`).join('')}<option value="normal"${f==='normal'?' selected':''}>Normal only</option></select>`:'';
+    return `<span class="chip">${esc(c.name)} ${sel}<button type="button" aria-label="Allow ${esc(c.name)} again" data-ex="${id}">✕</button></span>`;}).join('');
+}
+
+/* card search pickers (delegated so they survive re-renders) */
+function pickerMatches(q,taken){q=q.trim().toLowerCase();if(!q)return[];return CARDS.filter(c=>!taken(c.id)&&c.name.toLowerCase().includes(q)).slice(0,9);}
+function renderMatches(list,m){list.innerHTML=m.length?m.map(c=>`<li><button type="button" data-id="${c.id}"><b>${esc(c.name)}</b><span class="hint">${c.e} elixir</span><span class="forms">${formsOf(c).map(f=>`<span class="badge ${f}">${formLabel[f]}</span>`).join('')}</span></button></li>`).join(''):'<li class="hint" style="padding:7px 8px">No matching card</li>';list.hidden=false;}
+function pickerTaken(inp){const t=inp.dataset.picker,k=inp.dataset.key;if(t==='vs')return id=>state.vs.includes(id);const r=state.rules[k];return t==='inc'?id=>r.locks.some(l=>l.id===id):id=>r.exclude.has(id);}
+function pickerPick(inp,id){
+  const t=inp.dataset.picker,k=inp.dataset.key;
+  if(t==='vs'){if(state.vs.length>=8){toast('Their deck already has 8 cards');return;}state.vs.push(id);renderVs();return;}
+  const r=state.rules[k];
+  if(t==='inc'){if(r.locks.length>=8){showErr('A deck holds 8 cards. Remove one before adding another.');return;}r.locks.push({id,form:'any'});if(r.exclude.get(id)==='all')r.exclude.delete(id);}
+  else{r.exclude.set(id,'all');r.locks=r.locks.filter(l=>l.id!==id);}
+  hideErr();renderChips(k);
+}
+document.addEventListener('input',e=>{const inp=e.target.closest('[data-picker]');if(!inp)return;const list=$(inp.id+'-matches');const m=pickerMatches(inp.value,pickerTaken(inp));if(!inp.value.trim()){list.hidden=true;return;}renderMatches(list,m);});
+document.addEventListener('keydown',e=>{const inp=e.target.closest('[data-picker]');if(!inp)return;const list=$(inp.id+'-matches');if(e.key==='Enter'){const b=list.querySelector('button');if(b){e.preventDefault();b.click();}}if(e.key==='Escape')list.hidden=true;});
+document.addEventListener('focusout',e=>{const inp=e.target.closest('[data-picker]');if(!inp)return;setTimeout(()=>{const l=$(inp.id+'-matches');if(l)l.hidden=true;},150);});
+document.addEventListener('mousedown',e=>{if(e.target.closest('.matches'))e.preventDefault();});
+document.addEventListener('click',e=>{const b=e.target.closest('.matches button[data-id]');if(!b)return;const list=b.closest('.matches');const inp=$(list.id.replace(/-matches$/,''));pickerPick(inp,b.dataset.id);inp.value='';list.hidden=true;inp.focus();});
+
+function renderVs(){$('vs-chips').innerHTML=state.vs.map((id,i)=>`<span class="chip">${esc(C[id].name)}<button type="button" aria-label="Remove ${esc(C[id].name)}" data-vsrm="${i}">✕</button></span>`).join('');}
+$('vs').dataset.picker='vs';
+$('vs-chips').addEventListener('click',e=>{const b=e.target.closest('[data-vsrm]');if(b){state.vs.splice(+b.dataset.vsrm,1);renderVs();}});
+
+/* player panel events */
+$('players').addEventListener('click',e=>{
+  const card=e.target.closest('.player');if(!card)return;const key=card.dataset.key,r=state.rules[key];
+  const act=e.target.closest('[data-act]');
+  if(act){const a=act.dataset.act;
+    if(a==='lookup')lookupTag(key,$('tag-'+key).value);
+    if(a==='edit')openEditor(key);
+    if(a==='share')openShare(key);
+    return;}
+  const rm=e.target.closest('[data-rm]');if(rm){r.locks.splice(+rm.dataset.rm,1);renderChips(key);return;}
+  const ex=e.target.closest('[data-ex]');if(ex){r.exclude.delete(ex.dataset.ex);renderChips(key);}
+});
+$('players').addEventListener('change',e=>{
+  const card=e.target.closest('.player');if(!card)return;const key=card.dataset.key,r=state.rules[key],t=e.target;
+  if(t.dataset.lock!=null){r.locks[+t.dataset.lock].form=t.value;return;}
+  if(t.dataset.exf){r.exclude.set(t.dataset.exf,t.value);if(t.value==='all')r.locks=r.locks.filter(l=>l.id!==t.dataset.exf);renderChips(key);return;}
+  if(t.id==='style-'+key)r.style=t.value;
+  if(t.id==='role-'+key)r.role=t.value;
+  if(t.id==='tower-'+key)r.tower=t.value;
+  if(t.id==='pname-'+key){prof(key).name=t.value.trim()||('Player '+(key==='A'?1:2));saveProfiles();renderPlayers();}
+  if(t.id==='pswitch-'+key){
+    if(t.value==='__new'){const p=newProfile('Player '+(profiles.length+1));profiles.push(p);slots[key]=p.id;saveProfiles();renderPlayers();openEditor(key);return;}
+    if(t.value==='__code'){openShare(key,true);renderPlayers();return;}
+    slots[key]=t.value;saveProfiles();renderPlayers();
+  }
+});
+$('players').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id&&e.target.id.startsWith('tag-')){e.preventDefault();lookupTag(e.target.id.slice(4),e.target.value);}});
+
+/* ---------- collection editor ---------- */
+let editor=null;
+function openEditor(key){editor={key,tab:'evo',q:''};renderEditor();$('sheet').hidden=false;setTimeout(()=>{const s=$('ed-search');if(s)s.focus();},30);}
+function closeSheet(){$('sheet').hidden=true;$('sheet').innerHTML='';editor=null;renderPlayers();}
+function editorItems(){
+  const p=prof(editor.key),cs=colSets(p);const q=editor.q.toLowerCase();
+  let list;
+  if(editor.tab==='evo')list=EVO_CARDS.map(id=>({id,on:cs.evo.has(id)}));
+  else if(editor.tab==='hero')list=HERO_CARDS.map(id=>({id,on:cs.hero.has(id)}));
+  else if(editor.tab==='base')list=BASE_CARDS.map(id=>({id,on:!cs.base||cs.base.has(id)}));
+  else return TOWERS.map(t=>({id:t.id,tower:true,on:cs.towers.has(t.id)}));
+  return list.filter(x=>!q||C[x.id].name.toLowerCase().includes(q)).sort((a,b)=>C[a.id].name.localeCompare(C[b.id].name));
+}
+function renderEditor(){
+  const p=prof(editor.key),cs=colSets(p);
+  const tabs=[['evo','Evolutions',cs.evo.size+'/'+EVO_CARDS.length],['hero','Heroes',cs.hero.size+'/'+HERO_CARDS.length],['base','Cards',(cs.base?cs.base.size:BASE_CARDS.length)+'/'+BASE_CARDS.length],['tower','Tower troops',cs.towers.size+'/'+TOWERS.length]];
+  const help={evo:'Tap every Evolution '+p.name+' has unlocked.',hero:'Tap every Hero '+p.name+' has unlocked.',base:'Most players own nearly every card. Untap any '+p.name+' hasn\'t unlocked yet.',tower:'Tap the tower troops '+p.name+' has.'}[editor.tab];
+  const items=editorItems();
+  $('sheet').innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ed-h">
+    <header><h2 id="ed-h">${esc(p.name)}'s collection</h2><button class="btn" type="button" data-ed="close">Done</button></header>
+    <div class="tools"><div class="tabs" role="tablist">${tabs.map(([k,t,n])=>`<button role="tab" aria-selected="${editor.tab===k}" data-edtab="${k}">${t} <span class="hint">${n}</span></button>`).join('')}</div></div>
+    <div class="body"><p class="hint" style="margin:0 0 10px">${help}</p>
+      <div class="tools" style="padding:0 0 10px"><input type="search" id="ed-search" placeholder="Search" value="${esc(editor.q)}" aria-label="Search cards"><button class="btn sm" type="button" data-ed="all">Own all</button><button class="btn sm" type="button" data-ed="none">Own none</button></div>
+      <div class="ogrid">${items.map(x=>{const name=x.tower?TOWER[x.id].name:C[x.id].name;const rc=x.tower?'champion':(editor.tab==='base'?rarityOf(C[x.id]):editor.tab==='evo'?'epic':'rare');const m=x.tower?name.split(' ').map(w=>w[0]).join(''):MONO[x.id];
+        return `<button type="button" class="own" aria-pressed="${x.on}" data-own="${x.id}" style="--rc:var(--r-${rc})"><span class="tick" aria-hidden="true">${x.on?'✓':''}</span><span class="m" aria-hidden="true">${esc(m)}</span><span class="n">${editor.tab==='evo'?'Evo ':editor.tab==='hero'?'Hero ':''}${esc(name)}</span></button>`;}).join('')||'<p class="hint">No matching card</p>'}</div></div>
+    <footer><span class="hint" style="margin-right:auto">Changes save as you tap.</span><button class="btn" type="button" data-ed="code">Paste a share code</button><button class="btn primary" type="button" data-ed="close">Done</button></footer></div>`;
+}
+$('sheet').addEventListener('click',e=>{
+  if(e.target===$('sheet')){closeSheet();return;}
+  if(!editor){const s=e.target.closest('[data-share]');if(s)shareAction(s.dataset.share);return;}
+  const p=prof(editor.key);
+  const tab=e.target.closest('[data-edtab]');if(tab){editor.tab=tab.dataset.edtab;editor.q='';renderEditor();return;}
+  const ed=e.target.closest('[data-ed]');
+  if(ed){const a=ed.dataset.ed;
+    if(a==='close'){closeSheet();return;}
+    if(a==='code'){const k=editor.key;closeSheet();openShare(k,true);return;}
+    const vis=editorItems().map(x=>x.id);const on=a==='all';
+    toggleMany(p,vis,on);renderEditor();return;}
+  const own=e.target.closest('[data-own]');
+  if(own){toggleMany(p,[own.dataset.own],own.getAttribute('aria-pressed')!=='true');renderEditor();const b=document.querySelector(`[data-own="${own.dataset.own}"]`);if(b)b.focus();}
+});
+$('sheet').addEventListener('input',e=>{if(e.target.id==='ed-search'&&editor){editor.q=e.target.value;const pos=e.target.selectionStart;renderEditor();const s=$('ed-search');s.focus();s.setSelectionRange(pos,pos);}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('sheet').hidden)closeSheet();});
+function toggleMany(p,ids,on){
+  const t=editor.tab;
+  if(t==='base'){let base=p.col.base?new Set(p.col.base):new Set(BASE_CARDS);ids.forEach(id=>on?base.add(id):base.delete(id));p.col.base=base.size===BASE_CARDS.length?null:[...base];}
+  else{const f=t==='evo'?'evo':t==='hero'?'hero':'towers';const s=new Set(p.col[f]);ids.forEach(id=>on?s.add(id):s.delete(id));if(f==='towers'&&!s.size)s.add('tower-princess');p.col[f]=[...s];}
+  if(p.source==='unset')p.source='manual';
+  p.updated=Date.now();saveProfiles();
+}
+
+/* ---------- share codes ---------- */
+let shareKey=null;
+function openShare(key,importMode){
+  shareKey=key;const p=prof(key);const code=encodeCollection(colSets(p));
+  $('sheet').innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-h" style="width:min(520px,100%)">
+    <header><h2 id="sh-h">Share code</h2><button class="btn" type="button" data-share="close">Done</button></header>
+    <div class="body" style="display:grid;gap:14px">
+      ${importMode?'':`<div><p class="hint" style="margin:0 0 6px">Send this to a teammate. Pasting it into their Elixir Forge gives them ${esc(p.name)}'s exact collection.</p><div class="codebox" id="sh-code">${code}</div><div class="btns" style="margin-top:8px"><button class="btn primary" type="button" data-share="copy">Copy code</button></div></div>`}
+      <div class="field"><label class="lbl" for="sh-in">Paste a code ${importMode?'from a teammate':'to replace '+esc(p.name)+'\'s collection'}</label><input type="text" id="sh-in" placeholder="ef1-…" autocomplete="off" spellcheck="false">
+        <div class="btns" style="margin-top:8px"><button class="btn" type="button" data-share="load">${importMode?'Add as a new player':'Use this code'}</button></div><p class="err" id="sh-err" hidden></p></div>
+    </div></div>`;
+  $('sheet').dataset.import=importMode?'1':'';
+  $('sheet').hidden=false;
+}
+function shareAction(a){
+  if(a==='close'){$('sheet').hidden=true;$('sheet').innerHTML='';renderPlayers();return;}
+  if(a==='copy'){copyText($('sh-code').textContent,document.querySelector('[data-share="copy"]'));return;}
+  if(a==='load'){
+    const col=decodeCollection($('sh-in').value);
+    if(!col){const er=$('sh-err');er.textContent='That code isn\'t valid. Codes start with ef1- and come from the Share code button.';er.hidden=false;return;}
+    const data={base:col.base?[...col.base]:null,evo:[...col.evo],hero:[...col.hero],towers:[...col.towers]};
+    if($('sheet').dataset.import){const p=newProfile('Teammate',{source:'code',col:data});profiles.push(p);slots[shareKey]=p.id;}
+    else{const p=prof(shareKey);p.col=data;p.source='code';p.levels=null;p.updated=Date.now();}
+    saveProfiles();$('sheet').hidden=true;$('sheet').innerHTML='';renderPlayers();toast('Collection loaded');
+  }
+}
+function copyText(text,btn){
+  const done=()=>{if(!btn)return;const o=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=o,1400);};
+  const fallback=()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(e){toast('Select the text and copy it');}ta.remove();};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(text).then(done,fallback);else fallback();
+}
+
+/* ---------- building generator inputs ---------- */
+function sideOpts(key){
+  const p=prof(key),r=state.rules[key],rules=collectionToRules(colSets(p));
+  const exclude=new Set(rules.exclude),ban={};
+  for(const [id,s] of Object.entries(rules.ban))ban[id]=new Set(s);
+  for(const [id,f] of r.exclude){if(f==='all')exclude.add(id);else (ban[id]=ban[id]||new Set()).add(f);}
+  r.locks.forEach(l=>exclude.delete(l.id));
+  const useLv=$('levelmatch').checked&&p.levels;
+  return{locked:r.locks.map(l=>l.id),forms:Object.fromEntries(r.locks.map(l=>[l.id,l.form])),exclude,ban,style:r.style,role:r.role,
+    levels:useLv?p.levels:null,levelRef:useLv?levelRef(p.levels):0};
+}
+function validate(key){
+  const p=prof(key),r=state.rules[key],cs=colSets(p),who=state.mode==='duo'?p.name+': ':'';
+  for(const l of r.locks){
+    if(cs.base&&!cs.base.has(l.id))return who+p.name+' doesn\'t own '+C[l.id].name+'. Add it in Set up collection or remove the pin.';
+    if(l.form==='evo'&&!cs.evo.has(l.id))return who+p.name+' doesn\'t have Evo '+C[l.id].name+'.';
+    if(l.form==='hero'&&!cs.hero.has(l.id))return who+p.name+' doesn\'t have Hero '+C[l.id].name+'.';
+    const b=r.exclude.get(l.id);if(b&&b!=='all'&&b===l.form)return who+C[l.id].name+' is pinned as '+formLabel[b]+' but that version is blocked.';
+  }
+  const champs=r.locks.filter(l=>isChamp(C[l.id])).length,evo=r.locks.filter(l=>l.form==='evo').length,hero=r.locks.filter(l=>l.form==='hero').length;
+  if(champs>1)return who+'A deck holds only one Champion.';
+  if(evo>2)return who+'A deck holds at most 2 Evos.';
+  if(hero+champs>2)return who+'Heroes and Champions share 2 slots at most.';
+  if(evo+hero+champs>3)return who+'Only 3 special slots exist.';
+  return null;
+}
+
+/* ---------- background worker: keeps the page responsive during the search ---------- */
+let worker=null,jobId=0;const jobs={};
+function getWorker(){
+  if(worker)return worker;
+  try{
+    const src=$('engine').textContent+`
+self.onmessage=e=>{const{id,kind,args}=e.data;try{
+  if(kind==='meta'){applyMeta(args);self.postMessage({id,res:true});return;}
+  memo=new Map();scCache=new Map();
+  const res=kind==='duo'?generateDuo(args):generate(args);self.postMessage({id,res});
+}catch(err){self.postMessage({id,error:String(err&&err.message||err)});}};`;
+    worker=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
+    worker.onmessage=e=>{const j=jobs[e.data.id];if(!j)return;delete jobs[e.data.id];e.data.error?j.rej(new Error(e.data.error)):j.res(e.data.res);};
+    worker.onerror=()=>{worker=null;};
+  }catch(e){worker=null;}
+  return worker;
+}
+function runJob(kind,args){
+  const w=getWorker();
+  if(!w)return new Promise((res,rej)=>setTimeout(()=>{try{memo=new Map();scCache=new Map();res(kind==='duo'?generateDuo(args):generate(args));}catch(e){rej(e);}},30));
+  return new Promise((res,rej)=>{const id=++jobId;jobs[id]={res,rej};w.postMessage({id,kind,args});});
+}
+
+/* ---------- forge ---------- */
+async function forge(){
+  hideErr();
+  const duo=state.mode==='duo';
+  const v=validate('A')||(duo&&validate('B'));
+  if(v){showErr(v);return;}
+  if(duo){const a=state.rules.A.locks.map(l=>l.id);const sh=state.rules.B.locks.filter(l=>a.includes(l.id)).length;if(sh>2){showErr('The two decks can share at most 2 cards, but '+sh+' of the same cards are pinned.');return;}}
+  const btn=$('go');btn.disabled=true;btn.textContent=duo?'Forging your team…':'Forging decks…';
+  setView('gen',true);setStatus(duo?'Searching thousands of team pairs…':'Searching thousands of decks…');
+  const t=performance.now();
+  const count=+$('count').value,maxAvg=+$('maxavg').value,vs=state.vs.length?state.vs.slice():null;
+  try{
+    if(duo){
+      const o={A:sideOpts('A'),B:sideOpts('B'),maxAvg,count,priority:$('priority').value,names:names(),vs,levelW:$('levelmatch').checked?1:0};
+      const pairs=await runJob('duo',o);
+      state.lastDuo=pairs;state.lastOpts=o;
+      if(!pairs.length){$('out').innerHTML='';setStatus('');showErr('No legal pair fits these rules. Remove a pin or a blocked card and try again.');}
+      else{setStatus(pairs.length+' team pair'+(pairs.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDuo(pairs);}
+    }else{
+      const sa=sideOpts('A');
+      const opts={...sa,maxAvg,count,maxChamps:1,vs,levelW:$('levelmatch').checked?1:0};
+      const decks=await runJob('gen',opts);
+      state.last=decks;state.lastOpts=opts;
+      if(!decks.length){$('out').innerHTML='';setStatus('');showErr('No legal deck fits these rules. Remove a pin or a blocked card and try again.');}
+      else{setStatus(decks.length+' deck'+(decks.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDecks(decks);}
+    }
+  }catch(e){showErr('The search hit an error: '+e.message);}
+  btn.disabled=false;btn.textContent=duo?'Forge team':'Forge decks';
+}
+$('go').addEventListener('click',forge);
+
+/* ---------- analysis text ---------- */
+function prosCons(d){
+  const pros=[],cons=[];
+  [...d.pairs].filter(p=>!p.meta).sort((a,b)=>b.w-a.w).slice(0,3).forEach(p=>pros.push({t:C[p.a].name+' + '+C[p.b].name,d:p.why}));
+  const cycle=cycleCost(d.ids);
+  if(cycle<=8)pros.push({t:'Fast cycle',d:'Only '+cycle+' elixir to get back to your win condition'});
+  if(d.k.air>=3)pros.push({t:'Strong air defense',d:d.k.air+' cards hit air'});
+  if(d.forms&&d.forms.value>=24)pros.push({t:'Strong special slots',d:d.forms.specials.map(x=>displayName(x.id,x.form==='champ'?null:x.form)).join(', ')+' are strong this week'});
+  if(d.syn.parts.cov===100)pros.push({t:'Covers every role',d:'Air defense, splash, both spell sizes, a tank killer and cheap cycle'});
+  d.syn.notes.forEach(n=>cons.push({t:'Shared weakness',d:n}));
+  const k=d.k;
+  if(k.air<2)cons.push({t:'Weak to air',d:'Only '+k.air+' card'+(k.air===1?'':'s')+' hit air, so Balloon and Lava Hound are a problem'});
+  if(k.splash<1)cons.push({t:'No splash',d:'Swarms like Skeleton Army and Goblin Gang are hard to clear'});
+  if(k.small<1)cons.push({t:'No small spell',d:'Goblin Barrel and bait decks will chip you down'});
+  if(k.big<1)cons.push({t:'No big spell',d:'Hard to finish towers or punish clumped support'});
+  if(k.kill<1)cons.push({t:'No tank killer',d:'Golem, Giant and Mega Knight take a lot to stop'});
+  if(d.avg>=4)cons.push({t:'Heavy deck',d:'Average '+d.avg.toFixed(1)+' elixir; fast cycle decks can out-rotate you'});
+  else if(cycle>=12)cons.push({t:'Slow to cycle',d:cycle+' elixir to get back to the same card'});
+  if(d.forms&&d.forms.empty)cons.push({t:'Empty special slot',d:'This player doesn\'t own enough Evos or Heroes to fill all 3 slots'});
+  if(d.lv&&d.lv.under.length)cons.push({t:'Under-levelled cards',d:d.lv.under.map(u=>C[u.id].name+' (level '+u.L+')').join(', ')+' sit below this player\'s usual level'});
+  d.ids.filter(id=>has(C[id],'W')&&WIN_COUNTER[id]).slice(0,2).forEach(id=>cons.push({t:'Counter to watch',d:WIN_COUNTER[id]}));
+  return{pros,cons};
+}
+function vsHTML(vs){
+  if(!vs)return'';
+  const rows=vs.oppWins.map(w=>{const a=vs.answers[w]||[];return `<li><b>Their ${esc(C[w].name)}</b><span>${a.length?'Answered by '+a.map(i=>esc(C[i].name)).join(', '):'No clean answer in this deck'}</span></li>`;}).join('');
+  return `<div><h3 class="${vs.notes.length?'bad':'good'}" style="font-size:14px;font-weight:900;margin:0 0 6px">Against their deck</h3><ul style="margin:0;padding:0;list-style:none;display:grid;gap:7px;font-size:14px">${rows}${vs.notes.map(n=>`<li><b>Watch out</b><span>${esc(n)}</span></li>`).join('')}</ul></div>`;
+}
+const cycleCost=ids=>ids.map(id=>C[id].e).sort((a,b)=>a-b).slice(0,4).reduce((a,b)=>a+b,0);
+function archLabel(ids){
+  const wins=ids.filter(id=>has(C[id],'W')).sort((a,b)=>C[b].e-C[a].e);
+  const st=(ARCH[wins[0]]||[])[0];
+  return (wins.map(id=>C[id].name).join(' + ')||'Control')+(st?' '+STYLE_NAME[st]:'');
+}
+
+/* ---------- tiles ---------- */
+function tile(o,levels,ref){
+  const c=C[o.id],f=o.form,rar=rarityOf(c);
+  const L=levels&&levels[o.id];const low=L!=null&&ref&&ref-L>=1.5;
+  return `<div class="tile ${f||''}" style="--rc:var(--r-${rar})"><div class="inner">
+    <div class="drop" aria-label="${c.e} elixir"><span>${c.e}</span></div>
+    ${o.slot?`<span class="slot">${o.slot}</span>`:''}${L!=null?`<span class="lvl ${low?'low':''}">Lv ${L}</span>`:''}
+    <span class="mono" aria-hidden="true">${esc(MONO[o.id])}</span>
+    ${f?`<span class="badge ${f}">${formLabel[f]}</span>`:''}
+    <span class="tname">${esc(c.name)}</span>
+    <span class="tsub" title="${RNAME[rar]} ${TYPE_NAME[c.type]}">${TYPE_ICON[c.type]}${RNAME[rar]}</span>
+  </div></div>`;
+}
+function tilesHTML(ids,forms,levels){
+  const order=orderDeck(ids,forms);const ref=levels?levelRef(levels):0;
+  return `<div class="grid8">${order.map(o=>tile(o,levels,ref)).join('')}</div>`;
+}
+function towerFor(key,sc,ids,duo){
+  const r=state.rules[key],cs=colSets(prof(key));
+  const rec=pickTower({ids,k:sc.k,avg:sc.avg},[...cs.towers],duo);
+  const id=r.tower==='auto'?rec.id:r.tower;
+  return{id,rec,chosen:r.tower!=='auto'};
+}
+function towerHTML(t){
+  const tw=TOWER[t.id];
+  const alt=!t.chosen&&t.rec.alts.length?' '+t.rec.alts.map(a=>TOWER[a].name).join(' or ')+' could also suit this deck.':'';
+  return `<div class="tower"><span>Tower troop: <b>${tw.name}</b></span><span class="hint">${esc(tw.note)}${alt}</span></div>`;
+}
+function linkBtn(ids,forms,towerId){
+  const od=orderDeck(ids,forms),href=deckLink(od,towerId);
+  if(!href)return '';
+  return `<a class="btn primary" href="${esc(href)}" target="_blank" rel="noopener">Open in Clash Royale</a><button class="btn" type="button" data-copylink="${esc(href)}">Copy link</button>`;
+}
+// Copy link: for pasting into Safari/Chrome when an in-app browser won't hand the link to the game.
+document.addEventListener('click',e=>{
+  const c=e.target.closest('[data-copylink]');
+  if(c){const t=c.dataset.copylink,done=()=>{const o=c.textContent;c.textContent='Link copied';setTimeout(()=>c.textContent=o,1600);};
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(done).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');done();}catch(_){c.textContent='Could not copy';}ta.remove();});
+    return;}
+});
+function deckText(ids,forms,towerId){return orderDeck(ids,forms).map(o=>displayName(o.id,o.form)+(o.form==='champ'?' (Champion)':'')).join(', ')+(towerId?' | Tower: '+TOWER[towerId].name:'');}
+
+/* ---------- render 1v1 ---------- */
+function renderDecks(decks){
+  const p=prof('A');const lv=$('levelmatch').checked?p.levels:null;
+  $('out').innerHTML=decks.map((d,i)=>{
+    const t=towerFor('A',d,d.ids,false);d._tower=t.id;
+    const pc=prosCons(d);const li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;const sy=d.syn.parts;
+    return `<article class="deck">
+      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
+        <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span>${d.lv&&d.lv.avg?`<span>Average level <b>${d.lv.avg.toFixed(1)}</b></span>`:''}</div></div>
+        <div class="score"><span class="num">${Math.max(1,Math.min(99,Math.round(d.s*0.82)))}</span><small>Forge score</small></div></div>
+      ${tilesHTML(d.ids,d.forms,lv)}
+      ${towerHTML(t)}
+      <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-copy="${i}">Copy list</button><button class="btn" type="button" data-save="${i}">Save</button><button class="btn" type="button" data-pin="${i}">Pin to tweak</button></div>
+      <details class="why"><summary>Why this deck</summary>
+        <p class="synbreak">Synergy ${d.synPct}%: combos ${sy.combo}%, win condition support ${sy.wc}%, role coverage ${sy.cov}%, shared-weakness check ${sy.weak}%.</p>
+        <div class="pc"><div><h3 class="good">Strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
+        ${d.vs?`<div style="margin-top:12px">${vsHTML(d.vs)}</div>`:''}
+      </details>
+    </article>`;}).join('');
+}
+
+/* ---------- render 2v2 ---------- */
+const GAP_TEXT={air:'air defense',splash:'splash damage',small:'a small spell',big:'a big spell',kill:'a tank killer'};
+function providers(ids,role){return ids.map(i=>C[i]).filter(c=>role==='air'?c.type!=='s'&&has(c,'A'):role==='splash'?c.type!=='s'&&has(c,'S'):role==='small'?c.type==='s'&&has(c,'s'):role==='big'?c.type==='s'&&has(c,'F'):has(c,'K')).map(c=>c.name);}
+function teamProsCons(p,N){
+  const pros=[],cons=[];
+  p.t.cross.filter(x=>!x.meta).sort((a,b)=>b.w-a.w).slice(0,4).forEach(x=>pros.push({t:N.A+'\'s '+C[x.a].name+' + '+N.B+'\'s '+C[x.b].name,d:x.why}));
+  const gaps=k=>({air:k.air<2,splash:k.splash<1,small:k.small<1,big:k.big<1,kill:k.kill<1});
+  for(const [mine,theirs,who,other] of [[gaps(p.sa.k),p.B,N.A,N.B],[gaps(p.sb.k),p.A,N.B,N.A]])
+    for(const role of Object.keys(mine)){if(!mine[role])continue;const by=providers(theirs,role);
+      if(by.length)pros.push({t:'Covered by '+other,d:who+' lacks '+GAP_TEXT[role]+'; '+by.slice(0,3).join(', ')+' fill'+(by.length===1?'s':'')+' that gap'});
+      else cons.push({t:'Gap neither deck covers',d:'Neither deck has '+GAP_TEXT[role]});}
+  const wa=p.A.filter(i=>has(C[i],'W')),wb=p.B.filter(i=>has(C[i],'W'));
+  if(p.t.selfA&&p.t.selfB)pros.push({t:'Both decks stand on their own',d:'Each has its own air defense and tank answer, so neither player is helpless when the other is out of cycle'});
+  if(p.t.dup.length&&p.t.dup.length<=2)pros.push({t:'Shared cards: '+p.t.dup.map(i=>C[i].name).join(', '),d:'Both decks run '+(p.t.dup.length===1?'this card':'these cards')+' because '+(p.t.dup.length===1?'it is':'they are')+' strong right now'});
+  if(wa.length&&wb.length&&!p.t.sameWin.length)pros.push({t:'Two different threats',d:wa.map(i=>C[i].name).join(' + ')+' and '+wb.map(i=>C[i].name).join(' + ')+' need different counters'});
+  p.t.notes.forEach(n=>cons.push({t:'Team weakness',d:n}));
+  for(const [sc,who] of [[p.sa,N.A],[p.sb,N.B]]){if(sc.forms&&sc.forms.empty)cons.push({t:'Empty special slot',d:who+' doesn\'t own enough Evos or Heroes to fill all 3 slots'});if(sc.lv&&sc.lv.under.length)cons.push({t:'Under-levelled cards',d:who+': '+sc.lv.under.map(u=>C[u.id].name+' (level '+u.L+')').join(', ')});}
+  wa.concat(wb).filter((v,i,a)=>a.indexOf(v)===i&&WIN_COUNTER[v]).slice(0,2).forEach(id=>cons.push({t:'Counter to watch',d:WIN_COUNTER[id]}));
+  return{pros,cons};
+}
+function gamePlan(p,N){
+  const ra=p.sa.role,rb=p.sb.role;
+  if(ra!=='flex'||rb!=='flex'){
+    const atk=ra==='attack'?N.A:rb==='attack'?N.B:null,def=ra==='defend'?N.A:rb==='defend'?N.B:null;const parts=[];
+    if(atk)parts.push(atk+' is the attacker: build pressure and lead the pushes.');
+    if(def)parts.push(def+' is the defender: hold both lanes, then counter-push into the attacker\'s lane.');
+    const selfAtk=atk?(atk===N.A?p.t.selfA:p.t.selfB):true;
+    parts.push(selfAtk?'Roles are a plan, not a cage: the attacker can still defend when the defender is out of cycle.':'The attacker leans on the defender, so call for help early when you are out of cycle.');
+    return parts.join(' ');
+  }
+  const both=p.t.selfA&&p.t.selfB;
+  if(p.t.bdA!==p.t.bdB){const heavy=p.t.bdA?N.A:N.B,light=p.t.bdA?N.B:N.A;
+    return heavy+' usually builds the big push and '+light+' pressures the other lane.'+(both?' Both decks defend on their own, so swap roles whenever one of you is out of cycle.':'')+' When the heavy push crosses the bridge, '+light+' can add support behind it.';}
+  return 'Neither deck is locked into attack or defense. Whoever has the better hand defends while the other counter-pushes, then push one lane together to overload a tower.';
+}
+function renderDuo(pairs){
+  const N=names();const lvA=$('levelmatch').checked?prof('A').levels:null,lvB=$('levelmatch').checked?prof('B').levels:null;
+  $('out').innerHTML=pairs.map((p,i)=>{
+    const ta=towerFor('A',p.sa,p.A,true),tb=towerFor('B',p.sb,p.B,true);p._towers=[ta.id,tb.id];
+    const pc=teamProsCons(p,N),tp=p.t.parts;const li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;
+    const half=(ids,sc,key,lv,t)=>`<div class="duodeck ${key==='B'?'b':''}">
+      <p class="who"><span class="tag">${esc(N[key])}</span>${sc.role!=='flex'?`<span class="role">${sc.role==='attack'?'Attacker':'Defender'}</span>`:''}<span class="dn">${esc(archLabel(ids))}</span><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span></p>
+      ${tilesHTML(ids,sc.forms,lv)}${towerHTML(t)}
+      <div class="actions">${linkBtn(ids,sc.forms,t.id)}<button class="btn sm" type="button" data-dcopy="${i}" data-side="${key}">Copy list</button></div></div>`;
+    return `<article class="deck">
+      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(p.A))} with ${esc(archLabel(p.B))}</h2>
+        <div class="dmeta"><span>Team synergy <b>${p.t.pct}%</b></span><span>Combos between decks <b>${p.t.cross.filter(x=>!x.meta).length}</b></span></div></div>
+        <div class="score"><span class="num">${Math.max(1,Math.min(99,Math.round(p.s*0.62)))}</span><small>Team score</small></div></div>
+      ${half(p.A,p.sa,'A',lvA,ta)}${half(p.B,p.sb,'B',lvB,tb)}
+      <p class="plan"><b>Game plan</b>${esc(gamePlan(p,N))}</p>
+      <div class="actions"><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>
+      <details class="why"><summary>Why these decks work together</summary>
+        <p class="synbreak">Team synergy ${p.t.pct}%: combos across all 16 cards ${tp.combo}%, win condition support ${tp.wc}%, team coverage ${tp.cov}%, role split ${tp.comp}%, shared-weakness check ${tp.weak}%.</p>
+        <div class="pc"><div><h3 class="good">Team strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Team weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
+        ${p.sa.vs?`<div class="pc" style="margin-top:12px"><div>${vsHTML(p.sa.vs).replace('Against their deck',esc(N.A)+' against their deck')}</div><div>${vsHTML(p.sb.vs).replace('Against their deck',esc(N.B)+' against their deck')}</div></div>`:''}
+      </details>
+    </article>`;}).join('');
+}
+
+/* ---------- top decks tab ---------- */
+function renderMeta(){
+  const duo=state.mode==='duo';const list=duo?META2:META;
+  setStatus(duo?'Top 2v2 decks by RoyaleAPI rating. These are single decks with small samples, so win rates run high.':'Top Ranked (Path of Legends) decks by RoyaleAPI rating.');
+  const keys=duo?['A','B']:['A'];
+  $('out').innerHTML=list.map((d,i)=>{
+    const ids=d.cards.map(x=>x.split(':')[0]);
+    const forms=Object.fromEntries(d.cards.map(x=>{const[a,b]=x.split(':');return[a,b||'normal'];}));
+    memo=new Map();
+    const sc=scoreDeck(ids,{forms,maxChamps:1,style:'any',maxAvg:5,duo,tag:'meta'});
+    const notes=keys.map(k=>{const p=prof(k),cs=colSets(p);const miss=d.cards.map(x=>x.split(':')).filter(([a,f])=>(f==='evo'&&!cs.evo.has(a))||(f==='hero'&&!cs.hero.has(a))||(cs.base&&!cs.base.has(a))).map(([a,f])=>f&&f!=='base'?formLabel[f]+' '+C[a].name:C[a].name);
+      return miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`;}).join('');
+    return `<article class="deck">
+      <div class="dhead"><div><h2 class="dtitle">${esc(d.n)}</h2><div class="dmeta"><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span><span>Synergy <b>${sc.synPct}%</b></span></div></div>
+        <div class="score"><span class="num" style="color:var(--good)">${d.wr==null?'n/a':d.wr+'%'}</span><small>Win rate</small></div></div>
+      ${tilesHTML(ids,sc.forms,null)}${notes}
+      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
+    </article>`;}).join('');
+}
+
+/* ---------- saved decks + results tracking ---------- */
+function saveEntry(entry){state.saved.unshift(entry);state.saved=state.saved.slice(0,60);store.set('ef2-saved',state.saved);toast('Saved');}
+function renderSaved(){
+  if(!state.saved.length){setStatus('');$('out').innerHTML='<div class="empty-state"><b>No saved decks yet</b>Press Save on any deck or team pair and it lands here, with a win and loss tracker.</div>';return;}
+  setStatus('Saved on this browser. Track wins and losses to see which decks really work for you.');
+  $('out').innerHTML=state.saved.map((s,i)=>{
+    const total=s.w+s.l;
+    return `<article class="deck"><div class="dhead"><div><h2 class="dtitle">${esc(s.title)}</h2><div class="dmeta"><span>${s.mode==='duo'?'2v2 pair':'1v1'}</span><span>Saved ${new Date(s.at).toLocaleDateString()}</span></div></div>
+      <div class="score"><span class="num">${total?Math.round(s.w/total*100)+'%':'–'}</span><small>${total?s.w+' W, '+s.l+' L':'No games logged'}</small></div></div>
+      ${s.decks.map(dk=>`<div class="duodeck ${dk.key==='B'?'b':''}">${s.mode==='duo'?`<p class="who"><span class="tag">${esc(dk.who)}</span></p>`:''}${tilesHTML(dk.ids,{specials:dk.specials,empty:dk.empty||0},null)}<div class="actions">${linkBtn(dk.ids,{specials:dk.specials},dk.tower)}<button class="btn sm" type="button" data-scopy="${i}" data-d="${s.decks.indexOf(dk)}">Copy list</button></div></div>`).join('')}
+      <div class="actions wl"><button class="btn" type="button" data-win="${i}">Log a win</button><button class="btn" type="button" data-loss="${i}">Log a loss</button><button class="btn" type="button" data-del="${i}">Delete</button></div>
+    </article>`;}).join('');
+}
+
+/* ---------- result actions ---------- */
+function lockList(ids,forms){return orderDeck(ids,forms).map(o=>({id:o.id,form:o.form==='evo'?'evo':o.form==='hero'?'hero':isChamp(C[o.id])?'any':'normal'}));}
+$('out').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.copy!=null){const x=state.last[+d.copy];copyText(deckText(x.ids,x.forms,x._tower),b);}
+  if(d.save!=null){const x=state.last[+d.save];saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:x._tower}]});}
+  if(d.pin!=null){const x=state.last[+d.pin];state.rules.A.locks=lockList(x.ids,x.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('All 8 cards pinned. Remove the ones to swap, then Forge.');}
+  if(d.dcopy!=null){const p=state.lastDuo[+d.dcopy];const k=d.side;copyText(deckText(k==='A'?p.A:p.B,(k==='A'?p.sa:p.sb).forms,p._towers[k==='A'?0:1]),b);}
+  if(d.dsave!=null){const p=state.lastDuo[+d.dsave];const N=names();saveEntry({at:Date.now(),mode:'duo',title:archLabel(p.A)+' with '+archLabel(p.B),w:0,l:0,decks:[{key:'A',who:N.A,ids:p.A,specials:p.sa.forms.specials,empty:p.sa.forms.empty,tower:p._towers[0]},{key:'B',who:N.B,ids:p.B,specials:p.sb.forms.specials,empty:p.sb.forms.empty,tower:p._towers[1]}]});}
+  if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
+  if(d.mcopy!=null||d.mpin!=null){
+    const list=state.mode==='duo'?META2:META;const x=list[+(d.mcopy??d.mpin)];
+    const order=x.cards.map(c=>{const[a,f]=c.split(':');return{id:a,form:f||(isChamp(C[a])?'champ':null)};});
+    if(d.mcopy!=null)copyText(order.map(o=>displayName(o.id,o.form)).join(', '),b);
+    else{state.rules[d.side].locks=order.map(o=>({id:o.id,form:o.form==='evo'||o.form==='hero'?o.form:isChamp(C[o.id])?'any':'normal'}));renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Pinned for '+prof(d.side).name);}
+  }
+  if(d.scopy!=null){const s=state.saved[+d.scopy],dk=s.decks[+d.d];copyText(deckText(dk.ids,{specials:dk.specials},dk.tower),b);}
+  if(d.win!=null||d.loss!=null){const s=state.saved[+(d.win??d.loss)];d.win!=null?s.w++:s.l++;store.set('ef2-saved',state.saved);renderSaved();}
+  if(d.del!=null){state.saved.splice(+d.del,1);store.set('ef2-saved',state.saved);renderSaved();toast('Deleted');}
+});
+
+/* ---------- tabs and mode ---------- */
+function setView(v,quiet){
+  state.view=v;['gen','meta','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  if(quiet)return;
+  if(v==='meta')renderMeta();
+  else if(v==='saved')renderSaved();
+  else if(state.mode==='duo'&&state.lastDuo.length){renderDuo(state.lastDuo);setStatus(state.lastDuo.length+' team pairs');}
+  else if(state.mode==='1v1'&&state.last.length){renderDecks(state.last);setStatus(state.last.length+' decks');}
+  else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
+}
+['gen','meta','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
+function setMode(m){
+  state.mode=m;store.set('ef2-mode',m);
+  $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');
+  document.querySelectorAll('.duo-only').forEach(el=>el.hidden=m!=='duo');
+  $('count-lbl').textContent=m==='duo'?'Number of team pairs':'Number of decks';
+  $('go').textContent=m==='duo'?'Forge team':'Forge decks';
+  $('tab-meta').textContent=m==='duo'?'Top 2v2 decks':'Top Ranked decks';
+  hideErr();renderPlayers();setView(state.view==='saved'?'saved':state.view==='meta'?'meta':'gen');
+}
+$('mode-1v1').addEventListener('click',()=>setMode('1v1'));
+$('mode-duo').addEventListener('click',()=>setMode('duo'));
+
+/* ---------- data freshness ---------- */
+function setDataNote(date,live){
+  $('datachip').textContent='Meta data: '+date;
+  $('datanote').textContent='Card strength comes from '+(live?'Supercell\'s official API battle data':'RoyaleAPI\'s 7-day stats')+' as of '+date+': Ranked numbers drive 1v1, 2v2 numbers drive team mode. Low-usage cards are pulled toward average so a small sample can\'t dominate.';
+}
+async function loadMeta(){
+  setDataNote(DATA_DATE,false);
+  try{const r=await fetch('data/meta.json',{cache:'no-store'});if(!r.ok)return;const m=await r.json();
+    if(applyMeta(m)){const w=getWorker();if(w){const id=++jobId;jobs[id]={res(){},rej(){}};w.postMessage({id,kind:'meta',args:m});}
+      setDataNote(new Date(m.generated).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}),m.source==='official-api');if(state.view==='meta')renderMeta();}
+  }catch(e){}
+}
+
+/* ---------- start ---------- */
+setMode(state.mode);
+detectApi();
+loadMeta().then(()=>forge());
+
+</script>
+
+</body>
+</html>

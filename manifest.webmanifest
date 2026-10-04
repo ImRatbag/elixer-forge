@@ -1,0 +1,10 @@
+{
+  "name": "Elixir Forge",
+  "short_name": "Elixir Forge",
+  "description": "Clash Royale decks built from the cards you actually own.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#1b1029",
+  "theme_color": "#1b1029",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
