@@ -15,7 +15,7 @@ Clash Royale deck builder for 1v1 and 2v2 that builds from each player's **real 
 |---|---|
 | `index.html` | The whole app in one file (built from `src/`). Works on any static host. |
 | `src/` | Source: `data.js` (cards, ratings, synergies), `engine.js` (deck search), `app.js` (interface), `styles.css`, `shell.html` |
-| `api/player.js`, `api/health.js` | Serverless functions for player tag lookup (Vercel format) |
+| `api/player.js`, `api/health.js`, `api/cards.js` | Serverless functions: player tag lookup, and the official card list with picture links (Vercel format) |
 | `scripts/refresh-meta.mjs` | Builds `data/meta.json` from top players' battles |
 | `.github/workflows/refresh-meta.yml` | Runs the refresh every Monday |
 | `test/` | Offline tests (`npm test`) |
@@ -37,7 +37,7 @@ Netlify or Cloudflare work too; only the two files in `api/` need adapting to th
 
 - **Remove the personal presets.** In `src/data.js` set `PRESET_PLAYERS` to `[]`, then run `python3 build.py`. New visitors then start with an empty profile and a prompt to set up their collection.
 - **Supercell Fan Content Policy** (<https://supercell.com/en/fan-content-policy/>): the app must stay free. No paywalls, subscriptions or in-app purchases; ads and voluntary donations are allowed. Don't use "Clash Royale" in your domain or social handles. Keep the disclaimer that is already in the footer.
-- **Card art:** the fan kit allows official assets to show cards, unmodified. The app currently draws its own card frames and monograms.
+- **Card art:** on a deployed copy the app shows the official card pictures, linked from Supercell's API (`api/cards.js`), which the Fan Content Policy allows unmodified. Without the server it falls back to lettered tiles.
 - **Privacy:** the app stores collections only in the visitor's browser. Tag lookups send the tag to your server and Supercell's API. If you ever add accounts or emails, publish a privacy policy and handle younger players properly (PIPEDA in Canada, COPPA for US users).
 - **RoyaleAPI data:** the ratings bundled in `src/data.js` were read from RoyaleAPI's public pages on Sept 30, 2026. Once the weekly refresh runs, the app uses your own data from Supercell's API instead. Ask RoyaleAPI (<https://royaleapi.com/business-inquiries>) before using their data commercially.
 

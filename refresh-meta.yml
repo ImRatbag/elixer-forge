@@ -1,0 +1,23 @@
+name: Refresh meta data
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # every Monday 06:17 UTC
+  workflow_dispatch: {}      # run it by hand from the Actions tab after a balance patch
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node scripts/refresh-meta.mjs --players 300 --out data/meta.json
+        env:
+          CR_API_KEY: ${{ secrets.CR_API_KEY }}
+      - name: Commit if changed
+        run: |
+          git config user.name "elixir-forge-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/meta.json
+          git diff --cached --quiet || git commit -m "Refresh meta data" && git push
