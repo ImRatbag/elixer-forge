@@ -558,7 +558,7 @@ function renderDuo(pairs){
         <div class="score"><span class="num">${Math.max(1,Math.min(99,Math.round(p.s*0.62)))}</span><small>Team score</small></div></div>
       <div class="pair">${half(p.A,p.sa,'A',lvA,ta)}${half(p.B,p.sb,'B',lvB,tb)}</div>
       <p class="plan"><b>Game plan</b>${esc(gamePlan(p,N))}</p>
-      <div class="actions"><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>
+      <div class="actions"><button class="btn primary" type="button" data-dshare="${i}">Send to teammate</button><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>
       <details class="why"><summary>Why these decks work together</summary>
         <p class="synbreak">Team synergy ${p.t.pct}%: combos across all 16 cards ${tp.combo}%, win condition support ${tp.wc}%, team coverage ${tp.cov}%, role split ${tp.comp}%, shared-weakness check ${tp.weak}%.</p>
         <div class="pc"><div><h3 class="good">Team strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Team weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
@@ -609,6 +609,13 @@ $('out').addEventListener('click',e=>{
   if(d.save!=null){const x=state.last[+d.save];saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:x._tower}]});}
   if(d.pin!=null){const x=state.last[+d.pin];state.rules.A.locks=lockList(x.ids,x.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('All 8 cards pinned. Remove the ones to swap, then Forge.');}
   if(d.dcopy!=null){const p=state.lastDuo[+d.dcopy];const k=d.side;copyText(deckText(k==='A'?p.A:p.B,(k==='A'?p.sa:p.sb).forms,p._towers[k==='A'?0:1]),b);}
+  if(d.dshare!=null){ // one message with both decks and both game links, for the teammate
+    const p=state.lastDuo[+d.dshare],N=names();
+    const side=(k,ids,sc,tw)=>N[k]+': '+deckText(ids,sc.forms,tw)+'\n'+(deckLink(orderDeck(ids,sc.forms),tw)||'');
+    const text='2v2 team from Elixir Forge: '+archLabel(p.A)+' with '+archLabel(p.B)+'\n\n'+side('A',p.A,p.sa,p._towers[0])+'\n\n'+side('B',p.B,p.sb,p._towers[1])+(/^https?:/.test(location.protocol)?'\n\nBuild your own: '+location.origin+location.pathname:'');
+    if(navigator.share)navigator.share({title:'Elixir Forge 2v2 team',text}).catch(err=>{if(err&&err.name!=='AbortError')copyText(text,b);});
+    else copyText(text,b);
+  }
   if(d.dsave!=null){const p=state.lastDuo[+d.dsave];const N=names();saveEntry({at:Date.now(),mode:'duo',title:archLabel(p.A)+' with '+archLabel(p.B),w:0,l:0,decks:[{key:'A',who:N.A,ids:p.A,specials:p.sa.forms.specials,empty:p.sa.forms.empty,tower:p._towers[0]},{key:'B',who:N.B,ids:p.B,specials:p.sb.forms.specials,empty:p.sb.forms.empty,tower:p._towers[1]}]});}
   if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
   if(d.mcopy!=null||d.mpin!=null){
