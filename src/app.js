@@ -536,7 +536,7 @@ function duoReportHTML(p,N){
       <h3>${esc(N.A)}'s deck</h3>${barsHTML(deckRatings(p.A))}<h3>${esc(N.B)}'s deck</h3>${barsHTML(deckRatings(p.B))}</div>
     <div class="rcol"><h3>Team answers to popular win conditions</h3>${winAnswersHTML([{ids:p.A},{ids:p.B}])}</div></div>`;
 }
-const scoreBtn=(num,label)=>`<button class="score scorebtn" type="button" data-report="1" aria-expanded="false" title="Show the breakdown"><span class="num">${num}</span><small>${label}</small><small class="more">Breakdown</small></button>`;
+const scoreBtn=(num,label)=>`<button class="score scorebtn" type="button" data-report="1" aria-expanded="false" title="Show the breakdown" style="--v:${num}"><span class="ring"><span class="num">${num}</span></span><small>${label}</small><small class="more">Breakdown</small></button>`;
 document.addEventListener('click',e=>{const b=e.target.closest('[data-report]');if(!b)return;const r=b.closest('.deck').querySelector('.report');if(!r)return;r.hidden=!r.hidden;b.setAttribute('aria-expanded',String(!r.hidden));});
 
 /* ---------- tiles ---------- */

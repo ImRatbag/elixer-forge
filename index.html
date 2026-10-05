@@ -558,11 +558,59 @@ input::placeholder{font-weight:500;color:var(--muted);opacity:.75}
   .panel{padding:18px 16px}
 }
 
+/* score ring: the number sits inside a gold arc filled to the score */
+.scorebtn{justify-items:center;padding:10px 14px 8px;gap:1px;min-width:92px}
+.scorebtn .ring{--t:color-mix(in srgb,var(--fg) 10%,transparent);width:62px;height:62px;border-radius:50%;display:grid;place-items:center;margin-bottom:3px;
+  background:radial-gradient(closest-side,var(--sunk) 82%,transparent 84% 100%),conic-gradient(from 180deg,var(--action-lo),var(--action-hi) calc(var(--v,0)*1%),var(--t) 0)}
+.scorebtn .ring .num{font-size:24px;line-height:1}
+.scorebtn small{text-align:center}
+.scorebtn .more{justify-content:center}
+@media (max-width:540px){.scorebtn{min-width:86px;padding:8px 10px 6px}.scorebtn .ring{width:54px;height:54px}.scorebtn .ring .num{font-size:21px}.dtitle{min-height:104px;padding-right:104px}}
+/* fine grain over the page so large dark areas don't look flat */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.05;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+.wrap{position:relative;z-index:1}
+/* strengths and weaknesses as two tinted cards */
+.pc{gap:12px}
+.pc>div{border:1px solid var(--line);border-radius:14px;padding:14px;background:color-mix(in srgb,var(--fg) 3%,transparent)}
+.pc>div:has(h3.good){background:color-mix(in srgb,var(--good) 7%,transparent);border-color:color-mix(in srgb,var(--good) 28%,transparent)}
+.pc>div:has(h3.bad){background:color-mix(in srgb,var(--bad) 7%,transparent);border-color:color-mix(in srgb,var(--bad) 28%,transparent)}
+.pc h3{margin-bottom:10px}
+.pc ul{gap:10px;font-size:13.5px;line-height:1.45}
+.synbreak{font-size:12.5px;color:var(--muted);line-height:1.5}
+.why[open]>summary{margin-bottom:12px}
+/* phone header: brand and mode switch share the first row */
+@media (max-width:640px){
+  .top{gap:10px 12px;padding-block:16px 14px}
+  .brand{flex:1;min-width:0}
+  .brand p{display:none}
+  .brand svg{width:34px;height:34px}
+  .datachip{order:3}
+}
+.foot p:first-child{color:var(--fg);opacity:.8}
+.who .dn{flex:1 1 55%}
+.who>span:not(.tag):not(.dn):not(.role){font-size:12.5px}
+/* a hairline between the two decks of a pair, and a gold edge on the top result */
+@container (min-width:700px){.pair{position:relative}.pair::before{content:"";position:absolute;left:50%;top:6px;bottom:6px;width:1px;background:linear-gradient(180deg,transparent,var(--line2) 18%,var(--line2) 82%,transparent)}}
+#out>.deck:first-of-type{border-color:color-mix(in srgb,var(--action) 34%,var(--line));box-shadow:var(--shadow),0 0 0 1px color-mix(in srgb,var(--action) 10%,transparent),0 30px 60px -40px color-mix(in srgb,var(--action) 55%,transparent)}
+.wl{padding-top:12px;border-top:1px solid var(--line)}
+.toast{color:var(--bg)}
+/* collection sheet: never wider than the screen; its tabs scroll inside it */
+.sheet{grid-template-columns:minmax(0,1fr)}
+.sheet>*{min-width:0}
+.sheet .tabs,.sheet .tabs:not(#x){width:auto;max-width:calc(100% - 32px);margin:0 16px 6px;border-radius:999px;border:1px solid var(--line);padding:4px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+.sheet .tabs::-webkit-scrollbar{display:none}
+.sheet .tabs button{flex:none}
+@media (max-width:540px){.overlay{padding:8px}.sheet{border-radius:20px;max-height:calc(100vh - 16px)}.ogrid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}}
+@media (max-width:360px){.cap{font-size:9px;letter-spacing:0}.grid8.pics{padding:9px 7px 5px;gap:4px 5px}.deck{padding:16px 13px}}
+.player .btns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:360px){.player .btns .btn{font-size:12.5px;padding:9px 4px}.player{padding:12px}}
+.sheet .tabs,.sheet .tabs:not(#x){margin:0 0 4px;max-width:100%}
+
 </style>
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3c6 8 12 14 12 21a12 12 0 0 1-24 0C8 17 14 11 20 3z" fill="var(--elixir)"/><path d="M15 25a5 5 0 0 0 5 5" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round" opacity=".8"/></svg>
+      <svg viewBox="0 0 44 44" aria-hidden="true"><defs><linearGradient id="lg-drop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8be9"/><stop offset=".55" stop-color="#e24fd0"/><stop offset="1" stop-color="#9a22a0"/></linearGradient><linearGradient id="lg-ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe392"/><stop offset="1" stop-color="#e2a019"/></linearGradient></defs><circle cx="22" cy="22" r="20.5" fill="none" stroke="url(#lg-ring)" stroke-width="1.6" opacity=".9"/><path d="M22 7.5c5.2 7 10 12 10 17.6a10 10 0 0 1-20 0c0-5.600 4.800-10.600 10-17.600z" fill="url(#lg-drop)"/><path d="M17.200 25.800a5 5 0 0 0 4.600 4.600" stroke="#fff" stroke-width="2.200" fill="none" stroke-linecap="round" opacity=".85"/></svg>
       <div><h1>Elixir Forge</h1><p>Clash Royale decks built from the cards you actually own</p></div>
     </div>
     <div class="seg" role="group" aria-label="Game mode">
@@ -2166,7 +2214,7 @@ function duoReportHTML(p,N){
       <h3>${esc(N.A)}'s deck</h3>${barsHTML(deckRatings(p.A))}<h3>${esc(N.B)}'s deck</h3>${barsHTML(deckRatings(p.B))}</div>
     <div class="rcol"><h3>Team answers to popular win conditions</h3>${winAnswersHTML([{ids:p.A},{ids:p.B}])}</div></div>`;
 }
-const scoreBtn=(num,label)=>`<button class="score scorebtn" type="button" data-report="1" aria-expanded="false" title="Show the breakdown"><span class="num">${num}</span><small>${label}</small><small class="more">Breakdown</small></button>`;
+const scoreBtn=(num,label)=>`<button class="score scorebtn" type="button" data-report="1" aria-expanded="false" title="Show the breakdown" style="--v:${num}"><span class="ring"><span class="num">${num}</span></span><small>${label}</small><small class="more">Breakdown</small></button>`;
 document.addEventListener('click',e=>{const b=e.target.closest('[data-report]');if(!b)return;const r=b.closest('.deck').querySelector('.report');if(!r)return;r.hidden=!r.hidden;b.setAttribute('aria-expanded',String(!r.hidden));});
 
 /* ---------- tiles ---------- */
