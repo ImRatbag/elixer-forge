@@ -715,6 +715,11 @@ body{background:radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--
 .duodeck .actions .btn{overflow:hidden}
 .duodeck .actions .btn.primary{font-size:12.5px;padding-inline:8px}
 .status:empty,#welcomeslot:empty{display:none}
+/* light theme: softer gold edge and tray depth */
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) #out>.deck:first-of-type{border-color:color-mix(in srgb,var(--action-lo) 30%,var(--line))}
+  :root:not([data-theme="dark"]) .grid8.pics{box-shadow:0 2px 8px rgba(15,35,80,.12) inset}
+  :root:not([data-theme="dark"]) .report{box-shadow:0 2px 8px rgba(15,35,80,.08) inset}
+  :root:not([data-theme="dark"]) body::before{opacity:.035}}
 
 </style>
 <div class="wrap">

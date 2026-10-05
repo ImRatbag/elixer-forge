@@ -46,6 +46,10 @@ Netlify or Cloudflare work too; only the two files in `api/` need adapting to th
 - **Privacy:** the app stores collections only in the visitor's browser. Tag lookups send the tag to your server and Supercell's API. If you ever add accounts or emails, publish a privacy policy and handle younger players properly (PIPEDA in Canada, COPPA for US users).
 - **RoyaleAPI data:** the ratings bundled in `src/data.js` were read from RoyaleAPI's public pages on Sept 30, 2026. Once the weekly refresh runs, the app uses your own data from Supercell's API instead. Ask RoyaleAPI (<https://royaleapi.com/business-inquiries>) before using their data commercially.
 
+## Design
+
+The look lives in `src/styles.css`. Colours, type and shadows are tokens at the top (`:root`, with a dark set under `prefers-color-scheme`), so a rebrand is a matter of changing those. Type is Outfit (headings and numbers), Manrope (text) and Lilita One (the wordmark), loaded from Google Fonts in `src/shell.html`. Gold is reserved for the primary action, the selected state and scores.
+
 ## Keeping it current
 
 - New card: add a row to `RAW` in `src/data.js` (id, name, elixir, type, role tags, ratings), its official ID to `CARD_IDS`, then `python3 build.py`. The comment at the top of `RAW` explains the role letters.
