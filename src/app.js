@@ -737,7 +737,7 @@ function renderMeta(){
         <div class="score"><span class="num" style="color:var(--good)">${d.wr==null?'n/a':d.wr+'%'}</span><small>Win rate${d.games?', '+d.games+' games':''}</small></div></div>
       ${reportHTML({...sc,ids},showScore(sc.s),duo)}
       ${tilesHTML(ids,sc.forms,null)}${notes}
-      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
+      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-medit="${i}">Check with my cards</button><button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
     </article>`;}).join('');
 }
 
@@ -751,7 +751,7 @@ function renderSaved(){
     return `<article class="deck"><div class="dhead"><div><h2 class="dtitle">${esc(s.title)}</h2><div class="dmeta"><span>${s.mode==='duo'?'2v2 pair':'1v1'}</span><span>Saved ${new Date(s.at).toLocaleDateString()}</span></div></div>
       <div class="score"><span class="num">${total?Math.round(s.w/total*100)+'%':'–'}</span><small>${total?s.w+' W, '+s.l+' L':'No games logged'}</small></div></div>
       <div class="${s.mode==='duo'?'pair':'solo'}">${s.decks.map(dk=>`<div class="${s.mode==='duo'?'duodeck':'solodeck'} ${dk.key==='B'?'b':''}">${s.mode==='duo'?`<p class="who"><span class="tag">${esc(dk.who)}</span></p>`:''}${tilesHTML(dk.ids,{specials:dk.specials,empty:dk.empty||0},null)}<div class="actions">${linkBtn(dk.ids,{specials:dk.specials},dk.tower)}<button class="btn sm" type="button" data-scopy="${i}" data-d="${s.decks.indexOf(dk)}">Copy list</button></div></div>`).join('')}</div>
-      <div class="actions wl"><button class="btn" type="button" data-win="${i}">Log a win</button><button class="btn" type="button" data-loss="${i}">Log a loss</button><button class="btn" type="button" data-del="${i}">Delete</button></div>
+      <div class="actions wl"><button class="btn" type="button" data-win="${i}">Log a win</button><button class="btn" type="button" data-loss="${i}">Log a loss</button><button class="btn" type="button" data-sedit="${i}">Edit</button><button class="btn" type="button" data-del="${i}">Delete</button></div>
     </article>`;}).join('');
 }
 
@@ -938,6 +938,7 @@ function renderUnlock(){
       <p class="hint">Tested the ${r.rows.length} strongest of ${r.missing} missing Evos and Heroes. Scores come from a quick search, so a difference of a point or two is noise.</p>`;
     }
   }
+  if(p.source!=='unset'&&cand.missing&&!u.result&&!u.busy&&u.auto!==p.id+state.mode){u.auto=p.id+state.mode;setTimeout(runUnlock,0);}
   $('out').innerHTML=`<section class="panel"><h2>What to unlock next</h2>
     <p class="hint">Finds the Evos and Heroes ${esc(p.name)} doesn't own yet that would improve their best ${duo?'2v2':'1v1'} deck the most.</p>${body}</section>`;
   setStatus('');
@@ -982,6 +983,7 @@ $('out').addEventListener('click',e=>{
   }
   if(d.dsave!=null){const p=state.lastDuo[+d.dsave];const N=names();saveEntry({at:Date.now(),mode:'duo',title:archLabel(p.A)+' with '+archLabel(p.B),w:0,l:0,decks:[{key:'A',who:N.A,ids:p.A,specials:p.sa.forms.specials,empty:p.sa.forms.empty,tower:p._towers[0]},{key:'B',who:N.B,ids:p.B,specials:p.sb.forms.specials,empty:p.sb.forms.empty,tower:p._towers[1]}]});}
   if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
+  if(d.medit!=null){const x=(state.mode==='duo'?META2:META)[+d.medit];startEdit(x.cards.map(c=>c.split(':')[0]),null,null);return;}
   if(d.mcopy!=null||d.mpin!=null){
     const list=state.mode==='duo'?META2:META;const x=list[+(d.mcopy??d.mpin)];
     const order=x.cards.map(c=>{const[a,f]=c.split(':');return{id:a,form:f||(isChamp(C[a])?'champ':null)};});
@@ -990,7 +992,10 @@ $('out').addEventListener('click',e=>{
   }
   if(d.scopy!=null){const s=state.saved[+d.scopy],dk=s.decks[+d.d];copyText(deckText(dk.ids,{specials:dk.specials},dk.tower),b);}
   if(d.win!=null||d.loss!=null){const s=state.saved[+(d.win??d.loss)];d.win!=null?s.w++:s.l++;store.set('ef2-saved',state.saved);renderSaved();}
-  if(d.del!=null){state.saved.splice(+d.del,1);store.set('ef2-saved',state.saved);renderSaved();toast('Deleted');}
+  if(d.sedit!=null){const x=state.saved[+d.sedit];startEdit(x.decks[0].ids,x.decks[1]?x.decks[1].ids:null,null);return;}
+  if(d.del!=null){const gone=state.saved.splice(+d.del,1)[0],at=+d.del;store.set('ef2-saved',state.saved);renderSaved();
+    const t=$('toast');t.innerHTML='Deleted <button type="button" class="undo">Undo</button>';t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,6000);
+    t.querySelector('.undo').onclick=()=>{state.saved.splice(Math.min(at,state.saved.length),0,gone);store.set('ef2-saved',state.saved);t.hidden=true;if(state.view==='saved')renderSaved();};}
 });
 
 /* ---------- tabs and mode ---------- */
