@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
     if (q.summary) {
       // How the live numbers would move the built-in 1v1 ratings (same formula as the app's statPower).
       const TABLE = require('./_table.json'), byId = new Map(TABLE.map(c => [String(c.id), c]));
-      const power = st => { if (!st || !st.games) return null; const r = 50 + 2.7 * (st.wins / st.games * 100 - 50) + 6 * Math.log10(1 + (st.usage || 0)); const u = st.usage == null ? 3 : st.usage; return Math.max(1, Math.min(10, Math.round((50 + (r - 50) * u / (u + 3) - 36) / 2.2))); };
+      const power = st => { if (!st || !st.games) return null; const wr = (st.wins + 25) / (st.games + 50) * 100; return Math.max(1, Math.min(10, Math.round(5 + Math.max(-2.5, Math.min(2.5, 0.25 * (wr - 50))) + 1.9 * Math.log10(1 + (st.usage || 0))))); };
       const movers = [], dist = {};
       for (const [id, c] of Object.entries(agg.ranked.cards)) {
         const t = byId.get(id); if (!t) continue; const lp = power(c.base); dist[lp] = (dist[lp] || 0) + 1;
