@@ -2,7 +2,8 @@
 and index.html (a complete document for any static host such as Vercel)."""
 import pathlib
 root=pathlib.Path(__file__).parent;src=root/'src'
-shell=(src/'shell.html').read_text()
+import datetime
+shell=(src/'shell.html').read_text().replace('/*BUILD*/',datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-4))).strftime('%b %-d, %-I:%M %p'))
 page=(shell.replace('/*STYLE*/',(src/'styles.css').read_text())
           .replace('/*ENGINE*/',(src/'data.js').read_text()+'\n'+(src/'engine.js').read_text())
           .replace('/*APP*/',(src/'app.js').read_text()))

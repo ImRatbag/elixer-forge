@@ -61,6 +61,8 @@ function loadRules(){const v=store.get('ef2-rules',null);if(!v)return;
     r.locks=(x.locks||[]).filter(l=>l&&C[l.id]).slice(0,8);r.exclude=new Map((x.exclude||[]).filter(e=>Array.isArray(e)&&C[e[0]]));
     if(STYLE_OPTS.some(o=>o[0]===x.style))r.style=x.style;if(['flex','attack','defend'].includes(x.role))r.role=x.role;if(x.tower==='auto'||TOWER[x.tower])r.tower=x.tower;}}
 
+window.addEventListener('unhandledrejection',e=>{try{toast('Something went wrong. Try again, or reload the page.');}catch(_){}});
+
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
@@ -297,7 +299,7 @@ $('players').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id&&e.t
 
 /* ---------- collection editor ---------- */
 let editor=null;
-function openEditor(key){editor={key,tab:'evo',q:''};renderEditor();$('sheet').hidden=false;setTimeout(()=>{const s=$('ed-search');if(s)s.focus();},30);}
+function openEditor(key){editor={key,tab:'evo',q:''};renderEditor();$('sheet').hidden=false;if(matchMedia('(hover:hover) and (pointer:fine)').matches)setTimeout(()=>{const s=$('ed-search');if(s)s.focus();},30);}
 function closeSheet(){$('sheet').hidden=true;$('sheet').innerHTML='';editor=null;renderPlayers();}
 function editorItems(){
   const p=prof(editor.key),cs=colSets(p);const q=editor.q.toLowerCase();
@@ -842,7 +844,7 @@ $('out').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset,ck=state.check;
   if(d.edit!=null){const x=state.last[+d.edit];startEdit(x.ids,null,showScore(x.s));return;}
   if(d.dedit!=null){const p=state.lastDuo[+d.dedit];startEdit(p.A,p.B,teamShown(p));return;}
-  if(d.chkrm!=null){(d.side==='b'?ck.idsB:ck.ids).splice(+d.chkrm,1);ck.result=null;renderCheck();const i=$('chk'+(d.side||''));if(i)i.focus();}
+  if(d.chkrm!=null){(d.side==='b'?ck.idsB:ck.ids).splice(+d.chkrm,1);ck.result=null;renderCheck();const i=$('chk'+(d.side||''));if(i&&matchMedia('(hover:hover) and (pointer:fine)').matches)i.focus();}
   if(d.chkclear){ck.ids=[];if(ck.idsB)ck.idsB=[];ck.base=null;ck.result=null;renderCheck();}
   if(d.chkteam){ck.idsB=[];ck.base=null;ck.result=null;renderCheck();}
   if(d.chksolo){ck.idsB=null;ck.base=null;ck.result=null;if(checkReady())runCheck();else renderCheck();}
@@ -1013,7 +1015,7 @@ function setView(v,quiet){
   else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
 }
 function rerender(){setView(state.view);}
-['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
+['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>{setView(x);const t=document.querySelector('main .tabs');if(t&&t.getBoundingClientRect().top<0)t.scrollIntoView({block:'start'});$('tab-'+x).scrollIntoView({block:'nearest',inline:'center'});}));
 function setMode(m){
   state.mode=m;store.set('ef2-mode',m);
   if(typeof setDataNote==='function'&&setDataNote.last)setDataNote(...setDataNote.last);
