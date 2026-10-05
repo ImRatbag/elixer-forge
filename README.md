@@ -10,6 +10,7 @@ Clash Royale deck builder for 1v1 and 2v2 that builds from each player's **real 
 - **Check a deck**: score any 8 cards (or a loaded player's current deck) and get the best single swaps.
 - **Player decks**: the decks any player used in their most recent battles (`api/battles.js`). To feature a creator, put their player tag in `CREATORS` in `src/data.js` and rebuild; the tab is then named after them.
 - **Edit a deck or team**: press Edit on any forged deck or pair, swap cards and watch the score change.
+- **Backup code** (Saved tab): moves players, collections and saved decks to another device.
 - **Unlock next**: which missing Evo or Hero would lift a player's best deck the most.
 - **Send to teammate** and links like `?a=TAG&b=TAG` that open the site with both players loaded.
 - 1v1 ratings and top decks refresh daily from Supercell's official API (top players' recent battles).
