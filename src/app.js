@@ -30,7 +30,7 @@ Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TO
 
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
-const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],result:null,busy:false},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
@@ -94,7 +94,7 @@ async function lookupTag(key,raw){
     (j.towers||[]).forEach(t=>{const x=TOWERS.find(y=>y.name===t.name);if(x&&t.id)x.tid=t.id;});
     store.set('ef2-towerids',Object.fromEntries(TOWERS.map(t=>[t.id,t.tid])));
     const towers=(j.towers||[]).map(t=>TOWERS.find(x=>x.tid===t.id||x.name===t.name)).filter(Boolean).map(t=>t.id);
-    p.col={base,evo,hero,towers:towers.length?towers:['tower-princess']};p.levels=levels;p.tag=tag;p.source='tag';p.updated=Date.now();
+    p.col={base,evo,hero,towers:towers.length?towers:['tower-princess']};p.levels=levels;p.tag=tag;p.source='tag';p.updated=Date.now();p.trophies=j.trophies??null;p.current=(j.currentDeck||[]).map(i=>ID_TO_CARD[i]).filter(k=>k&&C[k]);
     if(/^Player \d$/.test(p.name)||!p.name)p.name=j.name||p.name;
     saveProfiles();renderPlayers();setStatus('Loaded '+j.name+': '+base.length+' cards, '+evo.length+' Evos, '+hero.length+' Heroes.');
   }catch(e){showErr(e.message||'Lookup failed. Check the tag and try again.');setStatus('');}
@@ -109,7 +109,7 @@ function relTime(t){const m=Math.round((Date.now()-t)/60000);if(m<2)return'just 
 /* ---------- player cards ---------- */
 function meter(cls,label,have,total){const pct=total?Math.round(have/total*100):0;return `<div class="meter ${cls}"><span>${label}</span><span class="bar"><i style="width:${pct}%"></i></span><b>${have}/${total}</b></div>`;}
 function sourceLine(p){
-  if(p.source==='tag')return `<div class="source">Collection from player tag #${esc(p.tag)}, updated ${relTime(p.updated)}.</div>`;
+  if(p.source==='tag')return `<div class="source">Collection from player tag #${esc(p.tag)}${p.trophies!=null?', '+Number(p.trophies).toLocaleString()+' trophies':''}, updated ${relTime(p.updated)}.</div>`;
   if(p.source==='code')return `<div class="source">Collection from a share code, updated ${relTime(p.updated)}.</div>`;
   if(p.source==='manual')return `<div class="source">Collection set up by hand, updated ${relTime(p.updated)}.</div>`;
   return `<div class="source warn">Collection not set up yet, so decks assume this player owns every Evo and Hero.</div>`;
@@ -178,11 +178,12 @@ function renderChips(key){
 
 /* card search pickers (delegated so they survive re-renders) */
 function pickerMatches(q,taken){q=q.trim().toLowerCase();if(!q)return[];return CARDS.filter(c=>!taken(c.id)&&c.name.toLowerCase().includes(q)).slice(0,9);}
-function renderMatches(list,m){list.innerHTML=m.length?m.map(c=>`<li><button type="button" data-id="${c.id}"><b>${esc(c.name)}</b><span class="hint">${c.e} elixir</span><span class="forms">${formsOf(c).map(f=>`<span class="badge ${f}">${formLabel[f]}</span>`).join('')}</span></button></li>`).join(''):'<li class="hint" style="padding:7px 8px">No matching card</li>';list.hidden=false;}
-function pickerTaken(inp){const t=inp.dataset.picker,k=inp.dataset.key;if(t==='vs')return id=>state.vs.includes(id);const r=state.rules[k];return t==='inc'?id=>r.locks.some(l=>l.id===id):id=>r.exclude.has(id);}
+function renderMatches(list,m){list.innerHTML=m.length?m.map(c=>`<li><button type="button" data-id="${c.id}">${artImg(c.id,null,'mart')}<b>${esc(c.name)}</b><span class="hint">${c.e} elixir</span><span class="forms">${formsOf(c).map(f=>`<span class="badge ${f}">${formLabel[f]}</span>`).join('')}</span></button></li>`).join(''):'<li class="hint" style="padding:7px 8px">No matching card</li>';list.hidden=false;}
+function pickerTaken(inp){const t=inp.dataset.picker,k=inp.dataset.key;if(t==='vs')return id=>state.vs.includes(id);if(t==='chk')return id=>state.check.ids.includes(id);const r=state.rules[k];return t==='inc'?id=>r.locks.some(l=>l.id===id):id=>r.exclude.has(id);}
 function pickerPick(inp,id){
   const t=inp.dataset.picker,k=inp.dataset.key;
   if(t==='vs'){if(state.vs.length>=8){toast('Their deck already has 8 cards');return;}state.vs.push(id);renderVs();return;}
+  if(t==='chk'){if(state.check.ids.length>=8){toast('That deck already has 8 cards');return;}state.check.ids.push(id);state.check.result=null;renderCheck();setTimeout(()=>{const i=$('chk');if(i)i.focus();},0);return;}
   const r=state.rules[k];
   if(t==='inc'){if(r.locks.length>=8){showErr('A deck holds 8 cards. Remove one before adding another.');return;}r.locks.push({id,form:'any'});if(r.exclude.get(id)==='all')r.exclude.delete(id);}
   else{r.exclude.set(id,'all');r.locks=r.locks.filter(l=>l.id!==id);}
@@ -601,6 +602,78 @@ function renderSaved(){
     </article>`;}).join('');
 }
 
+/* ---------- Check a deck: score any 8 cards against this player's collection and suggest the best single swaps ---------- */
+const showScore=s=>Math.max(1,Math.min(99,Math.round(s*0.82)));
+function miniCard(id,form){const a=ART[id];return a?`<img class="mini" src="${esc(form==='evo'?a.evo:form==='hero'?a.hero:a.base)}" alt="" loading="lazy" onerror="this.remove()">`:'';}
+function renderCheck(){
+  const p=prof('A'),ck=state.check,cur=(p.current||[]).filter(i=>C[i]);
+  const chips=ck.ids.map((id,i)=>`<span class="chip">${miniCard(id)}${esc(C[id].name)}<button type="button" aria-label="Remove ${esc(C[id].name)}" data-chkrm="${i}">✕</button></span>`).join('');
+  let res='';
+  if(ck.busy)res='<p class="status">Checking the deck and trying swaps…</p>';
+  else if(ck.result&&ck.result.error)res=`<p class="err">${esc(ck.result.error)}</p>`;
+  else if(ck.result){
+    const d=ck.result.deck,t=towerFor('A',d,d.ids,false),pc=prosCons(d),sy=d.syn.parts,li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;
+    const lv=$('levelmatch').checked?p.levels:null;
+    const swaps=ck.result.swaps;
+    res=`<article class="deck">
+      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
+        <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span></div></div>
+        <div class="score"><span class="num">${showScore(d.s)}</span><small>Forge score</small></div></div>
+      ${tilesHTML(d.ids,d.forms,lv)}${towerHTML(t)}
+      ${d.forms.empty?`<p class="source warn">${d.forms.empty} of the 3 special slots ${d.forms.empty>1?'are':'is'} empty: this deck doesn't have enough Evo, Hero or Champion cards that ${esc(p.name)} owns. That is the biggest thing holding the score down.</p>`:''}
+      <div class="swaps"><h3>Best single swaps</h3>
+        ${swaps.length?`<ul>${swaps.map((x,i)=>`<li>${miniCard(x.out)}<span class="arrow" aria-hidden="true">›</span>${miniCard(x.in,x.inForm)}<span class="swtxt"><b>Swap ${esc(C[x.out].name)} for ${esc(displayName(x.in,x.inForm))}</b><span>Forge score ${showScore(d.s)} to ${showScore(x.s)}</span></span><button class="btn sm" type="button" data-chkswap="${i}">Apply</button></li>`).join('')}</ul>`:'<p class="hint">No single swap from this collection scores higher. This deck is already well tuned for the cards owned.</p>'}
+      </div>
+      <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-chksave="1">Save</button></div>
+      <details class="why"><summary>Why it scores this way</summary>
+        <p class="synbreak">Synergy ${d.synPct}%: combos ${sy.combo}%, win condition support ${sy.wc}%, role coverage ${sy.cov}%, shared-weakness check ${sy.weak}%.</p>
+        <div class="pc"><div><h3 class="good">Strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
+      </details></article>`;
+  }
+  $('out').innerHTML=`<section class="panel checkbox">
+      <h2>Check a deck</h2>
+      <p class="hint">Add any 8 cards to see how the deck scores with ${esc(p.name)}'s collection, and which single swaps would improve it.</p>
+      ${cur.length===8?`<div><button class="btn" type="button" data-chkcur="1">Use ${esc(p.name)}'s current deck</button></div>`:(state.api&&p.source!=='tag'?'<p class="hint">Load a player tag to check that player\'s current deck in one tap.</p>':'')}
+      <div class="field picker"><label class="lbl" for="chk">Cards (${ck.ids.length} of 8)</label>
+        <input id="chk" type="search" placeholder="Type a card name" autocomplete="off" data-picker="chk" ${ck.ids.length>=8?'disabled':''}>
+        <ul class="matches" id="chk-matches" hidden></ul><div class="chips">${chips}</div></div>
+      <div class="btns"><button class="btn primary" type="button" data-chkgo="1" ${ck.ids.length===8&&!ck.busy?'':'disabled'}>Check deck</button>${ck.ids.length?'<button class="btn" type="button" data-chkclear="1">Clear</button>':''}</div>
+    </section>${res}`;
+  setStatus('');
+}
+async function runCheck(){
+  const ck=state.check,ids=ck.ids.slice();if(ids.length!==8||ck.busy)return;
+  if(ids.filter(i=>isChamp(C[i])).length>1){ck.result={error:'A deck can hold only one Champion. Remove one and check again.'};renderCheck();return;}
+  ck.busy=true;ck.result=null;renderCheck();
+  try{
+    const so=sideOpts('A');
+    const base={...so,locked:ids,forms:{},style:'any',exclude:new Set([...so.exclude].filter(x=>!ids.includes(x))),maxAvg:9,count:1,maxChamps:1,vs:state.vs.length?state.vs.slice():null,levelW:$('levelmatch').checked?1:0};
+    const cur=(await runJob('gen',base))[0];
+    if(!cur){ck.result={error:'That combination can\'t be scored. Check that it has 8 different cards.'};}
+    else{
+      const swaps=[];
+      for(let i=0;i<8;i++){
+        const r=(await runJob('gen',{...base,locked:ids.filter((_,j)=>j!==i),exclude:new Set([...so.exclude,ids[i]].filter(x=>x===ids[i]||!ids.includes(x))),maxAvg:Math.max(cur.avg+0.4,4.3)}))[0];
+        if(!r)continue;const inn=r.ids.find(x=>!ids.includes(x));
+        if(inn&&showScore(r.s)>showScore(cur.s)){const sp=r.forms.specials.find(x=>x.id===inn);swaps.push({out:ids[i],in:inn,inForm:sp?sp.form:null,s:r.s,ids:r.ids});}
+      }
+      swaps.sort((a,b)=>b.s-a.s);
+      const seen=new Set();
+      ck.result={deck:cur,swaps:swaps.filter(x=>!seen.has(x.in)&&seen.add(x.in)).slice(0,3)};
+    }
+  }catch(e){ck.result={error:'The check hit an error: '+e.message};}
+  ck.busy=false;if(state.view==='check')renderCheck();
+}
+$('out').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset,ck=state.check;
+  if(d.chkrm!=null){ck.ids.splice(+d.chkrm,1);ck.result=null;renderCheck();}
+  if(d.chkclear){ck.ids=[];ck.result=null;renderCheck();}
+  if(d.chkcur){ck.ids=(prof('A').current||[]).filter(i=>C[i]).slice(0,8);ck.result=null;runCheck();}
+  if(d.chkgo)runCheck();
+  if(d.chkswap!=null&&ck.result&&ck.result.swaps){const x=ck.result.swaps[+d.chkswap];ck.ids=ck.ids.map(i=>i===x.out?x.in:i);runCheck();}
+  if(d.chksave&&ck.result&&ck.result.deck){const x=ck.result.deck;const t=towerFor('A',x,x.ids,false);saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:t.id}]});}
+});
+
 /* ---------- result actions ---------- */
 function lockList(ids,forms){return orderDeck(ids,forms).map(o=>({id:o.id,form:o.form==='evo'?'evo':o.form==='hero'?'hero':isChamp(C[o.id])?'any':'normal'}));}
 $('out').addEventListener('click',e=>{
@@ -612,7 +685,7 @@ $('out').addEventListener('click',e=>{
   if(d.dshare!=null){ // one message with both decks and both game links, for the teammate
     const p=state.lastDuo[+d.dshare],N=names();
     const side=(k,ids,sc,tw)=>N[k]+': '+deckText(ids,sc.forms,tw)+'\n'+(deckLink(orderDeck(ids,sc.forms),tw)||'');
-    const text='2v2 team from Elixir Forge: '+archLabel(p.A)+' with '+archLabel(p.B)+'\n\n'+side('A',p.A,p.sa,p._towers[0])+'\n\n'+side('B',p.B,p.sb,p._towers[1])+(/^https?:/.test(location.protocol)?'\n\nBuild your own: '+location.origin+location.pathname:'');
+    const text='2v2 team from Elixir Forge: '+archLabel(p.A)+' with '+archLabel(p.B)+'\n\n'+side('A',p.A,p.sa,p._towers[0])+'\n\n'+side('B',p.B,p.sb,p._towers[1])+(/^https?:/.test(location.protocol)?'\n\nBuild your own: '+location.origin+location.pathname+(prof('A').tag&&prof('B').tag?'?a='+prof('A').tag+'&b='+prof('B').tag:''):'');
     if(navigator.share)navigator.share({title:'Elixir Forge 2v2 team',text}).catch(err=>{if(err&&err.name!=='AbortError')copyText(text,b);});
     else copyText(text,b);
   }
@@ -631,16 +704,17 @@ $('out').addEventListener('click',e=>{
 
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
-  state.view=v;['gen','meta','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  state.view=v;['gen','meta','check','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
   if(quiet)return;
   if(v==='meta')renderMeta();
+  else if(v==='check')renderCheck();
   else if(v==='saved')renderSaved();
   else if(state.mode==='duo'&&state.lastDuo.length){renderDuo(state.lastDuo);setStatus(state.lastDuo.length+' team pairs');}
   else if(state.mode==='1v1'&&state.last.length){renderDecks(state.last);setStatus(state.last.length+' decks');}
   else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
 }
 function rerender(){setView(state.view);}
-['gen','meta','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
+['gen','meta','check','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
 function setMode(m){
   state.mode=m;store.set('ef2-mode',m);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');
@@ -670,4 +744,22 @@ async function loadMeta(){
 
 /* ---------- start ---------- */
 setMode(state.mode);
-Promise.all([detectApi(),loadMeta()]).then(()=>forge());
+/* Links like ?a=TAG&b=TAG open the site with those players loaded (b is the 2v2 teammate). */
+function slotForTag(key,tag){
+  const cur=prof(key);if(cur.tag===tag||cur.source==='unset')return;
+  let p=profiles.find(x=>x.tag===tag&&x.id!==slots[key==='A'?'B':'A']);
+  if(!p){p=newProfile('Player '+(key==='A'?1:2));profiles.push(p);}
+  slots[key]=p.id;saveProfiles();
+}
+async function loadLinkedTags(){
+  if(!state.api)return;
+  const q=new URLSearchParams(location.search),norm=v=>String(v||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
+  const a=norm(q.get('a')||q.get('tag')),b=norm(q.get('b'));
+  const ok=t=>/^[0289PYLQGRJCUV]{3,14}$/.test(t);
+  if(!ok(a)&&!ok(b))return;
+  if(ok(b))setMode('duo');
+  if(ok(a)){slotForTag('A',a);await lookupTag('A',a);}
+  if(ok(b)&&b!==a){slotForTag('B',b);await lookupTag('B',b);}
+  store.set('ef2-welcomed',true);renderPlayers();
+}
+Promise.all([detectApi().then(loadLinkedTags),loadMeta()]).then(()=>forge());
