@@ -80,6 +80,7 @@ async function loadArt(){
 /* ---------- server detection (tag lookup only works on a deployed copy with the API function) ---------- */
 async function detectApi(){
   try{const r=await fetch('api/health',{cache:'no-store'});if(!r.ok)throw 0;const j=await r.json();state.api=!!j.ok;}catch(e){state.api=false;}
+  document.querySelectorAll('.api-only').forEach(x=>x.hidden=!state.api);
   renderPlayers();
   if(state.api&&await loadArt()){document.documentElement.classList.add('has-art');renderPlayers();if(setDataNote.last)setDataNote(...setDataNote.last);if(state.last.length||state.lastDuo.length)rerender();}
 }
@@ -201,6 +202,23 @@ document.addEventListener('click',e=>{const b=e.target.closest('.matches button[
 
 function renderVs(){$('vs-chips').innerHTML=state.vs.map((id,i)=>`<span class="chip">${esc(C[id].name)}<button type="button" aria-label="Remove ${esc(C[id].name)}" data-vsrm="${i}">✕</button></span>`).join('');}
 $('vs').dataset.picker='vs';
+/* Opponent scouting: fill "their cards" with the deck a player used most recently. */
+async function loadVsTag(){
+  const tag=String($('vstag').value||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
+  if(!/^[0289PYLQGRJCUV]{3,14}$/.test(tag)){toast('That doesn\'t look like a player tag');return;}
+  const b=$('vstag-go');b.disabled=true;
+  try{
+    const r=await fetch('api/battles?tag='+encodeURIComponent(tag));const j=await r.json();
+    if(!r.ok)throw new Error(j.message||'Lookup failed');
+    const d=(j.decks||[]).find(x=>!(x.modes||[]).every(m=>/draft/i.test(m)));
+    const ids=d?d.cards.map(x=>ID_TO_CARD[+String(x).split(':')[0]]).filter(k=>k&&C[k]):[];
+    if(ids.length<6)throw new Error('No recent deck found for that player');
+    state.vs=ids.slice(0,8);renderVs();toast('Loaded '+(j.name||'their')+(j.name?'\'s':'')+' latest deck');
+  }catch(e){toast(e.message||'Lookup failed');}
+  b.disabled=false;
+}
+$('vstag-go').addEventListener('click',loadVsTag);
+$('vstag').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();loadVsTag();}});
 $('vs-chips').addEventListener('click',e=>{const b=e.target.closest('[data-vsrm]');if(b){state.vs.splice(+b.dataset.vsrm,1);renderVs();}});
 
 /* player panel events */
@@ -449,7 +467,7 @@ const clamp100=v=>Math.max(0,Math.min(100,Math.round(v)));
 const nameList=(ids,max)=>{const n=ids.map(i=>C[i].name);return n.length>(max||4)?n.slice(0,max||4).join(', ')+' and '+(n.length-(max||4))+' more':n.join(', ');};
 function deckRatings(ids){
   const cs=ids.map(i=>C[i]),non=ids.filter(i=>C[i].type!=='s');
-  const air=non.filter(i=>has(C[i],'A')),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake','royal-delivery'].includes(i));
+  const air=non.filter(i=>has(C[i],'A')&&C[i].e>1),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake','royal-delivery'].includes(i));
   const splash=non.filter(i=>has(C[i],'S')),small=ids.filter(i=>C[i].type==='s'&&has(C[i],'s'));
   const kill=ids.filter(i=>has(C[i],'K')),bld=ids.filter(i=>C[i].type==='b'&&!has(C[i],'W'));
   const big=ids.filter(i=>C[i].type==='s'&&has(C[i],'F')),tanks=ids.filter(i=>has(C[i],'T')),eq=ids.includes('earthquake');
@@ -472,7 +490,7 @@ function barsHTML(rows){
    a tank, an air hitter against Balloon, a small spell against Goblin Barrel) count as half an answer. */
 function softAnswers(w,ids){
   const c=C[w],non=ids.filter(i=>C[i].type!=='s');
-  if(['balloon','lava-hound','minion-giant'].includes(w))return non.filter(i=>has(C[i],'A'));
+  if(['balloon','lava-hound','minion-giant'].includes(w))return non.filter(i=>has(C[i],'A')&&C[i].e>1);
   if(has(c,'T'))return ids.filter(i=>has(C[i],'K')||(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s'));
   if(['hog-rider','battle-ram','ram-rider','royal-hogs','wall-breakers'].includes(w))return ids.filter(i=>(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s')||has(C[i],'K'));
   if(['goblin-barrel','graveyard','skeleton-barrel','goblin-drill'].includes(w))return ids.filter(i=>(C[i].type==='s'&&has(C[i],'s'))||(C[i].type!=='s'&&has(C[i],'S')));
@@ -496,7 +514,7 @@ function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge sco
   const rows=parts.map(([t,v,why])=>({t,v:Math.round(v*F),why}));
   const k=d.k,gaps=[];
   if(k.wc===0)gaps.push('no win condition');if(k.wc>2)gaps.push('too many win conditions');
-  if(k.air<2)gaps.push('too few cards that hit air');if(k.splash<1)gaps.push('no splash damage');if(k.small<1)gaps.push('no small spell');
+  if(k.air+Math.min(1,(k.airSp||0)*0.5)<2)gaps.push('too little air defence');if(k.splash<1)gaps.push('no splash damage');if(k.small<1)gaps.push('no small spell');
   if(k.big<1)gaps.push('no big spell');if(k.kill<1)gaps.push('no tank killer');if(k.cheap<2)gaps.push('too few cheap cards');
   if(k.spells>3)gaps.push('too many spells');if(k.bld>2)gaps.push('too many buildings');if(d.avg<2.5)gaps.push('very low elixir cost');
   if(d.lv&&d.lv.under&&d.lv.under.length)gaps.push(d.lv.under.length+' under-levelled card'+(d.lv.under.length>1?'s':''));
@@ -815,7 +833,7 @@ function renderCreator(){
   $('out').innerHTML=`<section class="panel">
       <h2>${cr.name?esc(cr.name)+'\'s recent decks':'Player decks'}</h2>
       <p class="hint">Decks from a player's most recent battles, straight from their public battle log (about the last 25 games). ${FEATURED.length?'':'Enter any player tag: a friend, a top player or a creator.'}</p>
-      ${FEATURED.length>1?`<div class="btns">${FEATURED.map(c=>`<button class="btn${cr.tag===c.tag?' primary':''}" type="button" data-crtag="${esc(c.tag)}">${esc(c.name)}</button>`).join('')}</div>`:''}
+      ${(()=>{const seen=new Set(),quick=[...FEATURED.map(c=>({name:c.name,tag:c.tag})),...profiles.filter(x=>x.tag).map(x=>({name:x.name,tag:x.tag}))].filter(x=>!seen.has(x.tag)&&seen.add(x.tag));return quick.length>1?`<div class="btns">${quick.map(c=>`<button class="btn sm${cr.tag===c.tag?' primary':''}" type="button" data-crtag="${esc(c.tag)}">${esc(c.name)}</button>`).join('')}</div>`:'';})()}
       <div class="field"><label class="lbl" for="crtag">Player tag</label>
         <div class="tagrow"><input type="text" id="crtag" placeholder="#2PP" value="${cr.tag?'#'+esc(cr.tag):''}" autocomplete="off" spellcheck="false"><button class="btn" type="button" data-crgo="1">Show decks</button></div></div>
       ${body}

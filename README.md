@@ -56,6 +56,8 @@ Netlify or Cloudflare work too; only the two files in `api/` need adapting to th
 
 On load the app reads Supercell's card list (`api/cards.js`). It takes card and tower troop IDs from it, and switches on any Evo or Hero the game has that the card table doesn't yet, with an estimated rating that the weekly refresh replaces with measured numbers.
 
+`/api/audit` lists any difference between the card table and the live game (empty arrays mean they match), and `/api/audit?tag=TAG` checks a real account's Evo and Hero flags against the table. Run both after a big update.
+
 ## Known limits
 
 - The official API can't show which form a card is equipped in, only what a player owns. The refresh script infers Evo/Hero use from deck slot order (slot 1 Evo, slot 2 Hero/Champion, slot 3 Wild), and skips decks where the API drops a Hero in the Champion slot.

@@ -47,11 +47,13 @@ function assignForms(ids,ctx){
 }
 
 /* ---------- deck scoring ---------- */
+const GROUND_SPELLS=new Set(['the-log','barbarian-barrel','earthquake']);
 function counts(cards){
   const nonSpell=cards.filter(c=>c.type!=='s');
   return{
     wc:cards.filter(c=>has(c,'W')).length,
-    air:nonSpell.filter(c=>has(c,'A')).length,
+    air:nonSpell.filter(c=>has(c,'A')&&c.e>1).length, // 1-elixir spirits touch air but aren't air defence
+    airSp:cards.filter(c=>c.type==='s'&&(has(c,'s')||has(c,'F'))&&!GROUND_SPELLS.has(c.id)).length,
     splash:nonSpell.filter(c=>has(c,'S')).length,
     small:cards.filter(c=>c.type==='s'&&has(c,'s')).length,
     big:cards.filter(c=>c.type==='s'&&has(c,'F')).length,
@@ -121,7 +123,9 @@ function scoreDeck(ids,ctx){
   const clash=wins.length>=2&&!((SYN[sk(wins[0],wins[1])]||{}).w>=2)&&!(ctx.style==='hyperbait'&&wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'));
   const baitPair=wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'||i==='miner');
   if(clash&&!(ctx.style==='hyperbait'&&baitPair))s-=ctx.role==='attack'?5:10;
-  if(k.air<2)s-=10*(2-k.air);else if(k.air>=3)s+=2;
+  // Air cover: troops and buildings that hit air, with damaging air spells standing in for up to one of them.
+  const airEff=k.air+Math.min(1,k.airSp*0.5);
+  if(airEff<2)s-=10*(2-airEff);else if(k.air>=3)s+=2;
   if(k.splash<1)s-=8;
   if(k.small<1)s-=8;
   if(k.big<1&&ctx.style!=='hyperbait')s-=4;
@@ -189,7 +193,7 @@ function addHeur(c,deck,ctx){
   v+=formPot*0.35;
   if(has(c,'W')){if(k.wc===0)v+=6;else if(k.wc>=2)v-=10;else v-=3;
     if(ctx.style!=='any'&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id))v-=8;}
-  if(c.type!=='s'&&has(c,'A')&&k.air<2)v+=3;
+  if(c.type!=='s'&&has(c,'A')&&c.e>1&&k.air<2)v+=3;
   if(c.type!=='s'&&has(c,'S')&&k.splash<1)v+=3;
   if(c.type==='s'&&has(c,'s')&&k.small<1)v+=3;
   if(c.type==='s'&&has(c,'F')&&k.big<1)v+=2;
