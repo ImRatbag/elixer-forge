@@ -250,3 +250,28 @@ input::placeholder{color:var(--muted);opacity:1}
 .swtxt{display:grid;gap:1px;flex:1;min-width:0;font-size:14px}
 .swtxt span{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums}
 .tabs{row-gap:6px}
+
+/* unlock next */
+.unlocks{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.unlocks li{display:flex;align-items:center;gap:12px;background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.unlocks li>.mini{width:48px;height:58px}
+.strip{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px}
+.strip .mini{width:24px;height:29px}
+.gain{font-family:var(--display);font-size:22px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:2.2ch;text-align:right}
+.gain.up{color:var(--good)}
+
+/* single decks: all eight cards in one row when there is room */
+@container (min-width:700px){.deck>.grid8.pics,.solodeck>.grid8.pics{grid-template-columns:repeat(8,minmax(0,1fr));max-width:none}}
+.solo,.solodeck{display:grid;gap:10px;min-width:0}
+.score .num{white-space:nowrap}
+/* tabs scroll sideways on phones instead of stacking */
+@media (max-width:700px){.tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px;-webkit-overflow-scrolling:touch}.tabs::-webkit-scrollbar{display:none}.tabs button{flex:none}}
+/* while a new search runs: placeholder cards the first time, dimmed results after that */
+.skel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;max-width:100%}
+.skel i{display:block;aspect-ratio:5/6;border-radius:10px;background:var(--sunk);animation:pulse 1.1s ease-in-out infinite alternate}
+.skel i:nth-child(2n){animation-delay:.25s}
+@keyframes pulse{from{opacity:.45}to{opacity:1}}
+#out.stale{opacity:.45;transition:opacity .15s}
+@media (prefers-reduced-motion:reduce){.skel i{animation:none}#out.stale{transition:none}}
+.dhead{flex-wrap:nowrap}
+.dhead>div:first-child{flex:1;min-width:0}

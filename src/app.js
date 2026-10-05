@@ -30,7 +30,7 @@ Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TO
 
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
-const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],result:null,busy:false},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],result:null,busy:false},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
@@ -370,6 +370,8 @@ async function forge(){
   if(duo){const a=state.rules.A.locks.map(l=>l.id);const sh=state.rules.B.locks.filter(l=>a.includes(l.id)).length;if(sh>2){showErr('The two decks can share at most 2 cards, but '+sh+' of the same cards are pinned.');return;}}
   const btn=$('go');btn.disabled=true;btn.textContent=duo?'Forging your team…':'Forging decks…';
   setView('gen',true);setStatus(duo?'Searching thousands of team pairs…':'Searching thousands of decks…');
+  if(!(duo?state.lastDuo:state.last).length)$('out').innerHTML='<div class="skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+  else $('out').classList.add('stale');
   const t=performance.now();
   const count=+$('count').value,maxAvg=+$('maxavg').value,vs=state.vs.length?state.vs.slice():null;
   try{
@@ -388,6 +390,7 @@ async function forge(){
       else{setStatus(decks.length+' deck'+(decks.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDecks(decks);}
     }
   }catch(e){showErr('The search hit an error: '+e.message);}
+  $('out').classList.remove('stale');
   btn.disabled=false;btn.textContent=duo?'Forge team':'Forge decks';
 }
 /* Phones: a floating Forge button whenever the main one has scrolled out of view. */
@@ -597,7 +600,7 @@ function renderSaved(){
     const total=s.w+s.l;
     return `<article class="deck"><div class="dhead"><div><h2 class="dtitle">${esc(s.title)}</h2><div class="dmeta"><span>${s.mode==='duo'?'2v2 pair':'1v1'}</span><span>Saved ${new Date(s.at).toLocaleDateString()}</span></div></div>
       <div class="score"><span class="num">${total?Math.round(s.w/total*100)+'%':'–'}</span><small>${total?s.w+' W, '+s.l+' L':'No games logged'}</small></div></div>
-      ${s.decks.map(dk=>`<div class="duodeck ${dk.key==='B'?'b':''}">${s.mode==='duo'?`<p class="who"><span class="tag">${esc(dk.who)}</span></p>`:''}${tilesHTML(dk.ids,{specials:dk.specials,empty:dk.empty||0},null)}<div class="actions">${linkBtn(dk.ids,{specials:dk.specials},dk.tower)}<button class="btn sm" type="button" data-scopy="${i}" data-d="${s.decks.indexOf(dk)}">Copy list</button></div></div>`).join('')}
+      <div class="${s.mode==='duo'?'pair':'solo'}">${s.decks.map(dk=>`<div class="${s.mode==='duo'?'duodeck':'solodeck'} ${dk.key==='B'?'b':''}">${s.mode==='duo'?`<p class="who"><span class="tag">${esc(dk.who)}</span></p>`:''}${tilesHTML(dk.ids,{specials:dk.specials,empty:dk.empty||0},null)}<div class="actions">${linkBtn(dk.ids,{specials:dk.specials},dk.tower)}<button class="btn sm" type="button" data-scopy="${i}" data-d="${s.decks.indexOf(dk)}">Copy list</button></div></div>`).join('')}</div>
       <div class="actions wl"><button class="btn" type="button" data-win="${i}">Log a win</button><button class="btn" type="button" data-loss="${i}">Log a loss</button><button class="btn" type="button" data-del="${i}">Delete</button></div>
     </article>`;}).join('');
 }
@@ -674,6 +677,61 @@ $('out').addEventListener('click',e=>{
   if(d.chksave&&ck.result&&ck.result.deck){const x=ck.result.deck;const t=towerFor('A',x,x.ids,false);saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:t.id}]});}
 });
 
+/* ---------- Unlock next: which Evo or Hero this player doesn't own would lift their best deck the most ---------- */
+function unlockCandidates(){
+  const p=prof('A'),cs=colSets(p),duo=state.mode==='duo';
+  const own=id=>!cs.base||cs.base.has(id);
+  const evo=EVO_CARDS.filter(id=>!cs.evo.has(id)&&own(id)).map(id=>({id,form:'evo',pw:duo?C[id].ev2:C[id].ev}));
+  const hero=HERO_CARDS.filter(id=>!cs.hero.has(id)&&own(id)).map(id=>({id,form:'hero',pw:duo?C[id].he2:C[id].he}));
+  const top=(a,n)=>a.sort((x,y)=>y.pw-x.pw).slice(0,n);
+  return{missing:evo.length+hero.length,list:[...top(evo,7),...top(hero,5)]};
+}
+function renderUnlock(){
+  const p=prof('A'),u=state.unlock,cand=unlockCandidates(),duo=state.mode==='duo';
+  let body='';
+  if(p.source==='unset')body=`<p class="source warn">${esc(p.name)}'s collection isn't set up yet, so there is nothing to compare. ${state.api?'Load a player tag':'Use Set up collection'} under Players first.</p>`;
+  else if(!cand.missing)body=`<p class="hint">${esc(p.name)} already owns every Evo and Hero for the cards in this collection.</p>`;
+  else{
+    body=`<div class="btns"><button class="btn primary" type="button" data-unlockgo="1" ${u.busy?'disabled':''}>${u.busy?'Testing '+u.done+' of '+u.total+'…':(u.result?'Run again':'Find my best unlocks')}</button></div>`;
+    if(u.result&&u.result.error)body+=`<p class="err">${esc(u.result.error)}</p>`;
+    else if(u.result){
+      const r=u.result,b0=showScore(r.base);
+      body+=`<p class="hint">${esc(r.name)}'s best ${r.duo?'2v2':'1v1'} deck scores <b style="color:var(--fg)">${b0}</b> today. Each row shows the best deck that becomes possible with one more unlock.</p>
+      <ol class="unlocks">${r.rows.map(x=>{const g=showScore(x.s)-b0;return `<li>
+        ${miniCard(x.id,x.form)||`<span class="badge ${x.form}">${formLabel[x.form]}</span>`}
+        <div class="swtxt"><b>${esc(displayName(x.id,x.form))}</b><span>Best deck with it scores ${showScore(x.s)}${g>0?', up '+g:g<0?', down '+(-g):', no change'}</span>
+          <div class="strip" aria-label="Deck: ${esc(orderDeck(x.ids,x.forms).map(o=>displayName(o.id,o.form)).join(', '))}">${orderDeck(x.ids,x.forms).map(o=>miniCard(o.id,o.form)||`<span class="chip" style="padding:1px 8px;font-size:12px">${esc(C[o.id].name)}</span>`).join('')}</div></div>
+        <span class="gain ${g>0?'up':''}">${g>0?'+'+g:g}</span></li>`;}).join('')}</ol>
+      <p class="hint">Tested the ${r.rows.length} strongest of ${r.missing} missing Evos and Heroes. Scores come from a quick search, so a difference of a point or two is noise.</p>`;
+    }
+  }
+  $('out').innerHTML=`<section class="panel"><h2>What to unlock next</h2>
+    <p class="hint">Finds the Evos and Heroes ${esc(p.name)} doesn't own yet that would improve their best ${duo?'2v2':'1v1'} deck the most.</p>${body}</section>`;
+  setStatus('');
+}
+async function runUnlock(){
+  const u=state.unlock;if(u.busy)return;
+  const p=prof('A'),duo=state.mode==='duo',cand=unlockCandidates(),so=sideOpts('A');
+  u.busy=true;u.result=null;u.done=0;u.total=cand.list.length;renderUnlock();
+  try{
+    const base={...so,locked:[],forms:{},style:'any',role:'flex',maxAvg:+$('maxavg').value,count:1,maxChamps:1,vs:null,levels:null,levelRef:0,levelW:0,duo,restarts:60};
+    const b1=(await runJob('gen',base))[0],b2=(await runJob('gen',base))[0];
+    const s0=Math.max(b1?b1.s:0,b2?b2.s:0);
+    const rows=[];
+    for(const c of cand.list){
+      const ban=Object.fromEntries(Object.entries(so.ban).map(([k,v])=>[k,new Set(v)]));
+      if(ban[c.id])ban[c.id].delete(c.form);
+      const r=(await runJob('gen',{...base,ban,locked:[c.id],forms:{[c.id]:c.form},restarts:40}))[0];
+      if(r)rows.push({id:c.id,form:c.form,s:r.s,ids:r.ids,forms:r.forms});
+      u.done++;if(state.view==='unlock')renderUnlock();
+    }
+    rows.sort((a,b)=>b.s-a.s);
+    u.result={rows:rows.slice(0,6),base:s0,missing:cand.missing,name:p.name,duo};
+  }catch(e){u.result={error:'The test hit an error: '+e.message};}
+  u.busy=false;if(state.view==='unlock')renderUnlock();
+}
+$('out').addEventListener('click',e=>{if(e.target.closest('[data-unlockgo]'))runUnlock();});
+
 /* ---------- result actions ---------- */
 function lockList(ids,forms){return orderDeck(ids,forms).map(o=>({id:o.id,form:o.form==='evo'?'evo':o.form==='hero'?'hero':isChamp(C[o.id])?'any':'normal'}));}
 $('out').addEventListener('click',e=>{
@@ -704,17 +762,18 @@ $('out').addEventListener('click',e=>{
 
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
-  state.view=v;['gen','meta','check','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  state.view=v;['gen','meta','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
   if(quiet)return;
   if(v==='meta')renderMeta();
   else if(v==='check')renderCheck();
+  else if(v==='unlock')renderUnlock();
   else if(v==='saved')renderSaved();
   else if(state.mode==='duo'&&state.lastDuo.length){renderDuo(state.lastDuo);setStatus(state.lastDuo.length+' team pairs');}
   else if(state.mode==='1v1'&&state.last.length){renderDecks(state.last);setStatus(state.last.length+' decks');}
   else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
 }
 function rerender(){setView(state.view);}
-['gen','meta','check','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
+['gen','meta','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
 function setMode(m){
   state.mode=m;store.set('ef2-mode',m);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');

@@ -204,11 +204,11 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;
 
 function generate(opts){
   memo=new Map();
-  const ctx={forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null};
+  const ctx={forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
   const locked=opts.locked;
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
-  const RESTARTS=locked.length>=7?20:140;
+  const RESTARTS=opts.restarts||(locked.length>=7?20:140);
   for(let r=0;r<RESTARTS;r++){
     let deck=[...locked];
     const lc=deck.map(i=>C[i]);

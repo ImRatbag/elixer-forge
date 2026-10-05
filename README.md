@@ -7,6 +7,9 @@ Clash Royale deck builder for 1v1 and 2v2 that builds from each player's **real 
 - Every deck fills the Evo, Hero and Wild slots with forms the player owns; card levels can be matched.
 - **Open in Clash Royale** links copy a deck straight into the game, tower troop included.
 - Build against an opponent's deck, save decks and log wins and losses.
+- **Check a deck**: score any 8 cards (or a loaded player's current deck) and get the best single swaps.
+- **Unlock next**: which missing Evo or Hero would lift a player's best deck the most.
+- **Send to teammate** and links like `?a=TAG&b=TAG` that open the site with both players loaded.
 - Ratings refresh weekly from Supercell's official API (GitHub Action) once you add a key.
 
 ## Files
