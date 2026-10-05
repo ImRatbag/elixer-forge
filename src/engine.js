@@ -166,11 +166,14 @@ function scoreDeck(ids,ctx){
   }
   // Matchup: reward answers to the opponent's win conditions and avoid cards their spells wipe out.
   let vs=null;
-  if(ctx.vs&&ctx.vs.length){vs=matchup(ids,ctx.vs);s+=vs.score*(ctx.vsW||1);}
+  // Meta counter searches with a heavy matchup weight (vsW), but only a modest share of it (META_SHOW) counts toward the
+  // score people see, so these decks stay comparable with every other playstyle. `adj` is the part taken off at the end.
+  let adj=0;
+  if(ctx.vs&&ctx.vs.length){vs=matchup(ids,ctx.vs);vs.meta=!!ctx.metaVs;const w=ctx.vsW||1;s+=vs.score*w;if(ctx.metaVs){adj=vs.score*(w-META_SHOW);vs.w=META_SHOW;}}
   const sy=synergyOf(ids,k,pairs);
   if(clash){sy.pct=Math.max(0,sy.pct-10);sy.notes.push('Two win conditions ('+C[wins[0]].name+', '+C[wins[1]].name+') that don\'t support each other');}
   s+=sy.pct*(ctx.wSyn||0.32);
-  return{s,forms,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs};
+  return{s,forms,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs,adj};
 }
 
 function addHeur(c,deck,ctx){
@@ -209,9 +212,21 @@ function addHeur(c,deck,ctx){
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
 
+/* "Meta counter" playstyle: the cards a deck most needs answers for right now. The six strongest win conditions and
+   the two strongest damage spells by current rating stand in for the opponent, so decks are scored on how well they
+   answer what is actually being played. Recomputed each search because ratings refresh. */
+const META_SHOW=0.3;
+function metaThreats(duo){
+  const pwr=c=>duo?c.p2:c.p;
+  const wins=CARDS.filter(c=>has(c,'W')&&COUNTERS[c.id]).sort((a,b)=>pwr(b)-pwr(a)).slice(0,6).map(c=>c.id);
+  const spells=CARDS.filter(c=>SPELL_VULN[c.id]).sort((a,b)=>pwr(b)-pwr(a)).slice(0,2).map(c=>c.id);
+  return wins.concat(spells);
+}
 function generate(opts){
   memo=new Map();
-  const ctx={forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
+  const counter=opts.style==='counter'&&!(opts.vs&&opts.vs.length);
+  if(opts.style==='counter')opts={...opts,style:'any',vs:counter?metaThreats(!!opts.duo):opts.vs};
+  const ctx={metaVs:counter,vsW:counter?1.4:1,forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
   const locked=opts.locked;
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
@@ -269,7 +284,7 @@ function generate(opts){
     picked.push(best);seenWin.add(mainWin(best));
     best.ids.forEach(id=>uses[id]=(uses[id]||0)+1);
   }
-  return picked;
+  return picked.map(d=>d.adj?{...d,s:d.s-d.adj}:d);
 }
 
 /* ---------- 2v2 Duo engine ---------- */
@@ -362,7 +377,8 @@ function improve(deck,fixedN,pool,objective,passes){
 function generateDuo(o){
   memo=new Map();scCache=new Map();
   const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names};
-  const mk=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
+  const mk=(tag,sd)=>{const counter=sd.style==='counter'&&!(o.vs&&o.vs.length);const x=mk0(tag,sd.style==='counter'?{...sd,style:'any'}:sd);if(counter){x.vs=metaThreats(true);x.metaVs=true;x.vsW=1.4;}return x;};
+  const mk0=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
   const ctxA=mk('A',o.A),ctxB=mk('B',o.B);
   const poolA=CARDS.filter(c=>!o.A.exclude.has(c.id)).map(c=>c.id);
   const poolB=CARDS.filter(c=>!o.B.exclude.has(c.id)).map(c=>c.id);
@@ -411,7 +427,7 @@ function generateDuo(o){
     picked.push(best);seenPair.add(winKey(best));
     best.A.concat(best.B).forEach(i=>uses[i]=(uses[i]||0)+1);
   }
-  return picked;
+  return picked.map(p=>{if(!p.sa.adj&&!p.sb.adj)return p;const sa={...p.sa,s:p.sa.s-p.sa.adj},sb={...p.sb,s:p.sb.s-p.sb.adj};return{...p,sa,sb,s:p.s-(p.sa.adj+p.sb.adj)/2};});
 }
 
 

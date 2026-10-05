@@ -854,7 +854,7 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
       <footer class="foot">
         <div class="footbrand"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20.5" fill="none" stroke="url(#lg-ring)" stroke-width="1.6" opacity=".9"/><path d="M22 7.5c5.2 7 10 12 10 17.6a10 10 0 0 1-20 0c0-5.600 4.800-10.600 10-17.600z" fill="url(#lg-drop)"/></svg><span>Elixir Forge</span></div>
         <p id="datanote"></p>
-        <p class="ver">Site version Oct 5, 1:42 AM</p>
+        <p class="ver">Site version Oct 5, 2:30 AM</p>
         <p>Your collections, saved decks and results are stored only in this browser. Looking up a player tag sends that tag to the Elixir Forge server, which asks Supercell's official API for the public profile.</p>
         <p>This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy: www.supercell.com/fan-content-policy.</p>
       </footer>
@@ -1442,11 +1442,14 @@ function scoreDeck(ids,ctx){
   }
   // Matchup: reward answers to the opponent's win conditions and avoid cards their spells wipe out.
   let vs=null;
-  if(ctx.vs&&ctx.vs.length){vs=matchup(ids,ctx.vs);s+=vs.score*(ctx.vsW||1);}
+  // Meta counter searches with a heavy matchup weight (vsW), but only a modest share of it (META_SHOW) counts toward the
+  // score people see, so these decks stay comparable with every other playstyle. `adj` is the part taken off at the end.
+  let adj=0;
+  if(ctx.vs&&ctx.vs.length){vs=matchup(ids,ctx.vs);vs.meta=!!ctx.metaVs;const w=ctx.vsW||1;s+=vs.score*w;if(ctx.metaVs){adj=vs.score*(w-META_SHOW);vs.w=META_SHOW;}}
   const sy=synergyOf(ids,k,pairs);
   if(clash){sy.pct=Math.max(0,sy.pct-10);sy.notes.push('Two win conditions ('+C[wins[0]].name+', '+C[wins[1]].name+') that don\'t support each other');}
   s+=sy.pct*(ctx.wSyn||0.32);
-  return{s,forms,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs};
+  return{s,forms,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs,adj};
 }
 
 function addHeur(c,deck,ctx){
@@ -1485,9 +1488,21 @@ function addHeur(c,deck,ctx){
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
 
+/* "Meta counter" playstyle: the cards a deck most needs answers for right now. The six strongest win conditions and
+   the two strongest damage spells by current rating stand in for the opponent, so decks are scored on how well they
+   answer what is actually being played. Recomputed each search because ratings refresh. */
+const META_SHOW=0.3;
+function metaThreats(duo){
+  const pwr=c=>duo?c.p2:c.p;
+  const wins=CARDS.filter(c=>has(c,'W')&&COUNTERS[c.id]).sort((a,b)=>pwr(b)-pwr(a)).slice(0,6).map(c=>c.id);
+  const spells=CARDS.filter(c=>SPELL_VULN[c.id]).sort((a,b)=>pwr(b)-pwr(a)).slice(0,2).map(c=>c.id);
+  return wins.concat(spells);
+}
 function generate(opts){
   memo=new Map();
-  const ctx={forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
+  const counter=opts.style==='counter'&&!(opts.vs&&opts.vs.length);
+  if(opts.style==='counter')opts={...opts,style:'any',vs:counter?metaThreats(!!opts.duo):opts.vs};
+  const ctx={metaVs:counter,vsW:counter?1.4:1,forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
   const locked=opts.locked;
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
@@ -1545,7 +1560,7 @@ function generate(opts){
     picked.push(best);seenWin.add(mainWin(best));
     best.ids.forEach(id=>uses[id]=(uses[id]||0)+1);
   }
-  return picked;
+  return picked.map(d=>d.adj?{...d,s:d.s-d.adj}:d);
 }
 
 /* ---------- 2v2 Duo engine ---------- */
@@ -1638,7 +1653,8 @@ function improve(deck,fixedN,pool,objective,passes){
 function generateDuo(o){
   memo=new Map();scCache=new Map();
   const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names};
-  const mk=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
+  const mk=(tag,sd)=>{const counter=sd.style==='counter'&&!(o.vs&&o.vs.length);const x=mk0(tag,sd.style==='counter'?{...sd,style:'any'}:sd);if(counter){x.vs=metaThreats(true);x.metaVs=true;x.vsW=1.4;}return x;};
+  const mk0=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
   const ctxA=mk('A',o.A),ctxB=mk('B',o.B);
   const poolA=CARDS.filter(c=>!o.A.exclude.has(c.id)).map(c=>c.id);
   const poolB=CARDS.filter(c=>!o.B.exclude.has(c.id)).map(c=>c.id);
@@ -1687,7 +1703,7 @@ function generateDuo(o){
     picked.push(best);seenPair.add(winKey(best));
     best.A.concat(best.B).forEach(i=>uses[i]=(uses[i]||0)+1);
   }
-  return picked;
+  return picked.map(p=>{if(!p.sa.adj&&!p.sb.adj)return p;const sa={...p.sa,s:p.sa.s-p.sa.adj},sb={...p.sb,s:p.sb.s-p.sb.adj};return{...p,sa,sb,s:p.s-(p.sa.adj+p.sb.adj)/2};});
 }
 
 
@@ -1855,7 +1871,7 @@ const formLabel={evo:'Evo',hero:'Hero',champ:'Champion',normal:'Normal'};
 const formsOf=c=>isChamp(c)?['champ']:[c.ev?'evo':null,c.he?'hero':null].filter(Boolean);
 const TYPE_ICON={t:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M3 2l7.5 7.5-1.4 1.4L1.6 3.4V2zm10.4 8.1l1 1-1.7 1.7 1.3 1.3-.9.9-1.3-1.3-1.7 1.7-1-1 1.7-1.7-1.3-1.3.9-.9 1.3 1.3z"/></svg>',s:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1l1.8 4.6L14.5 6l-3.6 3 1.1 4.8L8 11.2 4 13.8 5.1 9 1.5 6l4.7-.4z"/></svg>',b:'<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M2 2h2.5v2H6V2h4v2h1.5V2H14v5h-1.5v7h-9V7H2zm4.5 7v5h3V9z"/></svg>'};
 const TYPE_NAME={t:'Troop',s:'Spell',b:'Building'};
-const STYLE_OPTS=[['any','Any'],['cycle','Cycle'],['beatdown','Beatdown'],['bridge','Bridge spam'],['bait','Bait'],['hyperbait','Hyperbait'],['siege','Siege'],['control','Control'],['air','Air']];
+const STYLE_OPTS=[['any','Any'],['cycle','Cycle'],['beatdown','Beatdown'],['bridge','Bridge spam'],['bait','Bait'],['hyperbait','Hyperbait'],['siege','Siege'],['control','Control'],['air','Air'],['counter','Meta counter']];
 function displayName(id,form){const n=C[id].name;return form==='evo'?'Evo '+n:form==='hero'?'Hero '+n:n;}
 function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2200);}
 
@@ -2347,8 +2363,8 @@ function prosCons(d){
 }
 function vsHTML(vs){
   if(!vs)return'';
-  const rows=vs.oppWins.map(w=>{const a=vs.answers[w]||[];return `<li><b>Their ${esc(C[w].name)}</b><span>${a.length?'Answered by '+a.map(i=>esc(C[i].name)).join(', '):'No clean answer in this deck'}</span></li>`;}).join('');
-  return `<div><h3 class="${vs.notes.length?'bad':'good'}" style="font-size:14px;font-weight:900;margin:0 0 6px">Against their deck</h3><ul style="margin:0;padding:0;list-style:none;display:grid;gap:7px;font-size:14px">${rows}${vs.notes.map(n=>`<li><b>Watch out</b><span>${esc(n)}</span></li>`).join('')}</ul></div>`;
+  const rows=vs.oppWins.map(w=>{const a=vs.answers[w]||[];return `<li><b>${vs.meta?'':'Their '}${esc(C[w].name)}</b><span>${a.length?'Answered by '+a.map(i=>esc(C[i].name)).join(', '):'No clean answer in this deck'}</span></li>`;}).join('');
+  return `<div><h3 class="${vs.notes.length?'bad':'good'}" style="font-size:14px;font-weight:900;margin:0 0 6px">${vs.meta?'Against the current meta':'Against their deck'}</h3><ul style="margin:0;padding:0;list-style:none;display:grid;gap:7px;font-size:14px">${rows}${vs.notes.map(n=>`<li><b>Watch out</b><span>${esc(n)}</span></li>`).join('')}</ul></div>`;
 }
 const cycleCost=ids=>ids.map(id=>C[id].e).sort((a,b)=>a-b).slice(0,4).reduce((a,b)=>a+b,0);
 function archLabel(ids){
@@ -2409,7 +2425,7 @@ function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge sco
   const F=0.82,cards=d.ids.map(i=>C[i]);
   const strength=cards.reduce((a,c)=>a+(duo?c.p2:c.p),0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
   const parts=[['Card strength',strength,'How strong these 8 cards are in the current meta'],['Evo, Hero and Wild slots',slots,d.forms&&d.forms.empty?d.forms.empty+' of 3 special slots empty':'All 3 special slots filled with forms this player owns'],['Synergy',syn,d.synPct+'% of the possible combo, support and coverage credit']];
-  if(d.vs)parts.push(['Against their deck',vs,'Answers to the opponent\'s win conditions and spells']);
+  if(d.vs)parts.push(d.vs.meta?['Against the current meta',vs*(d.vs.w||1),'Answers to the strongest win conditions and spells being played now']:['Against their deck',vs,'Answers to the opponent\'s win conditions and spells']);
   const rows=parts.map(([t,v,why])=>({t,v:Math.round(v*F),why}));
   const k=d.k,gaps=[];
   if(k.wc===0)gaps.push('no win condition');if(k.wc>2)gaps.push('too many win conditions');
@@ -2566,7 +2582,7 @@ function duoArticle(p,i,plain){
       <details class="why"><summary>Why these decks work together</summary>
         <p class="synbreak">Team synergy ${p.t.pct}%: combos across all 16 cards ${tp.combo}%, win condition support ${tp.wc}%, team coverage ${tp.cov}%, role split ${tp.comp}%, shared-weakness check ${tp.weak}%.</p>
         <div class="pc"><div><h3 class="good">Team strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Team weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
-        ${p.sa.vs?`<div class="pc" style="margin-top:12px"><div>${vsHTML(p.sa.vs).replace('Against their deck',esc(N.A)+' against their deck')}</div><div>${vsHTML(p.sb.vs).replace('Against their deck',esc(N.B)+' against their deck')}</div></div>`:''}
+        ${p.sa.vs?`<div class="pc" style="margin-top:12px"><div>${vsHTML(p.sa.vs).replace('Against their deck',esc(N.A)+' against their deck').replace('Against the current meta',esc(N.A)+' against the current meta')}</div><div>${vsHTML(p.sb.vs).replace('Against their deck',esc(N.B)+' against their deck').replace('Against the current meta',esc(N.B)+' against the current meta')}</div></div>`:''}
       </details>
     </article>`;}
 function renderDuo(pairs){$('out').innerHTML=pairs.map((p,i)=>duoArticle(p,i)).join('');}
