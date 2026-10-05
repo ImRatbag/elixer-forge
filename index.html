@@ -734,6 +734,32 @@ body{background:radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--
 .pair>.duodeck+.duodeck{border-top:1px solid var(--line);padding-top:18px;margin-top:4px}
 @container (min-width:700px){.pair>.duodeck+.duodeck{border-top:0;padding-top:0;margin-top:0}}
 
+
+/* ================= Colour themes =================
+   Each theme overrides the surface, line and glow tokens and sets its own page background. Gold stays the action
+   colour everywhere, so the interface reads the same in every theme. */
+body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--action) 9%,transparent),transparent 70%),radial-gradient(1200px 520px at 55% -140px,var(--glow),transparent 70%),linear-gradient(180deg,var(--bg2),var(--bg) 420px) no-repeat),var(--bg)}
+:root[data-skin="obsidian"]{--bg:#08090b;--bg2:#0f1114;--panel:#131519;--raised:#1b1e24;--sunk:#0b0c0f;--tile:#0f1114;--line:rgba(255,255,255,.10);--line2:rgba(255,255,255,.2);--fg:#f4f5f7;--muted:#9da2ad;--accent:#9db9ff;--pa:#7fb0ff;--glow:rgba(255,255,255,.06);
+  --action:#e9c46a;--action-hi:#f8e3a6;--action-lo:#c9983a;--gold:#e9c46a;--focus:#e9c46a;
+  --bgimg:radial-gradient(900px 420px at 50% -160px,rgba(255,255,255,.09),transparent 70%),radial-gradient(520px 280px at 6% -60px,rgba(233,196,106,.10),transparent 70%),linear-gradient(180deg,#0f1114,#08090b 460px) no-repeat}
+:root[data-skin="arena"]{--bg:#0a1f4d;--bg2:#0f2f73;--panel:#12336f;--raised:#1a4590;--sunk:#0a2254;--tile:#0d2a63;--line:rgba(170,205,255,.22);--line2:rgba(170,205,255,.4);--fg:#f5f9ff;--muted:#b3c8ec;--accent:#8ccaff;--pa:#8ccaff;--pb:#ffa07a;--glow:rgba(90,160,255,.4);
+  --action:#ffd24d;--action-hi:#ffe98f;--action-lo:#f0a81c;--gold:#ffd24d;--focus:#ffd24d;
+  --bgimg:repeating-linear-gradient(115deg,rgba(255,255,255,.035) 0 70px,transparent 70px 180px),radial-gradient(1100px 520px at 50% -160px,rgba(120,180,255,.45),transparent 70%),linear-gradient(180deg,#1247a8,#0a1f4d 560px) no-repeat}
+:root[data-skin="emerald"]{--bg:#06120e;--bg2:#0b1f18;--panel:#0e241c;--raised:#153327;--sunk:#081711;--tile:#0a1c15;--line:rgba(150,225,190,.15);--line2:rgba(150,225,190,.3);--fg:#effaf4;--muted:#93b5a5;--accent:#6ee6b8;--pa:#6ee6b8;--glow:rgba(40,170,115,.26);
+  --action:#e9c46a;--action-hi:#f8e3a6;--action-lo:#c9983a;--gold:#e9c46a;--focus:#e9c46a;--good:#7af0b4;
+  --bgimg:radial-gradient(1000px 520px at 50% -120px,rgba(40,170,115,.30),transparent 70%),radial-gradient(520px 280px at 94% -40px,rgba(233,196,106,.10),transparent 70%),linear-gradient(180deg,#0b1f18,#06120e 480px) no-repeat}
+:root[data-skin="crimson"]{--bg:#110609;--bg2:#1d0b10;--panel:#231116;--raised:#30171e;--sunk:#16090c;--tile:#1a0c10;--line:rgba(255,180,185,.14);--line2:rgba(255,180,185,.28);--fg:#fff4f4;--muted:#c39ea4;--accent:#ffa3b0;--pa:#7fc0ff;--pb:#ffb07a;--glow:rgba(210,55,80,.26);
+  --action:#f0b955;--action-hi:#ffe0a0;--action-lo:#cf8d24;--gold:#f0b955;--focus:#f0b955;--bad:#ff9aa6;
+  --bgimg:radial-gradient(1000px 520px at 60% -140px,rgba(210,55,80,.34),transparent 70%),radial-gradient(520px 280px at 6% -60px,rgba(240,185,85,.10),transparent 70%),linear-gradient(180deg,#1d0b10,#110609 480px) no-repeat}
+/* theme picker */
+.skins{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 70%,transparent)}
+.skinlbl{font-family:var(--display);font-weight:500;font-size:12px;color:var(--muted);margin:0 3px 0 4px;letter-spacing:.02em}
+.skin{width:20px;height:20px;border-radius:50%;border:1px solid var(--line2);padding:0;cursor:pointer;background:linear-gradient(135deg,var(--s1) 0 52%,var(--s2) 52%);display:grid;place-items:center;box-shadow:0 1px 2px rgba(0,0,0,.35)}
+.skin i{font:700 10px/1 var(--display);font-style:normal;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.6)}
+.skin:hover{transform:scale(1.12)}
+.skin[aria-pressed="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--action)}
+@media (max-width:640px){.skins{order:4}}
+
 </style>
 <div class="wrap">
   <header class="top">
@@ -746,6 +772,7 @@ body{background:radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--
       <button type="button" id="mode-duo" aria-pressed="false">2v2</button>
     </div>
     <span class="datachip" id="datachip"></span>
+    <div class="skins" id="skins" role="group" aria-label="Colour theme"></div>
   </header>
 
   <div class="layout">
@@ -1835,6 +1862,27 @@ const colSets=p=>({base:p.col.base?new Set(p.col.base):null,evo:new Set(p.col.ev
 /* tower troop IDs learned from earlier tag lookups */
 Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TOWER[k].tid=v;});
 
+/* ---------- colour themes ---------- */
+const SKINS=[
+  {id:'auto',name:'Match my device',mode:null,sw:['#0c1626','#f5c451']},
+  {id:'royal',name:'Royal Night',mode:'dark',sw:['#111c2f','#f5c451']},
+  {id:'obsidian',name:'Obsidian',mode:'dark',sw:['#131519','#e9c46a']},
+  {id:'arena',name:'Arena Blue',mode:'dark',sw:['#1247a8','#ffd24d']},
+  {id:'emerald',name:'Emerald',mode:'dark',sw:['#0e2a20','#e9c46a']},
+  {id:'crimson',name:'Crimson',mode:'dark',sw:['#3a1219','#f0b955']},
+  {id:'daylight',name:'Daylight',mode:'light',sw:['#ffffff','#1b6fd1']}
+];
+function applySkin(id){
+  const k=SKINS.find(x=>x.id===id)||SKINS[0],root=document.documentElement;
+  if(k.mode)root.dataset.theme=k.mode;else delete root.dataset.theme;
+  if(k.id==='auto'||k.id==='royal'||k.id==='daylight')delete root.dataset.skin;else root.dataset.skin=k.id;
+  store.set('ef2-skin',k.id);
+  const box=$('skins');
+  if(box)box.innerHTML=`<span class="skinlbl">Theme</span>`+SKINS.map(x=>`<button type="button" class="skin" data-skin-pick="${x.id}" aria-pressed="${x.id===k.id}" title="${esc(x.name)}" aria-label="${esc(x.name)}" style="--s1:${x.sw[0]};--s2:${x.sw[1]}">${x.id==='auto'?'<i>A</i>':''}</button>`).join('');
+}
+applySkin(store.get('ef2-skin','auto'));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-skin-pick]');if(b){applySkin(b.dataset.skinPick);toast((SKINS.find(x=>x.id===b.dataset.skinPick)||{}).name+' theme');}});
+
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
@@ -1899,6 +1947,8 @@ async function lookupTag(key,raw){
   try{
     const r=await fetch('api/player?tag='+encodeURIComponent(tag));const j=await r.json();
     if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
+    // A different player's tag opens as its own profile, so the collection that was here stays in the switcher.
+    slotForTag(key,tag);
     const p=prof(key);
     const base=[],evo=[],hero=[],levels={};
     for(const c of j.cards){const k=ID_TO_CARD[c.id];if(!k||!C[k])continue;base.push(k);levels[k]=c.level;if(c.evo&&C[k].ev)evo.push(k);if(c.hero&&C[k].he)hero.push(k);}
@@ -1935,7 +1985,7 @@ function playerHTML(key){
   return `<div class="player ${key==='B'?'b':''}" data-key="${key}">
     <div class="phead"><span class="pbadge" aria-hidden="true">${key==='A'?1:2}</span>
       <input class="pname" id="pname-${key}" value="${esc(p.name)}" aria-label="Player name" maxlength="24">
-      <select class="pswitch" id="pswitch-${key}" aria-label="Switch player">${opts}<option value="__new">New player</option><option value="__code">Add from share code</option></select></div>
+      <select class="pswitch" id="pswitch-${key}" aria-label="Switch player">${opts}<option value="__new">New player</option><option value="__code">Add from share code</option>${profiles.length>2?`<option value="__del">Remove ${esc(p.name)}</option>`:''}</select></div>
     <div class="colsum">${meter('e','Evos',cs.evo.size,EVO_CARDS.length)}${meter('h','Heroes',cs.hero.size,HERO_CARDS.length)}${meter('','Cards',baseHave,BASE_CARDS.length)}</div>
     ${sourceLine(p)}
     <div class="field"><label class="lbl" for="tag-${key}">Player tag</label>
@@ -2051,6 +2101,7 @@ $('players').addEventListener('change',e=>{
   if(t.id==='pswitch-'+key){
     if(t.value==='__new'){const p=newProfile('Player '+(profiles.length+1));profiles.push(p);slots[key]=p.id;saveProfiles();renderPlayers();openEditor(key);return;}
     if(t.value==='__code'){openShare(key,true);renderPlayers();return;}
+    if(t.value==='__del'){const other=slots[key==='A'?'B':'A'],gone=slots[key];const next=profiles.find(x=>x.id!==gone&&x.id!==other);if(next){profiles=profiles.filter(x=>x.id!==gone);slots[key]=next.id;saveProfiles();toast('Player removed');}renderPlayers();return;}
     slots[key]=t.value;saveProfiles();renderPlayers();
   }
 });

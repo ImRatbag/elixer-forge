@@ -28,6 +28,27 @@ const colSets=p=>({base:p.col.base?new Set(p.col.base):null,evo:new Set(p.col.ev
 /* tower troop IDs learned from earlier tag lookups */
 Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TOWER[k].tid=v;});
 
+/* ---------- colour themes ---------- */
+const SKINS=[
+  {id:'auto',name:'Match my device',mode:null,sw:['#0c1626','#f5c451']},
+  {id:'royal',name:'Royal Night',mode:'dark',sw:['#111c2f','#f5c451']},
+  {id:'obsidian',name:'Obsidian',mode:'dark',sw:['#131519','#e9c46a']},
+  {id:'arena',name:'Arena Blue',mode:'dark',sw:['#1247a8','#ffd24d']},
+  {id:'emerald',name:'Emerald',mode:'dark',sw:['#0e2a20','#e9c46a']},
+  {id:'crimson',name:'Crimson',mode:'dark',sw:['#3a1219','#f0b955']},
+  {id:'daylight',name:'Daylight',mode:'light',sw:['#ffffff','#1b6fd1']}
+];
+function applySkin(id){
+  const k=SKINS.find(x=>x.id===id)||SKINS[0],root=document.documentElement;
+  if(k.mode)root.dataset.theme=k.mode;else delete root.dataset.theme;
+  if(k.id==='auto'||k.id==='royal'||k.id==='daylight')delete root.dataset.skin;else root.dataset.skin=k.id;
+  store.set('ef2-skin',k.id);
+  const box=$('skins');
+  if(box)box.innerHTML=`<span class="skinlbl">Theme</span>`+SKINS.map(x=>`<button type="button" class="skin" data-skin-pick="${x.id}" aria-pressed="${x.id===k.id}" title="${esc(x.name)}" aria-label="${esc(x.name)}" style="--s1:${x.sw[0]};--s2:${x.sw[1]}">${x.id==='auto'?'<i>A</i>':''}</button>`).join('');
+}
+applySkin(store.get('ef2-skin','auto'));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-skin-pick]');if(b){applySkin(b.dataset.skinPick);toast((SKINS.find(x=>x.id===b.dataset.skinPick)||{}).name+' theme');}});
+
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
@@ -92,6 +113,8 @@ async function lookupTag(key,raw){
   try{
     const r=await fetch('api/player?tag='+encodeURIComponent(tag));const j=await r.json();
     if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
+    // A different player's tag opens as its own profile, so the collection that was here stays in the switcher.
+    slotForTag(key,tag);
     const p=prof(key);
     const base=[],evo=[],hero=[],levels={};
     for(const c of j.cards){const k=ID_TO_CARD[c.id];if(!k||!C[k])continue;base.push(k);levels[k]=c.level;if(c.evo&&C[k].ev)evo.push(k);if(c.hero&&C[k].he)hero.push(k);}
@@ -128,7 +151,7 @@ function playerHTML(key){
   return `<div class="player ${key==='B'?'b':''}" data-key="${key}">
     <div class="phead"><span class="pbadge" aria-hidden="true">${key==='A'?1:2}</span>
       <input class="pname" id="pname-${key}" value="${esc(p.name)}" aria-label="Player name" maxlength="24">
-      <select class="pswitch" id="pswitch-${key}" aria-label="Switch player">${opts}<option value="__new">New player</option><option value="__code">Add from share code</option></select></div>
+      <select class="pswitch" id="pswitch-${key}" aria-label="Switch player">${opts}<option value="__new">New player</option><option value="__code">Add from share code</option>${profiles.length>2?`<option value="__del">Remove ${esc(p.name)}</option>`:''}</select></div>
     <div class="colsum">${meter('e','Evos',cs.evo.size,EVO_CARDS.length)}${meter('h','Heroes',cs.hero.size,HERO_CARDS.length)}${meter('','Cards',baseHave,BASE_CARDS.length)}</div>
     ${sourceLine(p)}
     <div class="field"><label class="lbl" for="tag-${key}">Player tag</label>
@@ -244,6 +267,7 @@ $('players').addEventListener('change',e=>{
   if(t.id==='pswitch-'+key){
     if(t.value==='__new'){const p=newProfile('Player '+(profiles.length+1));profiles.push(p);slots[key]=p.id;saveProfiles();renderPlayers();openEditor(key);return;}
     if(t.value==='__code'){openShare(key,true);renderPlayers();return;}
+    if(t.value==='__del'){const other=slots[key==='A'?'B':'A'],gone=slots[key];const next=profiles.find(x=>x.id!==gone&&x.id!==other);if(next){profiles=profiles.filter(x=>x.id!==gone);slots[key]=next.id;saveProfiles();toast('Player removed');}renderPlayers();return;}
     slots[key]=t.value;saveProfiles();renderPlayers();
   }
 });
