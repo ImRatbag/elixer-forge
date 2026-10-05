@@ -23,6 +23,8 @@ function toDecks(battles, tag) {
   for (const b of battles || []) {
     const team = b.team || [], opp = b.opponent || [];
     const me = team.find(t => (t.tag || '').replace(/^#/, '') === tag) || team[0];
+    const rawMode = (b.gameMode && b.gameMode.name) || b.type || '';
+    if (/draft/i.test(rawMode)) continue; // draft games use cards picked on the spot, not the player's own deck
     if (!me || !Array.isArray(me.cards) || me.cards.length !== 8) continue;
     name = me.name || name;
     const forms = formsOf(me.cards);

@@ -810,7 +810,8 @@ async function loadCreator(raw){
   try{
     const r=await fetch('api/battles?tag='+encodeURIComponent(tag));const j=await r.json();
     if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
-    cr.decks=(j.decks||[]).map(d=>{const cards=d.cards.map(x=>{const[i,f]=String(x).split(':');const k=ID_TO_CARD[+i];return k?(f?k+':'+f:k):null;});return cards.every(Boolean)?{...d,cards}:null;}).filter(Boolean);
+    const nice=m=>/2v2|teamvsteam/i.test(m)?'2v2':/^ranked|pathoflegend/i.test(m)?'Ranked':/ladder|^pvp$/i.test(m)?'Trophy Road':String(m).replace(/_/g,' ').replace(/([a-z])([A-Z0-9])/g,'$1 $2');
+    cr.decks=(j.decks||[]).filter(d=>!(d.modes||[]).every(m=>/draft/i.test(m))).map(d=>({...d,modes:[...new Set((d.modes||[]).map(nice))]})).map(d=>{const cards=d.cards.map(x=>{const[i,f]=String(x).split(':');const k=ID_TO_CARD[+i];return k?(f?k+':'+f:k):null;});return cards.every(Boolean)?{...d,cards}:null;}).filter(Boolean);
     cr.name=cr.name||j.name||'';if(!FEATURED.length)store.set('ef2-creator',tag);
   }catch(e){cr.error=e.message||'Lookup failed.';}
   cr.busy=false;if(state.view==='creator')renderCreator();

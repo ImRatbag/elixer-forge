@@ -403,5 +403,5 @@ const SPELL_VULN={'fireball':'fb','lightning':'fb','poison':'swarm','the-log':'s
 const PRESET_PLAYERS=[];
 /* Featured players for the player-decks tab: their recent decks come from their public battle log.
    Set tag to the player's tag (letters and digits only, no #). An entry without a tag is not shown. */
-const CREATORS=[{key:'ken',name:'Ken',tag:''}];
+const CREATORS=[{key:'ken',name:'Ken',tag:'QQUUCL'}];
 const DATA_DATE='Sept 30, 2026';
