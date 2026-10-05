@@ -706,6 +706,14 @@ body{background:radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--
   :is(.deck>.grid8.pics+.tower+.actions,.deck>.grid8.pics+p+.actions,.deck>.grid8.pics+p+p+.actions){max-width:none}
   :is(.deck>.grid8.pics+.tower+.actions,.deck>.grid8.pics+p+.actions,.deck>.grid8.pics+p+p+.actions) .btn:not(.primary){padding-inline:8px;font-size:13px;gap:5px;min-width:0}
 }
+/* pair halves: the three deck actions always share one row */
+.duodeck .actions{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) minmax(0,1fr);gap:6px}
+.duodeck .actions .btn,.duodeck .actions .btn.sm{min-width:0;padding:9px 6px;font-size:12.5px;gap:5px}
+.duodeck .actions .btn.primary{font-size:13px}
+@media (max-width:380px){.duodeck .actions{grid-template-columns:1fr 1fr}.duodeck .actions .btn.primary{grid-column:1/-1}}
+.duodeck .actions{grid-template-columns:minmax(0,2.1fr) minmax(0,1fr) minmax(0,1fr)}
+.duodeck .actions .btn{overflow:hidden}
+.duodeck .actions .btn.primary{font-size:12.5px;padding-inline:8px}
 
 </style>
 <div class="wrap">
