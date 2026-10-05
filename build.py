@@ -14,3 +14,9 @@ full=('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
       '<meta name="theme-color" content="#0c1728">\n<meta property="og:title" content="Elixir Forge">\n<meta property="og:description" content="Clash Royale decks and 2v2 teams built from the cards, Evos and Heroes you actually own. Enter a player tag to start.">\n<meta property="og:type" content="website">\n<meta name="twitter:card" content="summary">\n<link rel="manifest" href="manifest.webmanifest">\n<link rel="icon" href="icon.svg" type="image/svg+xml">\n</head>\n<body>\n'+page+'\n</body>\n</html>\n')
 (root/'index.html').write_text(full)
 print('built',len(page)//1024,'KB')
+
+# Compact copy of the card table for api/audit.js, which compares it with Supercell's live card list.
+import json,re
+rows=[l.split('|') for l in re.search(r"const RAW=`(.*?)`",(src/'data.js').read_text(),re.S).group(1).strip().split('\n')]
+ids=dict(re.findall(r"'([a-z0-9-]+)':(\d+)",re.search(r"CARD_IDS=\{(.*?)\}",(src/'data.js').read_text(),re.S).group(1)))
+(root/'api'/'_table.json').write_text(json.dumps([{'k':r[0],'name':r[1],'e':int(r[2]),'evo':int(r[6])>0 or int(r[9])>0,'hero':('C' not in r[4]) and (int(r[7])>0 or int(r[10])>0),'id':int(ids.get(r[0],0))} for r in rows]))
