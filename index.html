@@ -605,6 +605,22 @@ body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opa
 .player .btns{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 @media (max-width:360px){.player .btns .btn{font-size:12.5px;padding:9px 4px}.player{padding:12px}}
 .sheet .tabs,.sheet .tabs:not(#x){margin:0 0 4px;max-width:100%}
+/* top decks with two ownership notes: notes and actions also sit beside the tray */
+@container (min-width:740px){
+  .deck>.grid8.pics:has(+p+p+.actions){grid-column:1;grid-row:span 3}
+  .deck>.grid8.pics+p:has(+p+.actions){grid-column:2;align-self:end}
+  .deck>.grid8.pics+p+p:has(+.actions){grid-column:2;align-self:center}
+  .deck>.grid8.pics+p+p+.actions{grid-column:2;align-self:start}
+  .deck>.grid8.pics+p+p+.actions .btn.primary{flex-basis:100%}
+}
+.miss,.deck>p.hint{font-size:13px;line-height:1.45}
+/* card pickers: the suggestion list drops below the input */
+.field.picker{display:block}
+.field.picker>.chips{margin-top:8px}
+.field.picker>.chips:empty{margin-top:0}
+.field.picker>.hint{margin-top:6px}
+.matches{margin-top:6px}
+.player{overflow:visible}
 
 </style>
 <div class="wrap">
