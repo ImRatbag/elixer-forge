@@ -694,3 +694,4 @@ body{background:radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--
 .duodeck .actions{grid-template-columns:minmax(0,2.1fr) minmax(0,1fr) minmax(0,1fr)}
 .duodeck .actions .btn{overflow:hidden}
 .duodeck .actions .btn.primary{font-size:12.5px;padding-inline:8px}
+.status:empty,#welcomeslot:empty{display:none}
