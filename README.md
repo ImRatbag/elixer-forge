@@ -12,7 +12,7 @@ Clash Royale deck builder for 1v1 and 2v2 that builds from each player's **real 
 - **Edit a deck or team**: press Edit on any forged deck or pair, swap cards and watch the score change.
 - **Unlock next**: which missing Evo or Hero would lift a player's best deck the most.
 - **Send to teammate** and links like `?a=TAG&b=TAG` that open the site with both players loaded.
-- Ratings refresh weekly from Supercell's official API (GitHub Action) once you add a key.
+- 1v1 ratings and top decks refresh daily from Supercell's official API (top players' recent battles).
 
 ## Files
 
@@ -34,7 +34,7 @@ The official API needs a secret key, and a key only works from fixed IP addresse
 2. **Put the code on GitHub.** Create a new repository and upload everything in this folder (keep the folder structure).
 3. **Deploy on Vercel.** At <https://vercel.com>, choose *Add New → Project*, import the repository, leave the framework as *Other*, and under *Environment Variables* add `CR_API_KEY` with your key. Deploy.
 4. **Check it.** Open `https://<your-project>.vercel.app/api/health`. It should say `{"ok":true}`. Then open the app and load a player tag.
-5. **Turn on weekly data refresh.** In the GitHub repository go to *Settings → Secrets and variables → Actions* and add a secret named `CR_API_KEY` with the same key. Then open the *Actions* tab, choose *Refresh meta data* and press *Run workflow* once. After that it runs every Monday, and Vercel redeploys automatically when `data/meta.json` changes. Run it by hand after big balance patches.
+5. **Ratings refresh by themselves.** The site asks `/api/meta` for fresh 1v1 card and deck stats, built from the recent battles of the top 160 Path of Legends players and cached for a day. Nothing to set up. 2v2 ratings stay on the built-in numbers, because top players' logs hold too few 2v2 games. (Optional: the GitHub Action in `.github/workflows` writes the same data to `data/meta.json` from 300 players each week if you add a `CR_API_KEY` repository secret; the site prefers that file when it exists.)
 
 Netlify or Cloudflare work too; only the two files in `api/` need adapting to their function format.
 

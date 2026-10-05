@@ -677,7 +677,7 @@ function renderDuo(pairs){$('out').innerHTML=pairs.map((p,i)=>duoArticle(p,i)).j
 /* ---------- top decks tab ---------- */
 function renderMeta(){
   const duo=state.mode==='duo';const list=duo?META2:META;
-  setStatus(duo?'Top 2v2 decks by RoyaleAPI rating. These are single decks with small samples, so win rates run high.':'Top Ranked (Path of Legends) decks by RoyaleAPI rating.');
+  setStatus(duo?(metaLive.duo?'2v2 decks with the best results in top players\' recent games. Samples are small, so treat win rates as a guide.':'Top 2v2 decks by RoyaleAPI rating. These are single decks with small samples, so win rates run high.'):(metaLive.ranked?'Ranked decks with the best results in top players\' recent games. Samples are small, so treat win rates as a guide.':'Top Ranked (Path of Legends) decks by RoyaleAPI rating.'));
   const keys=duo?['A','B']:['A'];
   $('out').innerHTML=list.map((d,i)=>{
     const ids=d.cards.map(x=>x.split(':')[0]);
@@ -688,7 +688,7 @@ function renderMeta(){
       return miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`;}).join('');
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(d.n)}</h2><div class="dmeta"><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span><span>Synergy <b>${sc.synPct}%</b></span></div></div>
-        <div class="score"><span class="num" style="color:var(--good)">${d.wr==null?'n/a':d.wr+'%'}</span><small>Win rate</small></div></div>
+        <div class="score"><span class="num" style="color:var(--good)">${d.wr==null?'n/a':d.wr+'%'}</span><small>Win rate${d.games?', '+d.games+' games':''}</small></div></div>
       ${reportHTML({...sc,ids},showScore(sc.s),duo)}
       ${tilesHTML(ids,sc.forms,null)}${notes}
       <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
@@ -965,6 +965,7 @@ function rerender(){setView(state.view);}
 ['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
 function setMode(m){
   state.mode=m;store.set('ef2-mode',m);
+  if(typeof setDataNote==='function'&&setDataNote.last)setDataNote(...setDataNote.last);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');
   document.querySelectorAll('.duo-only').forEach(el=>el.hidden=m!=='duo');
   $('count-lbl').textContent=m==='duo'?'Number of team pairs':'Number of decks';
@@ -976,18 +977,39 @@ $('mode-1v1').addEventListener('click',()=>setMode('1v1'));
 $('mode-duo').addEventListener('click',()=>setMode('duo'));
 
 /* ---------- data freshness ---------- */
+const metaLive={ranked:false,duo:false};
 function setDataNote(date,live){
   setDataNote.last=[date,live];
-  $('datachip').textContent='Meta data: '+date;
-  $('datanote').textContent='Card strength comes from '+(live?'Supercell\'s official API battle data':'RoyaleAPI\'s 7-day stats')+' as of '+date+': Ranked numbers drive 1v1, 2v2 numbers drive team mode. Low-usage cards are pulled toward average so a small sample can\'t dominate.';
-  if(NEW_FORMS.length)$('datanote').textContent+=' '+NEW_FORMS.length+' newer Evo or Hero form'+(NEW_FORMS.length>1?'s were':' was')+' picked up from the game ('+NEW_FORMS.slice(0,6).map(x=>displayName(x.id,x.form)).join(', ')+(NEW_FORMS.length>6?' and more':'')+'); their strength is estimated until the weekly refresh measures it.';
+  $('datachip').textContent='Meta data: '+(state.mode==='duo'?(metaLive.duo?date:DATA_DATE):(metaLive.ranked?date:DATA_DATE));
+  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s 7-day stats as of '+DATA_DATE;
+  $('datanote').textContent=(metaLive.ranked===metaLive.duo?'Card strength comes from '+(metaLive.ranked?api:ra)+': Ranked numbers drive 1v1, 2v2 numbers drive team mode.':'1v1 card strength comes from '+(metaLive.ranked?api:ra)+'. 2v2 card strength comes from '+(metaLive.duo?api:ra)+', because top players\' logs hold too few 2v2 games to measure.')+' Rarely played cards are pulled toward average so a small sample can\'t dominate.';
+  if(NEW_FORMS.length)$('datanote').textContent+=' '+NEW_FORMS.length+' newer Evo or Hero form'+(NEW_FORMS.length>1?'s were':' was')+' picked up from the game ('+NEW_FORMS.slice(0,6).map(x=>displayName(x.id,x.form)).join(', ')+(NEW_FORMS.length>6?' and more':'')+'); their strength is estimated until it is measured.';
 }
+function useMeta(m){
+  if(!m||!applyMeta(m))return false;
+  const w=getWorker();if(w){const id=++jobId;jobs[id]={res(){},rej(){}};w.postMessage({id,kind:'meta',args:m});}
+  const ok=x=>!!(x&&x.cards&&(x.sides==null||x.sides>=1500));
+  metaLive.ranked=m.source==='official-api'&&ok(m.ranked);metaLive.duo=m.source==='official-api'&&ok(m.duo);
+  setDataNote(new Date(m.generated).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}),true);
+  if(state.view==='meta')renderMeta();
+  return true;
+}
+/* Fresh ratings: a weekly file (data/meta.json) if the site has one, otherwise the server's on-demand numbers
+   (api/meta, cached a day). The last good copy is kept in this browser so later visits start with it at once. */
 async function loadMeta(){
   setDataNote(DATA_DATE,false);
-  try{const r=await fetch('data/meta.json',{cache:'no-store'});if(!r.ok)return;const m=await r.json();
-    if(applyMeta(m)){const w=getWorker();if(w){const id=++jobId;jobs[id]={res(){},rej(){}};w.postMessage({id,kind:'meta',args:m});}
-      setDataNote(new Date(m.generated).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}),m.source==='official-api');if(state.view==='meta')renderMeta();}
-  }catch(e){}
+  const cached=store.get('ef2-meta',null);
+  if(cached&&cached.m)useMeta(cached.m);
+  if(cached&&Date.now()-cached.at<12*36e5)return;
+  const fresh=(async()=>{
+    for(const url of ['data/meta.json','api/meta']){
+      try{const r=await fetch(url,url.startsWith('data')?{cache:'no-store'}:{});if(!r.ok)continue;const m=await r.json();
+        if(useMeta(m)){store.set('ef2-meta',{at:Date.now(),m});return true;}}catch(e){}
+    }
+    return false;
+  })();
+  // Don't hold the first search for long: if fresh numbers are slow, start with what's here and apply them when they land.
+  await Promise.race([fresh,new Promise(r=>setTimeout(r,cached?0:3000))]);
 }
 
 /* ---------- start ---------- */

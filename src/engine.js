@@ -512,10 +512,14 @@ function levelRef(levels){const v=Object.values(levels||{}).sort((a,b)=>b-a).sli
 function ratingToPower(r,u){const rr=50+(r-50)*u/(u+3);return Math.max(1,Math.min(10,Math.round((rr-36)/2.2)));}
 function statPower(st){
   if(!st)return null;
-  let r=st.rating;
-  if(r==null&&st.games)r=50+2.7*((st.wins/st.games)*100-50);
-  if(r==null)return null;
-  return ratingToPower(r,st.usage==null?3:st.usage);
+  if(st.rating!=null)return ratingToPower(st.rating,st.usage==null?3:st.usage);
+  if(!st.games)return null;
+  // From raw battle counts among top players. Win rate is smoothed toward 50% (as if 50 extra even games), because
+  // small samples swing wildly, and capped, because top players mostly face each other so every popular card sits
+  // near 50%. How widely a card is played carries the rest: the meta's staples earn their rating through use.
+  const wr=(st.wins+25)/(st.games+50)*100;
+  const fromWins=Math.max(-2.5,Math.min(2.5,0.25*(wr-50)));
+  return Math.max(1,Math.min(10,Math.round(5+fromWins+1.9*Math.log10(1+(st.usage||0)))));
 }
 function deckFromMeta(d){
   const cards=d.cards.map(x=>{const[i,f]=String(x).split(':');const k=ID_TO_CARD[+i]||i;return f&&f!=='base'?k+':'+f:k;});
@@ -549,6 +553,7 @@ function applyMeta(meta){
   if(!meta||meta.version!==1)return false;
   for(const [mode,fp,fe,fh] of [['ranked','p','ev','he'],['duo','p2','ev2','he2']]){
     const m=meta[mode];if(!m||!m.cards)continue;
+    if(m.sides!=null&&m.sides<1500)continue; // too few battles in this mode to trust: keep the built-in ratings
     for(const [cid,st] of Object.entries(m.cards)){
       const c=C[ID_TO_CARD[+cid]||cid];if(!c)continue;
       const b=statPower(st.base);if(b!=null)c[fp]=b;
