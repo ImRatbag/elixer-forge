@@ -401,4 +401,7 @@ const SPELL_VULN={'fireball':'fb','lightning':'fb','poison':'swarm','the-log':'s
 
 /* Optional starting profiles: [{key,name,missingEvo:[ids],missingHero:[ids]}]. Empty for the public site, so every visitor starts fresh. */
 const PRESET_PLAYERS=[];
+/* Featured players for the player-decks tab: their recent decks come from their public battle log.
+   Set tag to the player's tag (letters and digits only, no #). An entry without a tag is not shown. */
+const CREATORS=[{key:'ken',name:'Ken',tag:''}];
 const DATA_DATE='Sept 30, 2026';

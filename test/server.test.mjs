@@ -71,3 +71,15 @@ console.log('server + refresh tests passed:', JSON.stringify({ rankedDecks: agg.
   if (out.cards[0].evo !== 'b.png' || out.cards[0].hero !== 'c.png' || out.towers[0].id !== 159000000) throw new Error('toCards failed');
   console.log('card list test passed');
 }
+
+// battle log -> recent decks
+{
+  const { createRequire } = await import('node:module');
+  const { toDecks } = createRequire(import.meta.url)('../api/battles.js');
+  const cards = [26000000, 26000001, 26000002, 26000003, 26000004, 26000005, 26000006, 26000007].map((id, i) => ({ id, evolutionLevel: i === 0 ? 1 : i === 1 ? 2 : 0 }));
+  const mk = (t, mine, theirs) => ({ battleTime: t, type: 'pathOfLegend', gameMode: { name: 'Ranked1v1' }, team: [{ tag: '#2PP', name: 'Ken', crowns: mine, cards, supportCards: [{ id: 159000000 }] }], opponent: [{ tag: '#9', crowns: theirs, cards }] });
+  const out = toDecks([mk('20261001T100000.000Z', 3, 0), mk('20261002T100000.000Z', 0, 1)], '2PP');
+  const d = out.decks[0];
+  if (out.name !== 'Ken' || out.decks.length !== 1 || d.games !== 2 || d.wins !== 1 || d.losses !== 1 || d.cards[0] !== '26000000:evo' || d.cards[1] !== '26000001:hero' || d.tower !== 159000000) throw new Error('toDecks failed ' + JSON.stringify(out));
+  console.log('battle log test passed');
+}

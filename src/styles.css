@@ -307,3 +307,7 @@ input::placeholder{color:var(--muted);opacity:1}
 .wins{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .wins li{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)}
 .wins li:first-child{border-top:0}
+/* editing: before and after score */
+.delta{margin:0;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:800;font-variant-numeric:tabular-nums}
+.delta.up{border-color:var(--good);color:var(--good)} .delta.down{border-color:var(--bad);color:var(--bad)}
+.delta b{font-family:var(--display);font-weight:400;font-size:18px}

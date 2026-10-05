@@ -30,7 +30,7 @@ Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TO
 
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
-const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],result:null,busy:false},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
@@ -179,11 +179,11 @@ function renderChips(key){
 /* card search pickers (delegated so they survive re-renders) */
 function pickerMatches(q,taken){q=q.trim().toLowerCase();if(!q)return[];return CARDS.filter(c=>!taken(c.id)&&c.name.toLowerCase().includes(q)).slice(0,9);}
 function renderMatches(list,m){list.innerHTML=m.length?m.map(c=>`<li><button type="button" data-id="${c.id}">${artImg(c.id,null,'mart')}<b>${esc(c.name)}</b><span class="hint">${c.e} elixir</span><span class="forms">${formsOf(c).map(f=>`<span class="badge ${f}">${formLabel[f]}</span>`).join('')}</span></button></li>`).join(''):'<li class="hint" style="padding:7px 8px">No matching card</li>';list.hidden=false;}
-function pickerTaken(inp){const t=inp.dataset.picker,k=inp.dataset.key;if(t==='vs')return id=>state.vs.includes(id);if(t==='chk')return id=>state.check.ids.includes(id);const r=state.rules[k];return t==='inc'?id=>r.locks.some(l=>l.id===id):id=>r.exclude.has(id);}
+function pickerTaken(inp){const t=inp.dataset.picker,k=inp.dataset.key;if(t==='vs')return id=>state.vs.includes(id);if(t==='chk')return id=>state.check.ids.includes(id);if(t==='chkb')return id=>(state.check.idsB||[]).includes(id);const r=state.rules[k];return t==='inc'?id=>r.locks.some(l=>l.id===id):id=>r.exclude.has(id);}
 function pickerPick(inp,id){
   const t=inp.dataset.picker,k=inp.dataset.key;
   if(t==='vs'){if(state.vs.length>=8){toast('Their deck already has 8 cards');return;}state.vs.push(id);renderVs();return;}
-  if(t==='chk'){if(state.check.ids.length>=8){toast('That deck already has 8 cards');return;}state.check.ids.push(id);state.check.result=null;renderCheck();setTimeout(()=>{const i=$('chk');if(i)i.focus();},0);return;}
+  if(t==='chk'||t==='chkb'){const ck=state.check,list=t==='chk'?ck.ids:ck.idsB;if(list.length>=8){toast('That deck already has 8 cards');return;}list.push(id);ck.result=null;if(checkReady())runCheck();else{renderCheck();setTimeout(()=>{const i=$(t);if(i&&!i.disabled)i.focus();},0);}return;}
   const r=state.rules[k];
   if(t==='inc'){if(r.locks.length>=8){showErr('A deck holds 8 cards. Remove one before adding another.');return;}r.locks.push({id,form:'any'});if(r.exclude.get(id)==='all')r.exclude.delete(id);}
   else{r.exclude.set(id,'all');r.locks=r.locks.filter(l=>l.id!==id);}
@@ -439,7 +439,7 @@ function archLabel(ids){
 }
 
 /* ---------- Score breakdown: how a score adds up, how the deck handles each kind of threat, and its answers to popular win conditions ---------- */
-const POPULAR_WINS=['hog-rider','royal-giant','golem','giant','electro-giant','balloon','lava-hound','goblin-barrel','graveyard','x-bow','miner','battle-ram'];
+const POPULAR_WINS=['hog-rider','balloon','minion-giant','royal-giant','golem','giant','electro-giant','lava-hound','goblin-barrel','graveyard','x-bow','miner','battle-ram'];
 const INFERNO=new Set(['inferno-tower','inferno-dragon']);
 const clamp100=v=>Math.max(0,Math.min(100,Math.round(v)));
 const nameList=(ids,max)=>{const n=ids.map(i=>C[i].name);return n.length>(max||4)?n.slice(0,max||4).join(', ')+' and '+(n.length-(max||4))+' more':n.join(', ');};
@@ -567,7 +567,7 @@ function renderDecks(decks){
       ${reportHTML(d,showScore(d.s))}
       ${tilesHTML(d.ids,d.forms,lv)}
       ${towerHTML(t)}
-      <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-copy="${i}">Copy list</button><button class="btn" type="button" data-save="${i}">Save</button><button class="btn" type="button" data-pin="${i}">Pin to tweak</button></div>
+      <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-copy="${i}">Copy list</button><button class="btn" type="button" data-save="${i}">Save</button><button class="btn" type="button" data-edit="${i}">Edit</button><button class="btn" type="button" data-pin="${i}">Pin to tweak</button></div>
       <details class="why"><summary>Why this deck</summary>
         <p class="synbreak">Synergy ${d.synPct}%: combos ${sy.combo}%, win condition support ${sy.wc}%, role coverage ${sy.cov}%, shared-weakness check ${sy.weak}%.</p>
         <div class="pc"><div><h3 class="good">Strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
@@ -611,15 +611,15 @@ function gamePlan(p,N){
     return heavy+' usually builds the big push and '+light+' pressures the other lane.'+(both?' Both decks defend on their own, so swap roles whenever one of you is out of cycle.':'')+' When the heavy push crosses the bridge, '+light+' can add support behind it.';}
   return 'Neither deck is locked into attack or defense. Whoever has the better hand defends while the other counter-pushes, then push one lane together to overload a tower.';
 }
-function renderDuo(pairs){
+function duoArticle(p,i,plain){
   const N=names();const lvA=$('levelmatch').checked?prof('A').levels:null,lvB=$('levelmatch').checked?prof('B').levels:null;
-  $('out').innerHTML=pairs.map((p,i)=>{
+  
     const ta=towerFor('A',p.sa,p.A,true),tb=towerFor('B',p.sb,p.B,true);p._towers=[ta.id,tb.id];
     const pc=teamProsCons(p,N),tp=p.t.parts;const li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;
     const half=(ids,sc,key,lv,t)=>`<div class="duodeck ${key==='B'?'b':''}">
       <p class="who"><span class="tag">${esc(N[key])}</span>${sc.role!=='flex'?`<span class="role">${sc.role==='attack'?'Attacker':'Defender'}</span>`:''}<span class="dn">${esc(archLabel(ids))}</span><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span></p>
       ${tilesHTML(ids,sc.forms,lv)}${towerHTML(t)}
-      <div class="actions">${linkBtn(ids,sc.forms,t.id)}<button class="btn sm" type="button" data-dcopy="${i}" data-side="${key}">Copy list</button></div></div>`;
+      <div class="actions">${linkBtn(ids,sc.forms,t.id)}${plain?'':`<button class="btn sm" type="button" data-dcopy="${i}" data-side="${key}">Copy list</button>`}</div></div>`;
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(p.A))} with ${esc(archLabel(p.B))}</h2>
         <div class="dmeta"><span>Team synergy <b>${p.t.pct}%</b></span><span>Combos between decks <b>${p.t.cross.filter(x=>!x.meta).length}</b></span></div></div>
@@ -627,14 +627,14 @@ function renderDuo(pairs){
       ${duoReportHTML(p,N)}
       <div class="pair">${half(p.A,p.sa,'A',lvA,ta)}${half(p.B,p.sb,'B',lvB,tb)}</div>
       <p class="plan"><b>Game plan</b>${esc(gamePlan(p,N))}</p>
-      <div class="actions"><button class="btn primary" type="button" data-dshare="${i}">Send to teammate</button><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>
+      ${plain?'':`<div class="actions"><button class="btn primary" type="button" data-dshare="${i}">Send to teammate</button><button class="btn" type="button" data-dedit="${i}">Edit decks</button><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>`}
       <details class="why"><summary>Why these decks work together</summary>
         <p class="synbreak">Team synergy ${p.t.pct}%: combos across all 16 cards ${tp.combo}%, win condition support ${tp.wc}%, team coverage ${tp.cov}%, role split ${tp.comp}%, shared-weakness check ${tp.weak}%.</p>
         <div class="pc"><div><h3 class="good">Team strengths</h3><ul>${pc.pros.map(li).join('')||'<li><span>No standout strengths</span></li>'}</ul></div><div><h3 class="bad">Team weaknesses</h3><ul>${pc.cons.map(li).join('')||'<li><span>No major gaps</span></li>'}</ul></div></div>
         ${p.sa.vs?`<div class="pc" style="margin-top:12px"><div>${vsHTML(p.sa.vs).replace('Against their deck',esc(N.A)+' against their deck')}</div><div>${vsHTML(p.sb.vs).replace('Against their deck',esc(N.B)+' against their deck')}</div></div>`:''}
       </details>
-    </article>`;}).join('');
-}
+    </article>`;}
+function renderDuo(pairs){$('out').innerHTML=pairs.map((p,i)=>duoArticle(p,i)).join('');}
 
 /* ---------- top decks tab ---------- */
 function renderMeta(){
@@ -673,17 +673,24 @@ function renderSaved(){
 /* ---------- Check a deck: score any 8 cards against this player's collection and suggest the best single swaps ---------- */
 const showScore=s=>Math.max(1,Math.min(99,Math.round(s*0.82)));
 function miniCard(id,form){const a=ART[id];return a?`<img class="mini" src="${esc(form==='evo'?a.evo:form==='hero'?a.hero:a.base)}" alt="" loading="lazy" onerror="this.remove()">`:'';}
+const teamShown=p=>Math.max(1,Math.min(99,Math.round(p.s*0.62)));
+function checkReady(){const ck=state.check;return ck.ids.length===8&&(!ck.idsB||ck.idsB.length===8);}
 function renderCheck(){
-  const p=prof('A'),ck=state.check,cur=(p.current||[]).filter(i=>C[i]);
-  const chips=ck.ids.map((id,i)=>`<span class="chip">${miniCard(id)}${esc(C[id].name)}<button type="button" aria-label="Remove ${esc(C[id].name)}" data-chkrm="${i}">✕</button></span>`).join('');
+  const p=prof('A'),ck=state.check,N=names(),team=!!ck.idsB,cur=(p.current||[]).filter(i=>C[i]);
+  const chipRow=(list,side)=>list.map((id,i)=>`<span class="chip">${miniCard(id)}${esc(C[id].name)}<button type="button" aria-label="Remove ${esc(C[id].name)}" data-chkrm="${i}" data-side="${side}">✕</button></span>`).join('');
+  const field=(list,side,label)=>`<div class="field picker"><label class="lbl" for="chk${side}">${esc(label)} (${list.length} of 8)</label>
+        <input id="chk${side}" type="search" placeholder="${list.length>=8?'Remove a card to swap it':'Type a card name to add it'}" autocomplete="off" data-picker="chk${side}" ${list.length>=8?'disabled':''}>
+        <ul class="matches" id="chk${side}-matches" hidden></ul><div class="chips">${chipRow(list,side)}</div></div>`;
   let res='';
-  if(ck.busy)res='<p class="status">Checking the deck and trying swaps…</p>';
+  const delta=now=>ck.base==null||now===ck.base?'':`<p class="delta ${now>ck.base?'up':'down'}">${team?'Team score':'Forge score'} was <b>${ck.base}</b>, now <b>${now}</b> (${now>ck.base?'+':''}${now-ck.base})</p>`;
+  if(ck.busy)res=`<p class="status">${team?'Scoring the team…':'Checking the deck and trying swaps…'}</p>`;
   else if(ck.result&&ck.result.error)res=`<p class="err">${esc(ck.result.error)}</p>`;
+  else if(ck.result&&ck.result.pair){res=delta(teamShown(ck.result.pair))+duoArticle(ck.result.pair,0,true);}
   else if(ck.result){
     const d=ck.result.deck,t=towerFor('A',d,d.ids,false),pc=prosCons(d),sy=d.syn.parts,li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;
     const lv=$('levelmatch').checked?p.levels:null;
     const swaps=ck.result.swaps;
-    res=`<article class="deck">
+    res=delta(showScore(d.s))+`<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
         <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span></div></div>
         ${scoreBtn(showScore(d.s),'Forge score')}</div>
@@ -700,48 +707,121 @@ function renderCheck(){
       </details></article>`;
   }
   $('out').innerHTML=`<section class="panel checkbox">
-      <h2>Check a deck</h2>
-      <p class="hint">Add any 8 cards to see how the deck scores with ${esc(p.name)}'s collection, and which single swaps would improve it.</p>
-      ${cur.length===8?`<div><button class="btn" type="button" data-chkcur="1">Use ${esc(p.name)}'s current deck</button></div>`:(state.api&&p.source!=='tag'?'<p class="hint">Load a player tag to check that player\'s current deck in one tap.</p>':'')}
-      <div class="field picker"><label class="lbl" for="chk">Cards (${ck.ids.length} of 8)</label>
-        <input id="chk" type="search" placeholder="Type a card name" autocomplete="off" data-picker="chk" ${ck.ids.length>=8?'disabled':''}>
-        <ul class="matches" id="chk-matches" hidden></ul><div class="chips">${chips}</div></div>
-      <div class="btns"><button class="btn primary" type="button" data-chkgo="1" ${ck.ids.length===8&&!ck.busy?'':'disabled'}>Check deck</button>${ck.ids.length?'<button class="btn" type="button" data-chkclear="1">Clear</button>':''}</div>
+      <h2>${team?'Edit a team':'Check or edit a deck'}</h2>
+      <p class="hint">${team?'Remove a card with ✕ and type another to replace it. The team score updates as soon as both decks have 8 cards.':`Add any 8 cards, or press Edit on a forged deck. Remove a card with ✕ and add another to see how the score changes with ${esc(p.name)}'s collection.`}</p>
+      ${!team&&cur.length===8?`<div><button class="btn" type="button" data-chkcur="1">Use ${esc(p.name)}'s current deck</button></div>`:''}
+      ${field(ck.ids,'',team?N.A+'\'s deck':'Cards')}
+      ${team?field(ck.idsB,'b',N.B+'\'s deck'):''}
+      <div class="btns"><button class="btn primary" type="button" data-chkgo="1" ${checkReady()&&!ck.busy?'':'disabled'}>${team?'Score team':'Check deck'}</button>
+        ${team?'<button class="btn" type="button" data-chksolo="1">Check one deck instead</button>':'<button class="btn" type="button" data-chkteam="1">Add a teammate\'s deck</button>'}
+        ${ck.ids.length||(ck.idsB&&ck.idsB.length)?'<button class="btn" type="button" data-chkclear="1">Clear</button>':''}</div>
     </section>${res}`;
   setStatus('');
 }
 async function runCheck(){
-  const ck=state.check,ids=ck.ids.slice();if(ids.length!==8||ck.busy)return;
-  if(ids.filter(i=>isChamp(C[i])).length>1){ck.result={error:'A deck can hold only one Champion. Remove one and check again.'};renderCheck();return;}
+  const ck=state.check,ids=ck.ids.slice(),idsB=ck.idsB?ck.idsB.slice():null;if(!checkReady()||ck.busy)return;
+  const fail=m=>{ck.result={error:m};renderCheck();};
+  for(const l of [ids,idsB])if(l&&l.filter(i=>isChamp(C[i])).length>1)return fail('A deck can hold only one Champion. Remove one and check again.');
+  if(idsB&&ids.filter(x=>idsB.includes(x)).length>2)return fail('The two decks can share at most 2 cards.');
   ck.busy=true;ck.result=null;renderCheck();
+  const vs=state.vs.length?state.vs.slice():null,levelW=$('levelmatch').checked?1:0;
   try{
-    const so=sideOpts('A');
-    const base={...so,locked:ids,forms:{},style:'any',exclude:new Set([...so.exclude].filter(x=>!ids.includes(x))),maxAvg:9,count:1,maxChamps:1,vs:state.vs.length?state.vs.slice():null,levelW:$('levelmatch').checked?1:0};
-    const cur=(await runJob('gen',base))[0];
-    if(!cur){ck.result={error:'That combination can\'t be scored. Check that it has 8 different cards.'};}
-    else{
-      const swaps=[];
-      for(let i=0;i<8;i++){
-        const r=(await runJob('gen',{...base,locked:ids.filter((_,j)=>j!==i),exclude:new Set([...so.exclude,ids[i]].filter(x=>x===ids[i]||!ids.includes(x))),maxAvg:Math.max(cur.avg+0.4,4.3)}))[0];
-        if(!r)continue;const inn=r.ids.find(x=>!ids.includes(x));
-        if(inn&&showScore(r.s)>showScore(cur.s)){const sp=r.forms.specials.find(x=>x.id===inn);swaps.push({out:ids[i],in:inn,inForm:sp?sp.form:null,s:r.s,ids:r.ids});}
+    if(idsB){
+      const fix=(key,l)=>{const so=sideOpts(key);return{...so,locked:l,forms:{},style:'any',role:'flex',exclude:new Set([...so.exclude].filter(x=>!l.includes(x)))};};
+      const pairs=await runJob('duo',{A:fix('A',ids),B:fix('B',idsB),maxAvg:9,count:1,priority:$('priority').value,names:names(),vs,levelW});
+      const same=(x,y)=>[...x].sort().join()===[...y].sort().join();
+      const pr=pairs.find(q=>same(q.A,ids)&&same(q.B,idsB));
+      ck.result=pr?{pair:pr}:{error:'That team can\'t be scored. Each deck needs at least one win condition.'};
+    }else{
+      const so=sideOpts('A');
+      const base={...so,locked:ids,forms:{},style:'any',exclude:new Set([...so.exclude].filter(x=>!ids.includes(x))),maxAvg:9,count:1,maxChamps:1,vs,levelW};
+      const cur=(await runJob('gen',base))[0];
+      if(!cur){ck.result={error:'That combination can\'t be scored. Check that it has 8 different cards.'};}
+      else{
+        const swaps=[];
+        for(let i=0;i<8;i++){
+          const r=(await runJob('gen',{...base,locked:ids.filter((_,j)=>j!==i),exclude:new Set([...so.exclude,ids[i]].filter(x=>x===ids[i]||!ids.includes(x))),maxAvg:Math.max(cur.avg+0.4,4.3)}))[0];
+          if(!r)continue;const inn=r.ids.find(x=>!ids.includes(x));
+          if(inn&&showScore(r.s)>showScore(cur.s)){const sp=r.forms.specials.find(x=>x.id===inn);swaps.push({out:ids[i],in:inn,inForm:sp?sp.form:null,s:r.s,ids:r.ids});}
+        }
+        swaps.sort((a,b)=>b.s-a.s);
+        const seen=new Set();
+        ck.result={deck:cur,swaps:swaps.filter(x=>!seen.has(x.in)&&seen.add(x.in)).slice(0,3)};
       }
-      swaps.sort((a,b)=>b.s-a.s);
-      const seen=new Set();
-      ck.result={deck:cur,swaps:swaps.filter(x=>!seen.has(x.in)&&seen.add(x.in)).slice(0,3)};
     }
   }catch(e){ck.result={error:'The check hit an error: '+e.message};}
   ck.busy=false;if(state.view==='check')renderCheck();
 }
+function startEdit(ids,idsB,base){state.check={ids:[...ids],idsB:idsB?[...idsB]:null,base,result:null,busy:false};setView('check');runCheck();window.scrollTo({top:$('out').getBoundingClientRect().top+scrollY-70,behavior:'auto'});}
 $('out').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset,ck=state.check;
-  if(d.chkrm!=null){ck.ids.splice(+d.chkrm,1);ck.result=null;renderCheck();}
-  if(d.chkclear){ck.ids=[];ck.result=null;renderCheck();}
-  if(d.chkcur){ck.ids=(prof('A').current||[]).filter(i=>C[i]).slice(0,8);ck.result=null;runCheck();}
+  if(d.edit!=null){const x=state.last[+d.edit];startEdit(x.ids,null,showScore(x.s));return;}
+  if(d.dedit!=null){const p=state.lastDuo[+d.dedit];startEdit(p.A,p.B,teamShown(p));return;}
+  if(d.chkrm!=null){(d.side==='b'?ck.idsB:ck.ids).splice(+d.chkrm,1);ck.result=null;renderCheck();const i=$('chk'+(d.side||''));if(i)i.focus();}
+  if(d.chkclear){ck.ids=[];if(ck.idsB)ck.idsB=[];ck.base=null;ck.result=null;renderCheck();}
+  if(d.chkteam){ck.idsB=[];ck.base=null;ck.result=null;renderCheck();}
+  if(d.chksolo){ck.idsB=null;ck.base=null;ck.result=null;if(checkReady())runCheck();else renderCheck();}
+  if(d.chkcur){ck.ids=(prof('A').current||[]).filter(i=>C[i]).slice(0,8);ck.base=null;ck.result=null;runCheck();}
   if(d.chkgo)runCheck();
   if(d.chkswap!=null&&ck.result&&ck.result.swaps){const x=ck.result.swaps[+d.chkswap];ck.ids=ck.ids.map(i=>i===x.out?x.in:i);runCheck();}
   if(d.chksave&&ck.result&&ck.result.deck){const x=ck.result.deck;const t=towerFor('A',x,x.ids,false);saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:t.id}]});}
 });
+
+/* ---------- Player decks: the decks a featured player (or any tag) used in their most recent battles ---------- */
+const FEATURED=CREATORS.filter(c=>c.tag);
+if(FEATURED.length)$('tab-creator').textContent=FEATURED.length===1?FEATURED[0].name+' decks':'Creator decks';
+function renderCreator(){
+  const cr=state.creator,p=prof('A'),cs=colSets(p);
+  if(!cr.decks&&!cr.busy&&!cr.error&&state.api){const t=FEATURED[0]?FEATURED[0].tag:store.get('ef2-creator','');if(t){loadCreator(t);return;}}
+  let body='';
+  if(state.api===false)body='<p class="hint">Recent decks need the Elixir Forge server, which isn\'t running on this copy.</p>';
+  else if(cr.busy)body='<p class="status">Loading recent battles…</p>';
+  else if(cr.error)body=`<p class="err">${esc(cr.error)}</p>`;
+  const list=(cr.decks||[]).map((d,i)=>{
+    const ids=d.cards.map(x=>x.split(':')[0]);
+    const forms=Object.fromEntries(d.cards.map(x=>{const[a,b]=x.split(':');return[a,b||'normal'];}));
+    memo=new Map();
+    const sc=scoreDeck(ids,{forms,maxChamps:1,style:'any',maxAvg:5,duo:d.modes.includes('2v2'),tag:'cr'});
+    const miss=d.cards.map(x=>x.split(':')).filter(([a,f])=>(f==='evo'&&!cs.evo.has(a))||(f==='hero'&&!cs.hero.has(a))||(cs.base&&!cs.base.has(a))).map(([a,f])=>f?formLabel[f]+' '+C[a].name:C[a].name);
+    const tw=TOWERS.find(t=>t.tid===d.tower);
+    return `<article class="deck">
+      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(ids))}</h2><div class="dmeta"><span>${esc(d.modes.join(', '))}</span><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span></div></div>
+        <div class="score"><span class="num">${d.wins}–${d.losses}</span><small>${d.games} recent game${d.games>1?'s':''}</small></div></div>
+      ${tilesHTML(ids,sc.forms,null)}
+      ${miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`}
+      <div class="actions">${linkBtn(ids,sc.forms,tw?tw.id:'tower-princess')}<button class="btn" type="button" data-credit="${i}">Check with my cards</button></div>
+    </article>`;}).join('');
+  if(cr.decks&&!cr.decks.length&&!cr.busy)body='<p class="hint">No recent battles with a full deck were found for this player.</p>';
+  $('out').innerHTML=`<section class="panel">
+      <h2>${cr.name?esc(cr.name)+'\'s recent decks':'Player decks'}</h2>
+      <p class="hint">Decks from a player's most recent battles, straight from their public battle log (about the last 25 games). ${FEATURED.length?'':'Enter any player tag: a friend, a top player or a creator.'}</p>
+      ${FEATURED.length>1?`<div class="btns">${FEATURED.map(c=>`<button class="btn${cr.tag===c.tag?' primary':''}" type="button" data-crtag="${esc(c.tag)}">${esc(c.name)}</button>`).join('')}</div>`:''}
+      <div class="field"><label class="lbl" for="crtag">Player tag</label>
+        <div class="tagrow"><input type="text" id="crtag" placeholder="#2PP" value="${cr.tag?'#'+esc(cr.tag):''}" autocomplete="off" spellcheck="false"><button class="btn" type="button" data-crgo="1">Show decks</button></div></div>
+      ${body}
+      ${cr.decks&&cr.decks.length?'<p class="hint">Not affiliated with or endorsed by this player. Evo and Hero forms are read from deck slot order, so an unusual slot setup can be shown as the normal card.</p>':''}
+    </section>${list}`;
+  setStatus('');
+}
+async function loadCreator(raw){
+  const cr=state.creator,tag=String(raw||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
+  if(!/^[0289PYLQGRJCUV]{3,14}$/.test(tag)){cr.error='That doesn\'t look like a player tag. Tags use only 0 2 8 9 P Y L Q G R J C U V.';cr.decks=null;renderCreator();return;}
+  cr.tag=tag;cr.busy=true;cr.error=null;cr.decks=null;cr.name=(FEATURED.find(c=>c.tag===tag)||{}).name||'';renderCreator();
+  try{
+    const r=await fetch('api/battles?tag='+encodeURIComponent(tag));const j=await r.json();
+    if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
+    cr.decks=(j.decks||[]).map(d=>{const cards=d.cards.map(x=>{const[i,f]=String(x).split(':');const k=ID_TO_CARD[+i];return k?(f?k+':'+f:k):null;});return cards.every(Boolean)?{...d,cards}:null;}).filter(Boolean);
+    cr.name=cr.name||j.name||'';if(!FEATURED.length)store.set('ef2-creator',tag);
+  }catch(e){cr.error=e.message||'Lookup failed.';}
+  cr.busy=false;if(state.view==='creator')renderCreator();
+}
+$('out').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+  if(d.crgo)loadCreator($('crtag').value);
+  if(d.crtag)loadCreator(d.crtag);
+  if(d.credit!=null){const x=state.creator.decks[+d.credit];startEdit(x.cards.map(c=>c.split(':')[0]),null,null);}
+});
+$('out').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='crtag'){e.preventDefault();loadCreator(e.target.value);}});
 
 /* ---------- Unlock next: which Evo or Hero this player doesn't own would lift their best deck the most ---------- */
 function unlockCandidates(){
@@ -828,10 +908,11 @@ $('out').addEventListener('click',e=>{
 
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
-  state.view=v;['gen','meta','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  state.view=v;['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
   if(quiet)return;
   if(v==='meta')renderMeta();
   else if(v==='check')renderCheck();
+  else if(v==='creator')renderCreator();
   else if(v==='unlock')renderUnlock();
   else if(v==='saved')renderSaved();
   else if(state.mode==='duo'&&state.lastDuo.length){renderDuo(state.lastDuo);setStatus(state.lastDuo.length+' team pairs');}
@@ -839,7 +920,7 @@ function setView(v,quiet){
   else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
 }
 function rerender(){setView(state.view);}
-['gen','meta','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
+['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>setView(x)));
 function setMode(m){
   state.mode=m;store.set('ef2-mode',m);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');

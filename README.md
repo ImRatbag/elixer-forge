@@ -8,6 +8,8 @@ Clash Royale deck builder for 1v1 and 2v2 that builds from each player's **real 
 - **Open in Clash Royale** links copy a deck straight into the game, tower troop included.
 - Build against an opponent's deck, save decks and log wins and losses.
 - **Check a deck**: score any 8 cards (or a loaded player's current deck) and get the best single swaps.
+- **Player decks**: the decks any player used in their most recent battles (`api/battles.js`). To feature a creator, put their player tag in `CREATORS` in `src/data.js` and rebuild; the tab is then named after them.
+- **Edit a deck or team**: press Edit on any forged deck or pair, swap cards and watch the score change.
 - **Unlock next**: which missing Evo or Hero would lift a player's best deck the most.
 - **Send to teammate** and links like `?a=TAG&b=TAG` that open the site with both players loaded.
 - Ratings refresh weekly from Supercell's official API (GitHub Action) once you add a key.
@@ -18,7 +20,7 @@ Clash Royale deck builder for 1v1 and 2v2 that builds from each player's **real 
 |---|---|
 | `index.html` | The whole app in one file (built from `src/`). Works on any static host. |
 | `src/` | Source: `data.js` (cards, ratings, synergies), `engine.js` (deck search), `app.js` (interface), `styles.css`, `shell.html` |
-| `api/player.js`, `api/health.js`, `api/cards.js` | Serverless functions: player tag lookup, and the official card list with picture links (Vercel format) |
+| `api/player.js`, `api/health.js`, `api/cards.js`, `api/battles.js` | Serverless functions: player tag lookup, and the official card list with picture links (Vercel format) |
 | `scripts/refresh-meta.mjs` | Builds `data/meta.json` from top players' battles |
 | `.github/workflows/refresh-meta.yml` | Runs the refresh every Monday |
 | `test/` | Offline tests (`npm test`) |
