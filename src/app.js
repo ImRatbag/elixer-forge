@@ -49,12 +49,25 @@ function applySkin(id){
 applySkin(store.get('ef2-skin','royal')); // Royal Night is the default for every visitor
 document.addEventListener('click',e=>{const b=e.target.closest('[data-skin-pick]');if(b){applySkin(b.dataset.skinPick);toast((SKINS.find(x=>x.id===b.dataset.skinPick)||{}).name+' theme');}});
 
+/* ---------- remembered settings ---------- */
+function saveSearch(){store.set('ef2-search',{priority:$('priority').value,maxavg:$('maxavg').value,count:$('count').value,levelmatch:$('levelmatch').checked});}
+(function(){const v=store.get('ef2-search',null);if(!v)return;
+  for(const k of ['priority','maxavg','count']){const el=$(k);if(el&&v[k]!=null&&[...el.options].some(o=>o.value===String(v[k])))el.value=String(v[k]);}
+  if(typeof v.levelmatch==='boolean')$('levelmatch').checked=v.levelmatch;})();
+['priority','maxavg','count','levelmatch'].forEach(k=>$(k).addEventListener('change',saveSearch));
+function saveRules(){store.set('ef2-rules',Object.fromEntries(['A','B'].map(k=>{const r=state.rules[k];return[k,{locks:r.locks,exclude:[...r.exclude],style:r.style,role:r.role,tower:r.tower}];})));}
+function loadRules(){const v=store.get('ef2-rules',null);if(!v)return;
+  for(const k of ['A','B']){const x=v[k];if(!x)continue;const r=state.rules[k];
+    r.locks=(x.locks||[]).filter(l=>l&&C[l.id]).slice(0,8);r.exclude=new Map((x.exclude||[]).filter(e=>Array.isArray(e)&&C[e[0]]));
+    if(STYLE_OPTS.some(o=>o[0]===x.style))r.style=x.style;if(['flex','attack','defend'].includes(x.role))r.role=x.role;if(x.tower==='auto'||TOWER[x.tower])r.tower=x.tower;}}
+
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
 /* Cards from recent results, so the next Forge leans toward different ones. Halves each round. */
 const recent={duo:{},'1v1':{}};
 function noteShown(mode,idLists){const r=recent[mode];for(const k in r){r[k]*=0.5;if(r[k]<0.1)delete r[k];}for(const ids of idLists)for(const id of ids)r[id]=Math.min(1.6,(r[id]||0)+0.7);}
+loadRules();
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
@@ -105,11 +118,13 @@ async function detectApi(){
   renderPlayers();
   if(state.api&&await loadArt()){document.documentElement.classList.add('has-art');renderPlayers();if(setDataNote.last)setDataNote(...setDataNote.last);if(state.last.length||state.lastDuo.length)rerender();}
 }
-async function lookupTag(key,raw){
+async function lookupTag(key,raw,opt){
+  const quiet=opt&&opt.quiet,fail=m=>{if(!quiet)toast(m);setStatus('');return false;};
   const tag=String(raw||'').toUpperCase().replace(/^#/,'').replace(/O/g,'0').trim();
-  if(!/^[0289PYLQGRJCUV]{3,14}$/.test(tag)){showErr('That doesn\'t look like a player tag. Tags use only 0 2 8 9 P Y L Q G R J C U V, like #2PP.');return;}
-  if(!state.api){showErr('Player tag lookup needs the Elixir Forge server, which isn\'t running on this copy. Use Set up collection instead; it takes about a minute.');return;}
-  hideErr();setStatus('Looking up #'+tag+'…');
+  if(!/^[0289PYLQGRJCUV]{3,14}$/.test(tag))return fail('That doesn\'t look like a player tag. Tags use only 0 2 8 9 P Y L Q G R J C U V.');
+  if(!state.api)return fail('Player tag lookup needs the Elixir Forge server, which isn\'t running on this copy. Use Set up collection instead.');
+  hideErr();if(!quiet)setStatus('Looking up #'+tag+'…');
+  const btn=document.querySelector('.player[data-key="'+key+'"] [data-act="lookup"]');if(btn&&!quiet){btn.disabled=true;btn.textContent='Loading…';}
   try{
     const r=await fetch('api/player?tag='+encodeURIComponent(tag));const j=await r.json();
     if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
@@ -124,8 +139,10 @@ async function lookupTag(key,raw){
     const towers=(j.towers||[]).map(t=>TOWERS.find(x=>x.tid===t.id||x.name===t.name)).filter(Boolean).map(t=>t.id);
     p.col={base,evo,hero,towers:towers.length?towers:['tower-princess']};p.levels=levels;p.tag=tag;p.source='tag';p.updated=Date.now();p.trophies=j.trophies??null;p.current=(j.currentDeck||[]).map(i=>ID_TO_CARD[i]).filter(k=>k&&C[k]);
     if(/^Player \d$/.test(p.name)||!p.name)p.name=j.name||p.name;
-    saveProfiles();renderPlayers();setStatus('Loaded '+j.name+': '+base.length+' cards, '+evo.length+' Evos, '+hero.length+' Heroes.');
-  }catch(e){showErr(e.message||'Lookup failed. Check the tag and try again.');setStatus('');}
+    saveProfiles();renderPlayers();
+    if(!quiet){toast('Loaded '+j.name+': '+evo.length+' Evos, '+hero.length+' Heroes');if(state.view==='gen')forge();else setStatus('');}
+    return true;
+  }catch(e){renderPlayers();return fail(e.message||'Lookup failed. Check the tag and try again.');}
 }
 
 /* ---------- small UI helpers ---------- */
@@ -158,8 +175,9 @@ function playerHTML(key){
       <div class="tagrow"><input type="text" id="tag-${key}" placeholder="#2PP" value="${p.tag?'#'+esc(p.tag):''}" autocomplete="off" spellcheck="false"><button class="btn" type="button" data-act="lookup">Load</button></div>
       ${state.api===false?'<p class="hint">Tag lookup needs the Elixir Forge server, which isn\'t running on this copy. Set up the collection below instead.</p>':''}</div>
     <div class="btns"><button class="btn" type="button" data-act="edit">Set up collection</button><button class="btn" type="button" data-act="share">Share code</button></div>
-    <details ${r.locks.length||r.exclude.size||r.style!=='any'||r.role!=='flex'?'open':''}><summary>Deck rules for ${esc(p.name)}</summary>
+    <details ${r.locks.length||r.exclude.size||r.style!=='any'||r.role!=='flex'?'open':''}><summary>Deck rules for ${esc(p.name)}${(()=>{const n=r.locks.length+r.exclude.size+(r.style!=='any'?1:0)+(r.role!=='flex'?1:0)+(r.tower!=='auto'?1:0);return n?` <span class="rcount" title="${n} rule${n>1?'s':''} set">${n}</span>`:'';})()}</summary>
       <div style="display:grid;gap:10px;margin-top:10px">
+        ${r.locks.length||r.exclude.size||r.style!=='any'||r.role!=='flex'||r.tower!=='auto'?`<div><button class="btn sm" type="button" data-act="clearrules">Clear these rules</button></div>`:''}
         <div class="field picker"><label class="lbl" for="inc-${key}">Must include</label>
           <input id="inc-${key}" type="search" placeholder="Type a card, e.g. Hog Rider" autocomplete="off" data-picker="inc" data-key="${key}">
           <ul class="matches" id="inc-${key}-matches" hidden></ul><div class="chips" id="inc-${key}-chips"></div></div>
@@ -192,6 +210,7 @@ function renderPlayers(){
 }
 function chipFormsFor(key,c){const cs=colSets(prof(key));return formsOf(c).filter(f=>f==='champ'||(f==='evo'?cs.evo.has(c.id):cs.hero.has(c.id)));}
 function renderChips(key){
+  saveRules();
   const r=state.rules[key];
   const inc=$('inc-'+key+'-chips');if(!inc)return;
   inc.innerHTML=r.locks.map((l,i)=>{const c=C[l.id];const fs=chipFormsFor(key,c);
@@ -245,6 +264,7 @@ $('vstag').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault()
 $('vs-chips').addEventListener('click',e=>{const b=e.target.closest('[data-vsrm]');if(b){state.vs.splice(+b.dataset.vsrm,1);renderVs();}});
 
 /* player panel events */
+$('players').addEventListener('keydown',e=>{if(e.key==='Enter'&&/^tag-[AB]$/.test(e.target.id)){e.preventDefault();lookupTag(e.target.id.slice(4),e.target.value);}});
 $('players').addEventListener('click',e=>{
   const card=e.target.closest('.player');if(!card)return;const key=card.dataset.key,r=state.rules[key];
   const act=e.target.closest('[data-act]');
@@ -252,10 +272,12 @@ $('players').addEventListener('click',e=>{
     if(a==='lookup')lookupTag(key,$('tag-'+key).value);
     if(a==='edit')openEditor(key);
     if(a==='share')openShare(key);
+    if(a==='clearrules'){state.rules[key]=blankRules();saveRules();renderPlayers();toast('Rules cleared');}
     return;}
   const rm=e.target.closest('[data-rm]');if(rm){r.locks.splice(+rm.dataset.rm,1);renderChips(key);return;}
   const ex=e.target.closest('[data-ex]');if(ex){r.exclude.delete(ex.dataset.ex);renderChips(key);}
 });
+$('players').addEventListener('change',()=>setTimeout(saveRules,0));
 $('players').addEventListener('change',e=>{
   const card=e.target.closest('.player');if(!card)return;const key=card.dataset.key,r=state.rules[key],t=e.target;
   if(t.dataset.lock!=null){r.locks[+t.dataset.lock].form=t.value;return;}
@@ -409,7 +431,7 @@ function runJob(kind,args){
 
 /* ---------- forge ---------- */
 async function forge(){
-  hideErr();
+  hideErr();saveRules();
   const duo=state.mode==='duo';
   const v=validate('A')||(duo&&validate('B'));
   if(v){showErr(v);return;}
@@ -1052,8 +1074,13 @@ async function loadLinkedTags(){
   const ok=t=>/^[0289PYLQGRJCUV]{3,14}$/.test(t);
   if(!ok(a)&&!ok(b))return;
   if(ok(b))setMode('duo');
-  if(ok(a)){slotForTag('A',a);await lookupTag('A',a);}
-  if(ok(b)&&b!==a){slotForTag('B',b);await lookupTag('B',b);}
+  if(ok(a)){slotForTag('A',a);await lookupTag('A',a,{quiet:true});}
+  if(ok(b)&&b!==a){slotForTag('B',b);await lookupTag('B',b,{quiet:true});}
   store.set('ef2-welcomed',true);renderPlayers();
 }
-Promise.all([detectApi().then(loadLinkedTags),loadMeta()]).then(()=>forge());
+/* A collection loaded from a tag more than 12 hours ago is refreshed quietly, so new unlocks and levels show up. */
+async function refreshStale(){
+  if(!state.api)return;
+  for(const key of state.mode==='duo'?['A','B']:['A']){const p=prof(key);if(p&&p.source==='tag'&&p.tag&&Date.now()-p.updated>12*36e5)await lookupTag(key,p.tag,{quiet:true});}
+}
+Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).then(()=>forge());

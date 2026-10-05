@@ -739,3 +739,5 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
 .skin:hover{transform:scale(1.12)}
 .skin[aria-pressed="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--action)}
 @media (max-width:640px){.skins{order:4}}
+
+.rcount{font-family:var(--display);font-weight:700;font-size:11.5px;line-height:1;padding:3px 7px;border-radius:999px;background:var(--action);color:var(--action-ink);margin-left:4px}
