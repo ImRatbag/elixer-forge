@@ -50,6 +50,10 @@ Netlify or Cloudflare work too; only the two files in `api/` need adapting to th
 
 The look lives in `src/styles.css`. Colours, type and shadows are tokens at the top (`:root`, with a dark set under `prefers-color-scheme`), so a rebrand is a matter of changing those. Type is Outfit (headings and numbers), Manrope (text) and Lilita One (the wordmark), loaded from Google Fonts in `src/shell.html`. Gold is reserved for the primary action, the selected state and scores.
 
+## Link previews and home-screen icon
+
+`og.png` is the picture shown when the site's link is pasted into a chat, and `icon-180.png` / `icon-512.png` are the home-screen icons. The preview picture's address is written into `build.py` as `https://elixer-forge.vercel.app/og.png`; change it there if the site moves to another domain, then run `python3 build.py`.
+
 ## Keeping it current
 
 - New card: add a row to `RAW` in `src/data.js` (id, name, elixir, type, role tags, ratings), its official ID to `CARD_IDS`, then `python3 build.py`. The comment at the top of `RAW` explains the role letters.
