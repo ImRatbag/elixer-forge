@@ -438,6 +438,69 @@ function archLabel(ids){
   return (wins.map(id=>C[id].name).join(' + ')||'Control')+(st?' '+STYLE_NAME[st]:'');
 }
 
+/* ---------- Score breakdown: how a score adds up, how the deck handles each kind of threat, and its answers to popular win conditions ---------- */
+const POPULAR_WINS=['hog-rider','royal-giant','golem','giant','electro-giant','balloon','lava-hound','goblin-barrel','graveyard','x-bow','miner','battle-ram'];
+const INFERNO=new Set(['inferno-tower','inferno-dragon']);
+const clamp100=v=>Math.max(0,Math.min(100,Math.round(v)));
+const nameList=(ids,max)=>{const n=ids.map(i=>C[i].name);return n.length>(max||4)?n.slice(0,max||4).join(', ')+' and '+(n.length-(max||4))+' more':n.join(', ');};
+function deckRatings(ids){
+  const cs=ids.map(i=>C[i]),non=ids.filter(i=>C[i].type!=='s');
+  const air=non.filter(i=>has(C[i],'A')),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake','royal-delivery'].includes(i));
+  const splash=non.filter(i=>has(C[i],'S')),small=ids.filter(i=>C[i].type==='s'&&has(C[i],'s'));
+  const kill=ids.filter(i=>has(C[i],'K')),bld=ids.filter(i=>C[i].type==='b'&&!has(C[i],'W'));
+  const big=ids.filter(i=>C[i].type==='s'&&has(C[i],'F')),tanks=ids.filter(i=>has(C[i],'T')),eq=ids.includes('earthquake');
+  const sv=ids.filter(i=>SMALL_VULN.has(i)),fv=ids.filter(i=>FB_VULN.has(i));
+  const sum=cs.reduce((a,c)=>a+c.e,0),avg=sum/8;
+  return[
+    {label:'Against air',val:clamp100([8,38,64,84,100][Math.min(4,air.length)]+Math.min(10,airSp.length*5)),why:air.length?nameList(air)+' hit air'+(airSp.length?', plus '+nameList(airSp,2):''):'No troop or building in this deck hits air'},
+    {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+' clear groups of small troops':'No splash damage and no small spell'},
+    {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+' heavy troops':'No tank killer and no defensive building'},
+    {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+' get through defensive buildings and siege':'No big spell or tank to push through a building'},
+    {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards die to Fireball ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
+    {label:'Cycle speed',val:clamp100((4.7-avg)/(4.7-2.6)*100),why:'Average elixir '+avg.toFixed(1)+'; four cheapest cards cost '+cycleCost(ids)}
+  ];
+}
+const verdict=v=>v>=75?['Strong','good']:v>=45?['Fair','mid']:['Weak','bad'];
+function barsHTML(rows){
+  return `<ul class="bars">${rows.map(r=>{const [w,c]=verdict(r.val);return `<li><span class="blabel">${esc(r.label)}</span><span class="btrack"><i class="${c}" style="width:${Math.max(4,r.val)}%"></i></span><span class="bval ${c}">${w} ${Math.round(r.val/10)}/10</span><span class="bwhy">${esc(r.why)}</span></li>`;}).join('')}</ul>`;
+}
+function winAnswersHTML(decks){ // decks: [{name?,ids}] — answers come from every deck given (both decks in 2v2)
+  const all=[...new Set(decks.flatMap(d=>d.ids))];
+  return `<ul class="wins">${POPULAR_WINS.filter(w=>C[w]&&COUNTERS[w]).map(w=>{
+    const ans=COUNTERS[w].filter(i=>all.includes(i)),n=ans.length,[word,c]=n>=2?['Strong','good']:n===1?['Fair','mid']:['Weak','bad'];
+    return `<li>${miniCard(w)}<span class="swtxt"><b>${esc(C[w].name)}</b><span>${n?nameList(ans,3):'No clean answer in '+(decks.length>1?'either deck':'this deck')}</span></span><span class="bval ${c}">${word}</span></li>`;}).join('')}</ul>`;
+}
+function scoreSumHTML(d,shown){ // 1v1 only: the real parts of the Forge score, scaled to the number shown
+  const F=0.82,cards=d.ids.map(i=>C[i]);
+  const strength=cards.reduce((a,c)=>a+c.p,0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
+  const parts=[['Card strength',strength,'How strong these 8 cards are in the current meta'],['Evo, Hero and Wild slots',slots,d.forms&&d.forms.empty?d.forms.empty+' of 3 special slots empty':'All 3 special slots filled with forms this player owns'],['Synergy',syn,d.synPct+'% of the possible combo, support and coverage credit']];
+  if(d.vs)parts.push(['Against their deck',vs,'Answers to the opponent\'s win conditions and spells']);
+  const rows=parts.map(([t,v,why])=>({t,v:Math.round(v*F),why}));
+  const k=d.k,gaps=[];
+  if(k.wc===0)gaps.push('no win condition');if(k.wc>2)gaps.push('too many win conditions');
+  if(k.air<2)gaps.push('too few cards that hit air');if(k.splash<1)gaps.push('no splash damage');if(k.small<1)gaps.push('no small spell');
+  if(k.big<1)gaps.push('no big spell');if(k.kill<1)gaps.push('no tank killer');if(k.cheap<2)gaps.push('too few cheap cards');
+  if(k.spells>3)gaps.push('too many spells');if(k.bld>2)gaps.push('too many buildings');if(d.avg<2.5)gaps.push('very low elixir cost');
+  if(d.lv&&d.lv.under&&d.lv.under.length)gaps.push(d.lv.under.length+' under-levelled card'+(d.lv.under.length>1?'s':''));
+  rows.push({t:'Balance',v:shown-rows.reduce((a,r)=>a+r.v,0),why:gaps.length?'Points lost for: '+gaps.join(', '):'Nothing important missing'});
+  return `<table class="sum"><tbody>${rows.map(r=>`<tr><th scope="row">${esc(r.t)}<span>${esc(r.why)}</span></th><td class="${r.v<0?'neg':''}">${r.v>0?'+':''}${r.v}</td></tr>`).join('')}<tr class="total"><th scope="row">Forge score</th><td>${shown}</td></tr></tbody></table>`;
+}
+function reportHTML(d,shown){
+  return `<div class="report" hidden>
+    <div class="rcol"><h3>How the score adds up</h3>${scoreSumHTML(d,shown)}<h3>How it handles each threat</h3>${barsHTML(deckRatings(d.ids))}</div>
+    <div class="rcol"><h3>Answers to popular win conditions</h3>${winAnswersHTML([{ids:d.ids}])}</div></div>`;
+}
+function duoReportHTML(p,N){
+  const tp=p.t.parts;
+  const team=[['Combos across both decks',tp.combo],['Win condition support',tp.wc],['Team coverage',tp.cov],['Role split',tp.comp],['No shared weakness',tp.weak]].map(([label,val])=>({label,val,why:''}));
+  return `<div class="report" hidden>
+    <div class="rcol"><h3>What makes up team synergy (${p.t.pct}%)</h3>${barsHTML(team)}
+      <h3>${esc(N.A)}'s deck</h3>${barsHTML(deckRatings(p.A))}<h3>${esc(N.B)}'s deck</h3>${barsHTML(deckRatings(p.B))}</div>
+    <div class="rcol"><h3>Team answers to popular win conditions</h3>${winAnswersHTML([{ids:p.A},{ids:p.B}])}</div></div>`;
+}
+const scoreBtn=(num,label)=>`<button class="score scorebtn" type="button" data-report="1" aria-expanded="false" title="Show the breakdown"><span class="num">${num}</span><small>${label}</small><small class="more">Breakdown</small></button>`;
+document.addEventListener('click',e=>{const b=e.target.closest('[data-report]');if(!b)return;const r=b.closest('.deck').querySelector('.report');if(!r)return;r.hidden=!r.hidden;b.setAttribute('aria-expanded',String(!r.hidden));});
+
 /* ---------- tiles ---------- */
 function tile(o,levels,ref){
   const c=C[o.id],f=o.form,rar=rarityOf(c);
@@ -500,7 +563,8 @@ function renderDecks(decks){
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
         <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span>${d.lv&&d.lv.avg?`<span>Average level <b>${d.lv.avg.toFixed(1)}</b></span>`:''}</div></div>
-        <div class="score"><span class="num">${Math.max(1,Math.min(99,Math.round(d.s*0.82)))}</span><small>Forge score</small></div></div>
+        ${scoreBtn(showScore(d.s),'Forge score')}</div>
+      ${reportHTML(d,showScore(d.s))}
       ${tilesHTML(d.ids,d.forms,lv)}
       ${towerHTML(t)}
       <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-copy="${i}">Copy list</button><button class="btn" type="button" data-save="${i}">Save</button><button class="btn" type="button" data-pin="${i}">Pin to tweak</button></div>
@@ -559,7 +623,8 @@ function renderDuo(pairs){
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(p.A))} with ${esc(archLabel(p.B))}</h2>
         <div class="dmeta"><span>Team synergy <b>${p.t.pct}%</b></span><span>Combos between decks <b>${p.t.cross.filter(x=>!x.meta).length}</b></span></div></div>
-        <div class="score"><span class="num">${Math.max(1,Math.min(99,Math.round(p.s*0.62)))}</span><small>Team score</small></div></div>
+        ${scoreBtn(Math.max(1,Math.min(99,Math.round(p.s*0.62))),'Team score')}</div>
+      ${duoReportHTML(p,N)}
       <div class="pair">${half(p.A,p.sa,'A',lvA,ta)}${half(p.B,p.sb,'B',lvB,tb)}</div>
       <p class="plan"><b>Game plan</b>${esc(gamePlan(p,N))}</p>
       <div class="actions"><button class="btn primary" type="button" data-dshare="${i}">Send to teammate</button><button class="btn" type="button" data-dsave="${i}">Save pair</button><button class="btn" type="button" data-dpin="${i}">Pin both to tweak</button></div>
@@ -621,7 +686,8 @@ function renderCheck(){
     res=`<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
         <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span></div></div>
-        <div class="score"><span class="num">${showScore(d.s)}</span><small>Forge score</small></div></div>
+        ${scoreBtn(showScore(d.s),'Forge score')}</div>
+      ${reportHTML(d,showScore(d.s))}
       ${tilesHTML(d.ids,d.forms,lv)}${towerHTML(t)}
       ${d.forms.empty?`<p class="source warn">${d.forms.empty} of the 3 special slots ${d.forms.empty>1?'are':'is'} empty: this deck doesn't have enough Evo, Hero or Champion cards that ${esc(p.name)} owns. That is the biggest thing holding the score down.</p>`:''}
       <div class="swaps"><h3>Best single swaps</h3>
