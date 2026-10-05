@@ -460,6 +460,7 @@ function archLabel(ids){
   return (wins.map(id=>C[id].name).join(' + ')||'Control')+(st?' '+STYLE_NAME[st]:'');
 }
 
+const isDefBld=i=>C[i].type==='b'&&!has(C[i],'W')&&i!=='elixir-collector';
 /* ---------- Score breakdown: how a score adds up, how the deck handles each kind of threat, and its answers to popular win conditions ---------- */
 const POPULAR_WINS=['hog-rider','balloon','minion-giant','royal-giant','golem','giant','electro-giant','lava-hound','goblin-barrel','graveyard','x-bow','miner','battle-ram'];
 const INFERNO=new Set(['inferno-tower','inferno-dragon']);
@@ -469,7 +470,7 @@ function deckRatings(ids){
   const cs=ids.map(i=>C[i]),non=ids.filter(i=>C[i].type!=='s');
   const air=non.filter(i=>has(C[i],'A')&&C[i].e>1),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake','royal-delivery'].includes(i));
   const splash=non.filter(i=>has(C[i],'S')),small=ids.filter(i=>C[i].type==='s'&&has(C[i],'s'));
-  const kill=ids.filter(i=>has(C[i],'K')),bld=ids.filter(i=>C[i].type==='b'&&!has(C[i],'W'));
+  const kill=ids.filter(i=>has(C[i],'K')),bld=ids.filter(i=>isDefBld(i));
   const big=ids.filter(i=>C[i].type==='s'&&has(C[i],'F')),tanks=ids.filter(i=>has(C[i],'T')),eq=ids.includes('earthquake');
   const sv=ids.filter(i=>SMALL_VULN.has(i)),fv=ids.filter(i=>FB_VULN.has(i));
   const sum=cs.reduce((a,c)=>a+c.e,0),avg=sum/8;
@@ -490,9 +491,10 @@ function barsHTML(rows){
    a tank, an air hitter against Balloon, a small spell against Goblin Barrel) count as half an answer. */
 function softAnswers(w,ids){
   const c=C[w],non=ids.filter(i=>C[i].type!=='s');
-  if(['balloon','lava-hound','minion-giant'].includes(w))return non.filter(i=>has(C[i],'A')&&C[i].e>1);
-  if(has(c,'T'))return ids.filter(i=>has(C[i],'K')||(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s'));
-  if(['hog-rider','battle-ram','ram-rider','royal-hogs','wall-breakers'].includes(w))return ids.filter(i=>(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s')||has(C[i],'K'));
+  if(w==='balloon')return non.filter(i=>(has(C[i],'A')&&C[i].e>1)||isDefBld(i)); // any defensive building also pulls a Balloon off the tower
+  if(['lava-hound','minion-giant'].includes(w))return non.filter(i=>has(C[i],'A')&&C[i].e>1);
+  if(has(c,'T'))return ids.filter(i=>has(C[i],'K')||(isDefBld(i))||(has(C[i],'X')&&C[i].type!=='s'));
+  if(['hog-rider','battle-ram','ram-rider','royal-hogs','wall-breakers'].includes(w))return ids.filter(i=>(isDefBld(i))||(has(C[i],'X')&&C[i].type!=='s')||has(C[i],'K'));
   if(['goblin-barrel','graveyard','skeleton-barrel','goblin-drill'].includes(w))return ids.filter(i=>(C[i].type==='s'&&has(C[i],'s'))||(C[i].type!=='s'&&has(C[i],'S')));
   if(['x-bow','mortar'].includes(w))return ids.filter(i=>has(C[i],'T')||(C[i].type==='s'&&has(C[i],'F')));
   if(w==='miner')return ids.filter(i=>has(C[i],'M')||(has(C[i],'X')&&C[i].type!=='s'));

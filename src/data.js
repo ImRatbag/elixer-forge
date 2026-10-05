@@ -33,11 +33,11 @@ mega-minion|Mega Minion|3|t|AK|6|0|6|5|0|7
 dart-goblin|Dart Goblin|3|t|A|5|5|0|6|5|0
 elixir-golem|Elixir Golem|3|t|WT|6|0|0|1|0|0
 tombstone|Tombstone|3|b|BX|5|0|7|5|0|8
-earthquake|Earthquake|3|s|s|6|0|0|5|0|0
+earthquake|Earthquake|3|s||6|0|0|5|0|0
 skeleton-army|Skeleton Army|3|t|XK|4|7|0|3|5|0
 guards|Guards|3|t|X|6|0|0|6|0|0
 goblin-barrel|Goblin Barrel|3|s|W|4|6|0|3|7|0
-tornado|Tornado|3|s|s|7|0|0|7|0|0
+tornado|Tornado|3|s||7|0|0|7|0|0
 clone|Clone|3|s||5|0|0|1|0|0
 vines|Vines|3|s|s|6|0|0|6|0|0
 void|Void|5|s|F|6|0|0|3|0|0
@@ -93,7 +93,7 @@ inferno-tower|Inferno Tower|5|b|BK|5|0|0|3|0|0
 goblin-hut|Goblin Hut|4|b|B|7|0|0|8|0|0
 balloon|Balloon|5|t|W|6|0|6|5|0|5
 witch|Witch|5|t|AS|4|5|0|1|4|0
-prince|Prince|5|t||5|0|0|4|0|0
+prince|Prince|5|t|K|5|0|0|4|0|0
 bowler|Bowler|5|t|S|7|0|7|7|0|9
 executioner|Executioner|5|t|AS|5|5|0|4|7|0
 cannon-cart|Cannon Cart|5|t|M|9|0|0|9|0|0
@@ -108,7 +108,7 @@ goblinstein|Goblinstein|5|t|WTC|7|0|0|10|0|0
 elite-barbarians|Elite Barbarians|6|t|K|5|7|0|3|6|0
 royal-giant|Royal Giant|6|t|WT|6|9|0|3|5|0
 giant-skeleton|Giant Skeleton|6|t|T|7|0|0|8|0|0
-goblin-giant|Goblin Giant|6|t|WTA|6|7|0|4|6|0
+goblin-giant|Goblin Giant|6|t|WT|6|7|0|4|6|0
 x-bow|X-Bow|6|b|W|6|0|0|2|0|0
 lightning|Lightning|6|s|F|7|0|0|10|0|0
 elixir-collector|Elixir Collector|6|b|B|7|0|0|2|0|0
@@ -371,24 +371,24 @@ const TOWER={};TOWERS.forEach(t=>TOWER[t.id]=t);
 
 /* Good answers to each win condition, used for matchup analysis and "build against a deck". */
 const COUNTERS={
-'hog-rider':['cannon','tesla','tornado','inferno-tower','bomb-tower','goblin-cage','mini-pekka','skeletons','guards','ronin','goblin-hut','tombstone','furnace'],
-'royal-giant':['inferno-tower','inferno-dragon','mini-pekka','skeleton-army','guards','barbarians','goblin-cage','hunter','ronin','pekka'],
-'golem':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','elite-barbarians','minion-horde'],
-'giant':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','minion-horde','ronin'],
-'electro-giant':['pekka','mini-pekka','skeleton-army','barbarians','hunter','tornado','lightning','minion-horde'],
+'hog-rider':['cannon','tesla','tornado','inferno-tower','bomb-tower','goblin-cage','mini-pekka','skeletons','guards','ronin','goblin-hut','tombstone','furnace','fisherman','hunter','barbarians','lumberjack','prince','pekka','mighty-miner'],
+'royal-giant':['inferno-tower','inferno-dragon','mini-pekka','skeleton-army','guards','barbarians','goblin-cage','hunter','ronin','pekka','elite-barbarians','minion-horde','lumberjack','prince','mighty-miner','sparky'],
+'golem':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','elite-barbarians','minion-horde','mighty-miner','sparky'],
+'giant':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','minion-horde','ronin','elite-barbarians','mighty-miner','sparky','lumberjack','prince'],
+'electro-giant':['pekka','mini-pekka','skeleton-army','barbarians','hunter','tornado','lightning','minion-horde','bowler','elite-barbarians'],
 'goblin-giant':['inferno-tower','inferno-dragon','mini-pekka','pekka','executioner','valkyrie','bowler','minion-horde'],
 'elixir-golem':['inferno-tower','pekka','mini-pekka','executioner','bowler','valkyrie'],
 'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde'],
-'balloon':['musketeer','hunter','archers','tesla','inferno-tower','bats','minions','electro-wizard','little-prince','mega-minion','inferno-dragon'],
-'minion-giant':['musketeer','electro-wizard','inferno-dragon','hunter','archers','tesla','inferno-tower','bats','little-prince','mega-minion'],
+'balloon':['musketeer','hunter','archers','tesla','inferno-tower','bats','minions','electro-wizard','little-prince','mega-minion','inferno-dragon','minion-horde','archer-queen','magic-archer','executioner','wizard','phoenix','flying-machine','dart-goblin','firecracker','tornado'],
+'minion-giant':['musketeer','electro-wizard','inferno-dragon','hunter','archers','tesla','inferno-tower','bats','little-prince','mega-minion','minion-horde','archer-queen','magic-archer','executioner','wizard','phoenix','flying-machine','dart-goblin'],
 'mortar':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
 'x-bow':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
-'goblin-barrel':['the-log','zap','arrows','barbarian-barrel','giant-snowball','valkyrie','bomber','firecracker','goblin-curse','dark-prince'],
+'goblin-barrel':['the-log','zap','arrows','barbarian-barrel','giant-snowball','valkyrie','bomber','firecracker','goblin-curse','dark-prince','royal-delivery','tornado'],
 'goblin-drill':['valkyrie','skeletons','knight','bomber','the-log','guards','tornado','dark-prince'],
 'skeleton-barrel':['the-log','zap','arrows','bats','minions','firecracker','barbarian-barrel','spear-goblins'],
-'graveyard':['poison','valkyrie','baby-dragon','wizard','bowler','executioner','mother-witch','bomber','dark-prince'],
-'miner':['knight','skeletons','mini-pekka','valkyrie','guards','bats','ice-golem','goblins'],
-'battle-ram':['skeleton-army','guards','goblin-gang','cannon','tesla','inferno-tower','ronin','mini-pekka','goblin-cage','tombstone'],
+'graveyard':['poison','valkyrie','baby-dragon','wizard','bowler','executioner','mother-witch','bomber','dark-prince','bomb-tower','archers','minions','skeleton-dragons','arrows'],
+'miner':['knight','skeletons','mini-pekka','valkyrie','guards','bats','ice-golem','goblins','bandit','royal-ghost','lumberjack','berserker','goblin-gang','tornado'],
+'battle-ram':['skeleton-army','guards','goblin-gang','cannon','tesla','inferno-tower','ronin','mini-pekka','goblin-cage','tombstone','barbarians','knight','valkyrie','bomb-tower','hunter'],
 'ram-rider':['skeleton-army','guards','cannon','inferno-tower','mini-pekka','goblin-cage','tombstone'],
 'royal-hogs':['valkyrie','bowler','executioner','wizard','baby-dragon','firecracker','bomb-tower','dark-prince'],
 'wall-breakers':['the-log','zap','skeletons','bats','goblins','giant-snowball','arrows'],
