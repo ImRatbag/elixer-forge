@@ -35,8 +35,18 @@ module.exports = async (req, res) => {
     const meta = { version: 1, generated: new Date().toISOString(), source: 'official-api', players: fetched, battles: battles.length, ranked: agg.ranked, duo: agg.duo };
     const q = req.query || {};
     if (q.summary) {
+      // How the live numbers would move the built-in 1v1 ratings (same formula as the app's statPower).
+      const TABLE = require('./_table.json'), byId = new Map(TABLE.map(c => [String(c.id), c]));
+      const power = st => { if (!st || !st.games) return null; const r = 50 + 2.7 * (st.wins / st.games * 100 - 50) + 6 * Math.log10(1 + (st.usage || 0)); const u = st.usage == null ? 3 : st.usage; return Math.max(1, Math.min(10, Math.round((50 + (r - 50) * u / (u + 3) - 36) / 2.2))); };
+      const movers = [], dist = {};
+      for (const [id, c] of Object.entries(agg.ranked.cards)) {
+        const t = byId.get(id); if (!t) continue; const lp = power(c.base); dist[lp] = (dist[lp] || 0) + 1;
+        if (Math.abs(lp - t.p) >= 3) movers.push(`${t.name}: ${t.p} -> ${lp} (${c.base.usage}% use, ${Math.round(c.base.wins / c.base.games * 100)}% wins)`);
+        for (const [f, key] of [['evo', 'ev'], ['hero', 'he']]) { const fp = power(c[f]); if (fp != null && t[key] && Math.abs(fp - t[key]) >= 3) movers.push(`${f} ${t.name}: ${t[key]} -> ${fp} (${c[f].usage}% use, ${Math.round(c[f].wins / c[f].games * 100)}% wins)`); }
+      }
+      const names = l => l.map(x => { const [id, rest] = x.split(': '); return (byId.get(id) || { name: id }).name + ': ' + rest; });
       const top = m => Object.entries(m.cards).map(([id, c]) => ({ id, u: c.base.usage, wr: Math.round(c.base.wins / c.base.games * 100) })).sort((a, b) => b.u - a.u).slice(0, 12).map(x => `${x.id}: ${x.u}% use, ${x.wr}% wins`);
-      return res.end(JSON.stringify({ ms: Date.now() - t0, playersListed: tags.length, fetched, failed, battles: battles.length, rankedSides: agg.ranked.sides, duoSides: agg.duo.sides, rankedCards: Object.keys(agg.ranked.cards).length, duoCards: Object.keys(agg.duo.cards).length, rankedDecks: agg.ranked.decks.length, duoDecks: agg.duo.decks.length, rankedTop: top(agg.ranked), duoTop: top(agg.duo) }));
+      return res.end(JSON.stringify({ ms: Date.now() - t0, playersListed: tags.length, fetched, failed, battles: battles.length, rankedSides: agg.ranked.sides, duoSides: agg.duo.sides, rankedCards: Object.keys(agg.ranked.cards).length, duoCards: Object.keys(agg.duo.cards).length, rankedDecks: agg.ranked.decks.length, duoDecks: agg.duo.decks.length, rankedTop: names(top(agg.ranked)), livePowerSpread: dist, bigMovers: movers, topDecks: agg.ranked.decks.slice(0, 4).map(d => ({ cards: d.cards.map(x => { const [id, f] = x.split(':'); return (f ? f + ' ' : '') + (byId.get(id) || { name: id }).name; }), games: d.games, wins: d.wins })) }));
     }
     if (agg.ranked.sides < 500) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'thin_sample', sides: agg.ranked.sides })); }
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');

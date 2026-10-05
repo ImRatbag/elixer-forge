@@ -19,4 +19,4 @@ print('built',len(page)//1024,'KB')
 import json,re
 rows=[l.split('|') for l in re.search(r"const RAW=`(.*?)`",(src/'data.js').read_text(),re.S).group(1).strip().split('\n')]
 ids=dict(re.findall(r"'([a-z0-9-]+)':(\d+)",re.search(r"CARD_IDS=\{(.*?)\}",(src/'data.js').read_text(),re.S).group(1)))
-(root/'api'/'_table.json').write_text(json.dumps([{'k':r[0],'name':r[1],'e':int(r[2]),'evo':int(r[6])>0 or int(r[9])>0,'hero':('C' not in r[4]) and (int(r[7])>0 or int(r[10])>0),'id':int(ids.get(r[0],0))} for r in rows]))
+(root/'api'/'_table.json').write_text(json.dumps([{'k':r[0],'name':r[1],'e':int(r[2]),'evo':int(r[6])>0 or int(r[9])>0,'hero':('C' not in r[4]) and (int(r[7])>0 or int(r[10])>0),'id':int(ids.get(r[0],0)),'p':int(r[5]),'ev':int(r[6]),'he':int(r[7])} for r in rows]))
