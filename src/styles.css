@@ -700,3 +700,16 @@ body{background:radial-gradient(560px 300px at 8% -80px,color-mix(in srgb,var(--
   :root:not([data-theme="dark"]) .grid8.pics{box-shadow:0 2px 8px rgba(15,35,80,.12) inset}
   :root:not([data-theme="dark"]) .report{box-shadow:0 2px 8px rgba(15,35,80,.08) inset}
   :root:not([data-theme="dark"]) body::before{opacity:.035}}
+/* phone tabs: a soft fade at the right edge hints that the row scrolls */
+@media (max-width:700px){.tabs:not(.sheet .tabs){-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 34px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 34px),transparent)}}
+@media (max-width:540px){
+  .duodeck .actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .duodeck .actions .btn.primary{grid-column:1/-1;font-size:14px;padding-block:11px}
+  .duodeck .actions .btn,.duodeck .actions .btn.sm{font-size:13px;padding-block:10px}
+  .duodeck .actions .btn:not(.primary)::before{content:""}
+  .strip .mini{width:20px;height:24px}
+  .unlocks li{gap:10px;padding:10px}
+  .unlocks li>.mini{width:40px;height:48px}
+}
+.pair>.duodeck+.duodeck{border-top:1px solid var(--line);padding-top:18px;margin-top:4px}
+@container (min-width:700px){.pair>.duodeck+.duodeck{border-top:0;padding-top:0;margin-top:0}}
