@@ -629,3 +629,14 @@ input[type=checkbox]:checked::after{transform:translateX(16px);background:#fff;o
 .meter b{font-size:clamp(14px,1.15vw + 4px,16.5px);white-space:nowrap}
 @media (max-width:900px){.meter b{font-size:16.5px}}
 @media (max-width:900px){.meter b{font-size:15.5px}.meter{padding-inline:9px}}
+.cap:empty{display:none}
+.grid8.pics{padding-bottom:14px}
+@media (max-width:540px){.grid8.pics{padding-bottom:10px}}
+/* desktop score: ring beside its label, so the deck header stays one compact band */
+@media (min-width:541px){
+  .scorebtn{grid-template-columns:auto auto;grid-template-areas:"ring label" "ring more";justify-items:start;align-items:center;column-gap:12px;row-gap:0;padding:9px 16px 9px 10px;min-width:0}
+  .scorebtn .ring{grid-area:ring;width:56px;height:56px;margin:0}
+  .scorebtn .ring .num{font-size:22px}
+  .scorebtn small:not(.more){grid-area:label;align-self:end;font-size:13px;font-weight:600;color:var(--fg);letter-spacing:.01em;text-align:left}
+  .scorebtn .more{grid-area:more;align-self:start;justify-content:flex-start;font-size:11.5px}
+}
