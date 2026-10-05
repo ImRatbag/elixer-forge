@@ -21,7 +21,34 @@ function audit(items) {
   return out;
 }
 
+// ?tag=XXXX checks how a real account's Evo/Hero flags line up with the table: a flag on a card the table says has
+// no such form would mean the flag is being misread.
+function auditPlayer(p) {
+  const tab = new Map(TABLE.map(c => [nk(c.name), c]));
+  const out = { name: p.name, cards: (p.cards || []).length, flagValues: {}, evoFlag: 0, heroFlag: 0, evoFlagButNoEvoInTable: [], heroFlagButNoHeroInTable: [], unknownCards: [], maxLevels: {} };
+  for (const c of p.cards || []) {
+    const v = c.evolutionLevel || 0, t = tab.get(nk(c.name));
+    out.flagValues[v] = (out.flagValues[v] || 0) + 1;
+    out.maxLevels[c.rarity || '?'] = c.maxLevel;
+    if (!t) { out.unknownCards.push(c.name); continue; }
+    if (v & 1) { out.evoFlag++; if (!t.evo) out.evoFlagButNoEvoInTable.push(c.name); }
+    if (v & 2) { out.heroFlag++; if (!t.hero) out.heroFlagButNoHeroInTable.push(c.name); }
+  }
+  out.currentDeck = (p.currentDeck || []).map(c => `${c.name}${c.evolutionLevel ? ' [' + c.evolutionLevel + ']' : ''}`);
+  return out;
+}
+
 module.exports = async (req, res) => {
+  const tag = String((req.query && req.query.tag) || '').toUpperCase().replace(/[^0289PYLQGRJCUV]/g, '');
+  if (tag) {
+    res.setHeader('Content-Type', 'application/json');
+    if (!process.env.CR_API_KEY) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'no_key' })); }
+    try {
+      const r = await fetch(`${API_BASE}/players/%23${tag}`, { headers: { Authorization: `Bearer ${process.env.CR_API_KEY}`, Accept: 'application/json' } });
+      if (!r.ok) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'upstream', status: r.status })); }
+      return res.end(JSON.stringify(auditPlayer(await r.json())));
+    } catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'network' })); }
+  }
   res.setHeader('Content-Type', 'application/json');
   if (!process.env.CR_API_KEY) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'no_key' })); }
   try {
