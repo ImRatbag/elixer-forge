@@ -40,14 +40,14 @@ goblin-barrel|Goblin Barrel|3|s|W|4|6|0|3|7|0
 tornado|Tornado|3|s|s|7|0|0|7|0|0
 clone|Clone|3|s||5|0|0|1|0|0
 vines|Vines|3|s|s|6|0|0|6|0|0
-void|Void|3|s|F|6|0|0|3|0|0
+void|Void|5|s|F|6|0|0|3|0|0
 ice-wizard|Ice Wizard|3|t|AS|6|0|6|5|0|9
 princess|Princess|3|t|AS|6|6|0|5|7|0
 miner|Miner|3|t|W|6|0|0|4|0|0
 bandit|Bandit|3|t|M|8|0|0|9|0|0
 royal-ghost|Royal Ghost|3|t|S|7|8|0|8|10|0
 fisherman|Fisherman|3|t||7|0|0|5|0|0
-spirit-empress|Spirit Empress|3|t|S|6|0|0|9|0|0
+spirit-empress|Spirit Empress|6|t|S|6|0|0|9|0|0
 little-prince|Little Prince|3|t|AC|7|0|0|8|0|0
 valkyrie|Valkyrie|4|t|SM|5|4|4|2|5|7
 musketeer|Musketeer|4|t|A|5|6|5|4|9|6
@@ -122,7 +122,8 @@ electro-giant|Electro Giant|7|t|WT|7|0|0|5|0|0
 lava-hound|Lava Hound|7|t|WT|7|0|0|6|0|0
 mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
 golem|Golem|8|t|WT|7|0|0|5|0|0
-three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0`;
+three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
+mirror|Mirror|3|s||3|0|0|2|0|0`;
 
 const CARDS=RAW.trim().split('\n').map(l=>{const[id,name,e,type,tags,p,ev,he,p2,ev2,he2]=l.split('|');return{id,name,e:+e,type,tags,p:+p,ev:+ev,he:+he,p2:+p2,ev2:+ev2,he2:+he2}});
 const C={};CARDS.forEach(c=>C[c.id]=c);
@@ -301,7 +302,7 @@ const META_EXTRA=[
 META.concat(META2).concat(META_EXTRA.map(c=>({cards:c}))).forEach(d=>{const ids=d.cards.map(x=>x.split(':')[0]);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const k=sk(ids[i],ids[j]);if(!SYN[k])SYN[k]={w:0.5,why:'Played together in a top Ranked deck this week',meta:true};}});
 const RARITY={};
 `rare:heal-spirit ice-golem suspicious-bush mega-minion dart-goblin elixir-golem tombstone earthquake valkyrie musketeer mini-pekka hog-rider battle-ram zappies flying-machine battle-healer goblin-demolisher minion-giant bomb-tower furnace goblin-cage fireball giant wizard royal-hogs inferno-tower goblin-hut barbarian-hut elixir-collector rocket three-musketeers
-epic:wall-breakers barbarian-barrel rage goblin-curse skeleton-army guards goblin-barrel tornado clone vines void baby-dragon dark-prince hunter rune-giant goblin-drill freeze poison balloon witch prince bowler executioner cannon-cart electro-dragon giant-skeleton goblin-giant x-bow lightning pekka electro-giant golem
+epic:mirror wall-breakers barbarian-barrel rage goblin-curse skeleton-army guards goblin-barrel tornado clone vines void baby-dragon dark-prince hunter rune-giant goblin-drill freeze poison balloon witch prince bowler executioner cannon-cart electro-dragon giant-skeleton goblin-giant x-bow lightning pekka electro-giant golem
 legendary:the-log ice-wizard princess miner bandit royal-ghost fisherman lumberjack inferno-dragon electro-wizard night-witch magic-archer mother-witch phoenix ram-rider graveyard sparky lava-hound mega-knight ronin spirit-empress goblin-machine`.split('\n').forEach(l=>{const[r,ids]=l.split(':');ids.split(' ').forEach(id=>RARITY[id]=r);});
 const rarityOf=c=>isChamp(c)?'champion':RARITY[c.id]||'common';
 const RNAME={common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary',champion:'Champion'};
@@ -354,7 +355,7 @@ const CARD_IDS={
 'cannon':27000000,'goblin-hut':27000001,'mortar':27000002,'inferno-tower':27000003,'bomb-tower':27000004,'barbarian-hut':27000005,'tesla':27000006,
 'elixir-collector':27000007,'x-bow':27000008,'tombstone':27000009,'furnace':27000010,'goblin-cage':27000012,'goblin-drill':27000013,
 'fireball':28000000,'arrows':28000001,'rage':28000002,'rocket':28000003,'goblin-barrel':28000004,'freeze':28000005,'lightning':28000007,'zap':28000008,
-'poison':28000009,'graveyard':28000010,'the-log':28000011,'tornado':28000012,'clone':28000013,'earthquake':28000014,'barbarian-barrel':28000015,
+'poison':28000009,'graveyard':28000010,'the-log':28000011,'tornado':28000012,'mirror':28000006,'clone':28000013,'earthquake':28000014,'barbarian-barrel':28000015,
 'heal-spirit':28000016,'giant-snowball':28000017,'royal-delivery':28000018,'void':28000023,'goblin-curse':28000024,'spirit-empress':28000025,'vines':28000026
 };
 const ID_TO_CARD={};Object.entries(CARD_IDS).forEach(([k,v])=>ID_TO_CARD[v]=k);

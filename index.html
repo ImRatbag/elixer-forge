@@ -460,14 +460,14 @@ goblin-barrel|Goblin Barrel|3|s|W|4|6|0|3|7|0
 tornado|Tornado|3|s|s|7|0|0|7|0|0
 clone|Clone|3|s||5|0|0|1|0|0
 vines|Vines|3|s|s|6|0|0|6|0|0
-void|Void|3|s|F|6|0|0|3|0|0
+void|Void|5|s|F|6|0|0|3|0|0
 ice-wizard|Ice Wizard|3|t|AS|6|0|6|5|0|9
 princess|Princess|3|t|AS|6|6|0|5|7|0
 miner|Miner|3|t|W|6|0|0|4|0|0
 bandit|Bandit|3|t|M|8|0|0|9|0|0
 royal-ghost|Royal Ghost|3|t|S|7|8|0|8|10|0
 fisherman|Fisherman|3|t||7|0|0|5|0|0
-spirit-empress|Spirit Empress|3|t|S|6|0|0|9|0|0
+spirit-empress|Spirit Empress|6|t|S|6|0|0|9|0|0
 little-prince|Little Prince|3|t|AC|7|0|0|8|0|0
 valkyrie|Valkyrie|4|t|SM|5|4|4|2|5|7
 musketeer|Musketeer|4|t|A|5|6|5|4|9|6
@@ -542,7 +542,8 @@ electro-giant|Electro Giant|7|t|WT|7|0|0|5|0|0
 lava-hound|Lava Hound|7|t|WT|7|0|0|6|0|0
 mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
 golem|Golem|8|t|WT|7|0|0|5|0|0
-three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0`;
+three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
+mirror|Mirror|3|s||3|0|0|2|0|0`;
 
 const CARDS=RAW.trim().split('\n').map(l=>{const[id,name,e,type,tags,p,ev,he,p2,ev2,he2]=l.split('|');return{id,name,e:+e,type,tags,p:+p,ev:+ev,he:+he,p2:+p2,ev2:+ev2,he2:+he2}});
 const C={};CARDS.forEach(c=>C[c.id]=c);
@@ -721,7 +722,7 @@ const META_EXTRA=[
 META.concat(META2).concat(META_EXTRA.map(c=>({cards:c}))).forEach(d=>{const ids=d.cards.map(x=>x.split(':')[0]);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const k=sk(ids[i],ids[j]);if(!SYN[k])SYN[k]={w:0.5,why:'Played together in a top Ranked deck this week',meta:true};}});
 const RARITY={};
 `rare:heal-spirit ice-golem suspicious-bush mega-minion dart-goblin elixir-golem tombstone earthquake valkyrie musketeer mini-pekka hog-rider battle-ram zappies flying-machine battle-healer goblin-demolisher minion-giant bomb-tower furnace goblin-cage fireball giant wizard royal-hogs inferno-tower goblin-hut barbarian-hut elixir-collector rocket three-musketeers
-epic:wall-breakers barbarian-barrel rage goblin-curse skeleton-army guards goblin-barrel tornado clone vines void baby-dragon dark-prince hunter rune-giant goblin-drill freeze poison balloon witch prince bowler executioner cannon-cart electro-dragon giant-skeleton goblin-giant x-bow lightning pekka electro-giant golem
+epic:mirror wall-breakers barbarian-barrel rage goblin-curse skeleton-army guards goblin-barrel tornado clone vines void baby-dragon dark-prince hunter rune-giant goblin-drill freeze poison balloon witch prince bowler executioner cannon-cart electro-dragon giant-skeleton goblin-giant x-bow lightning pekka electro-giant golem
 legendary:the-log ice-wizard princess miner bandit royal-ghost fisherman lumberjack inferno-dragon electro-wizard night-witch magic-archer mother-witch phoenix ram-rider graveyard sparky lava-hound mega-knight ronin spirit-empress goblin-machine`.split('\n').forEach(l=>{const[r,ids]=l.split(':');ids.split(' ').forEach(id=>RARITY[id]=r);});
 const rarityOf=c=>isChamp(c)?'champion':RARITY[c.id]||'common';
 const RNAME={common:'Common',rare:'Rare',epic:'Epic',legendary:'Legendary',champion:'Champion'};
@@ -774,7 +775,7 @@ const CARD_IDS={
 'cannon':27000000,'goblin-hut':27000001,'mortar':27000002,'inferno-tower':27000003,'bomb-tower':27000004,'barbarian-hut':27000005,'tesla':27000006,
 'elixir-collector':27000007,'x-bow':27000008,'tombstone':27000009,'furnace':27000010,'goblin-cage':27000012,'goblin-drill':27000013,
 'fireball':28000000,'arrows':28000001,'rage':28000002,'rocket':28000003,'goblin-barrel':28000004,'freeze':28000005,'lightning':28000007,'zap':28000008,
-'poison':28000009,'graveyard':28000010,'the-log':28000011,'tornado':28000012,'clone':28000013,'earthquake':28000014,'barbarian-barrel':28000015,
+'poison':28000009,'graveyard':28000010,'the-log':28000011,'tornado':28000012,'mirror':28000006,'clone':28000013,'earthquake':28000014,'barbarian-barrel':28000015,
 'heal-spirit':28000016,'giant-snowball':28000017,'royal-delivery':28000018,'void':28000023,'goblin-curse':28000024,'spirit-empress':28000025,'vines':28000026
 };
 const ID_TO_CARD={};Object.entries(CARD_IDS).forEach(([k,v])=>ID_TO_CARD[v]=k);
@@ -828,6 +829,9 @@ const DATA_DATE='Sept 30, 2026';
 
 /* ---------- special-slot assignment ---------- */
 let memo=new Map();
+// A Champion fills the Hero slot at slightly under its card rating: its ability is single-use per deployment,
+// but Champions sit in about four in ten top decks, so the discount is small.
+const CHAMP_SLOT=0.92;
 const NOBAN=new Set();
 function assignForms(ids,ctx){
   const key=(ctx.tag||'')+[...ids].sort().join(',');
@@ -836,7 +840,7 @@ function assignForms(ids,ctx){
   const mand=[],opts=[];
   for(const id of ids){
     const c=C[id],f=ctx.forms[id]||'any',ban=(ctx.ban&&ctx.ban[id])||NOBAN;
-    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)*0.75});continue;}
+    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)*CHAMP_SLOT});continue;}
     if(f==='evo'){if(!c.ev||ban.has('evo'))return done(null);mand.push({id,form:'evo',v:evP(c,ctx)});continue;}
     if(f==='hero'){if(!c.he||ban.has('hero'))return done(null);mand.push({id,form:'hero',v:heP(c,ctx)});continue;}
     if(f==='normal'){if(ban.has('normal'))return done(null);continue;}
@@ -1010,7 +1014,7 @@ function addHeur(c,deck,ctx){
     if(has(c,'W')&&pc.some(p=>p.id===c.id))v-=6;
     if(has(c,'T')&&c.e>=6&&pc.some(p=>has(p,'T')&&p.e>=6))v-=8;
   }
-  const formPot=isChamp(c)?pw(c,ctx)*0.75:Math.max(evP(c,ctx),heP(c,ctx));
+  const formPot=isChamp(c)?pw(c,ctx)*CHAMP_SLOT:Math.max(evP(c,ctx),heP(c,ctx));
   v+=formPot*0.35;
   if(has(c,'W')){if(k.wc===0)v+=6;else if(k.wc>=2)v-=10;else v-=3;
     if(ctx.style!=='any'&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id))v-=8;}
@@ -1075,7 +1079,8 @@ function generate(opts){
   const all=[...found.values()].sort((a,b)=>b.s-a.s);
   // Pick decks one at a time. A deck loses points for every free card already used in a picked deck,
   // and for repeating a win condition, so one strong card can't flood every result.
-  const picked=[],uses={},seenWin=new Set();
+  // opts.avoid: cards shown in the previous results, so pressing Forge again brings different options.
+  const picked=[],uses={...(opts.avoid||{})},seenWin=new Set();
   const mainWin=d=>d.ids.filter(id=>has(C[id],'W')&&!locked.includes(id)).sort().join('+');
   while(picked.length<opts.count&&picked.length<all.length){
     let best=null,bestV=-1e9;
@@ -1219,7 +1224,7 @@ function generateDuo(o){
     }
   }
   const all=[...found.values()].sort((a,b)=>b.s-a.s);
-  const picked=[],uses={},seenPair=new Set();
+  const picked=[],uses={...(o.avoid||{})},seenPair=new Set();
   const winKey=p=>p.A.filter(i=>has(C[i],'W')).sort().join('+')+'/'+p.B.filter(i=>has(C[i],'W')).sort().join('+');
   while(picked.length<o.count&&picked.length<all.length){
     let best=null,bv=-1e9;
@@ -1352,6 +1357,10 @@ function syncCards(payload){
     if(!C[k]||!id||CARD_IDS[k]===id)continue;
     delete ID_TO_CARD[CARD_IDS[k]];CARD_IDS[k]=id;ID_TO_CARD[id]=k;
   }
+  // Elixir costs follow the game too (balance changes move them).
+  let moved=false;
+  for(const [k,e] of Object.entries((payload&&payload.elixir)||{})){if(C[k]&&Number.isFinite(e)&&e>0&&C[k].e!==e){C[k].e=e;moved=true;}}
+  if(moved){memo=new Map();scCache=new Map();}
   for(const f of (payload&&payload.forms)||[]){
     const c=C[f.id];if(!c||isChamp(c))continue;
     const est=v=>Math.max(5,Math.min(8,v+1));
@@ -1415,6 +1424,9 @@ Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TO
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+/* Cards from recent results, so the next Forge leans toward different ones. Halves each round. */
+const recent={duo:{},'1v1':{}};
+function noteShown(mode,idLists){const r=recent[mode];for(const k in r){r[k]*=0.5;if(r[k]<0.1)delete r[k];}for(const ids of idLists)for(const id of ids)r[id]=Math.min(1.6,(r[id]||0)+0.7);}
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
@@ -1424,14 +1436,15 @@ let NEW_FORMS=[];
 function applyArt(j){
   if(!j||!Array.isArray(j.cards))return false;
   const byName={};CARDS.forEach(c=>byName[nkey(c.name)]=c.id);
-  const ids={},forms=[];
+  const ids={},forms=[],elixir={};
   for(const c of j.cards){
     const named=byName[nkey(c.name)],k=named||ID_TO_CARD[c.id];if(!k||!C[k])continue;
     if(c.icon)ART[k]={base:c.icon,evo:c.evo||c.icon,hero:c.hero||c.icon};
     if(named&&c.id)ids[k]=c.id; // the API is the authority on card IDs
     forms.push({id:k,evo:!!c.evo,hero:!!c.hero});
+    if(Number.isFinite(c.elixir))elixir[k]=c.elixir;
   }
-  const payload={ids,forms};
+  const payload={ids,forms,elixir};
   const added=syncCards(payload);
   const w=getWorker();if(w){const id=++jobId;jobs[id]={res(){},rej(){}};w.postMessage({id,kind:'cards',args:payload});}
   if(added.length){
@@ -1760,16 +1773,16 @@ async function forge(){
   const count=+$('count').value,maxAvg=+$('maxavg').value,vs=state.vs.length?state.vs.slice():null;
   try{
     if(duo){
-      const o={A:sideOpts('A'),B:sideOpts('B'),maxAvg,count,priority:$('priority').value,names:names(),vs,levelW:$('levelmatch').checked?1:0};
+      const o={A:sideOpts('A'),B:sideOpts('B'),maxAvg,count,priority:$('priority').value,names:names(),vs,levelW:$('levelmatch').checked?1:0,avoid:{...recent.duo}};
       const pairs=await runJob('duo',o);
-      state.lastDuo=pairs;state.lastOpts=o;
+      state.lastDuo=pairs;state.lastOpts=o;noteShown('duo',pairs.flatMap(q=>[q.A,q.B]));
       if(!pairs.length){$('out').innerHTML='';setStatus('');showErr('No legal pair fits these rules. Remove a pin or a blocked card and try again.');}
       else{setStatus(pairs.length+' team pair'+(pairs.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDuo(pairs);}
     }else{
       const sa=sideOpts('A');
-      const opts={...sa,maxAvg,count,maxChamps:1,vs,levelW:$('levelmatch').checked?1:0};
+      const opts={...sa,maxAvg,count,maxChamps:1,vs,levelW:$('levelmatch').checked?1:0,avoid:{...recent['1v1']}};
       const decks=await runJob('gen',opts);
-      state.last=decks;state.lastOpts=opts;
+      state.last=decks;state.lastOpts=opts;noteShown('1v1',decks.map(d=>d.ids));
       if(!decks.length){$('out').innerHTML='';setStatus('');showErr('No legal deck fits these rules. Remove a pin or a blocked card and try again.');}
       else{setStatus(decks.length+' deck'+(decks.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDecks(decks);}
     }
@@ -1779,7 +1792,7 @@ async function forge(){
 }
 /* Phones: a floating Forge button whenever the main one has scrolled out of view. */
 (function(){const fab=$('go-fab'),go=$('go');if(!fab||!('IntersectionObserver' in window))return;
-  let vis=true;const upd=()=>{fab.hidden=vis||!matchMedia('(max-width:900px)').matches||!$('sheet').hidden;fab.textContent=go.textContent;fab.disabled=go.disabled;};
+  let vis=true;const upd=window.updateFab=()=>{fab.hidden=vis||state.view!=='gen'||!matchMedia('(max-width:900px)').matches||!$('sheet').hidden;fab.textContent=go.textContent;fab.disabled=go.disabled;};
   new IntersectionObserver(es=>{vis=es[0].isIntersecting;upd();}).observe(go);
   new MutationObserver(upd).observe(go,{childList:true,characterData:true,subtree:true,attributes:true});
   new MutationObserver(upd).observe($('sheet'),{attributes:true});
@@ -1848,15 +1861,29 @@ const verdict=v=>v>=75?['Strong','good']:v>=45?['Fair','mid']:['Weak','bad'];
 function barsHTML(rows){
   return `<ul class="bars">${rows.map(r=>{const [w,c]=verdict(r.val);return `<li><span class="blabel">${esc(r.label)}</span><span class="btrack"><i class="${c}" style="width:${Math.max(4,r.val)}%"></i></span><span class="bval ${c}">${w} ${Math.round(r.val/10)}/10</span><span class="bwhy">${esc(r.why)}</span></li>`;}).join('')}</ul>`;
 }
-function winAnswersHTML(decks){ // decks: [{name?,ids}] — answers come from every deck given (both decks in 2v2)
+/* Answers to a win condition: listed hard counters count fully; cards that help by role (a tank killer against
+   a tank, an air hitter against Balloon, a small spell against Goblin Barrel) count as half an answer. */
+function softAnswers(w,ids){
+  const c=C[w],non=ids.filter(i=>C[i].type!=='s');
+  if(['balloon','lava-hound','minion-giant'].includes(w))return non.filter(i=>has(C[i],'A'));
+  if(has(c,'T'))return ids.filter(i=>has(C[i],'K')||(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s'));
+  if(['hog-rider','battle-ram','ram-rider','royal-hogs','wall-breakers'].includes(w))return ids.filter(i=>(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s')||has(C[i],'K'));
+  if(['goblin-barrel','graveyard','skeleton-barrel','goblin-drill'].includes(w))return ids.filter(i=>(C[i].type==='s'&&has(C[i],'s'))||(C[i].type!=='s'&&has(C[i],'S')));
+  if(['x-bow','mortar'].includes(w))return ids.filter(i=>has(C[i],'T')||(C[i].type==='s'&&has(C[i],'F')));
+  if(w==='miner')return ids.filter(i=>has(C[i],'M')||(has(C[i],'X')&&C[i].type!=='s'));
+  return [];
+}
+function winAnswersHTML(decks){ // decks: [{ids}] — answers come from every deck given (both decks in 2v2)
   const all=[...new Set(decks.flatMap(d=>d.ids))];
   return `<ul class="wins">${POPULAR_WINS.filter(w=>C[w]&&COUNTERS[w]).map(w=>{
-    const ans=COUNTERS[w].filter(i=>all.includes(i)),n=ans.length,[word,c]=n>=2?['Strong','good']:n===1?['Fair','mid']:['Weak','bad'];
-    return `<li>${miniCard(w)}<span class="swtxt"><b>${esc(C[w].name)}</b><span>${n?nameList(ans,3):'No clean answer in '+(decks.length>1?'either deck':'this deck')}</span></span><span class="bval ${c}">${word}</span></li>`;}).join('')}</ul>`;
+    const hard=COUNTERS[w].filter(i=>all.includes(i)),soft=softAnswers(w,all).filter(i=>!hard.includes(i)&&i!==w);
+    const v=hard.length+soft.length*0.5,[word,c]=v>=2?['Strong','good']:v>=1?['Fair','mid']:['Weak','bad'];
+    const txt=hard.length||soft.length?[hard.length?nameList(hard,3):'',soft.length?(hard.length?'also helped by ':'Helped by ')+nameList(soft,3):''].filter(Boolean).join('; '):'No answer in '+(decks.length>1?'either deck':'this deck');
+    return `<li>${miniCard(w)}<span class="swtxt"><b>${esc(C[w].name)}</b><span>${esc(txt)}</span></span><span class="bval ${c}">${word}</span></li>`;}).join('')}</ul>`;
 }
-function scoreSumHTML(d,shown){ // 1v1 only: the real parts of the Forge score, scaled to the number shown
+function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge score, scaled to the number shown
   const F=0.82,cards=d.ids.map(i=>C[i]);
-  const strength=cards.reduce((a,c)=>a+c.p,0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
+  const strength=cards.reduce((a,c)=>a+(duo?c.p2:c.p),0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
   const parts=[['Card strength',strength,'How strong these 8 cards are in the current meta'],['Evo, Hero and Wild slots',slots,d.forms&&d.forms.empty?d.forms.empty+' of 3 special slots empty':'All 3 special slots filled with forms this player owns'],['Synergy',syn,d.synPct+'% of the possible combo, support and coverage credit']];
   if(d.vs)parts.push(['Against their deck',vs,'Answers to the opponent\'s win conditions and spells']);
   const rows=parts.map(([t,v,why])=>({t,v:Math.round(v*F),why}));
@@ -1869,9 +1896,9 @@ function scoreSumHTML(d,shown){ // 1v1 only: the real parts of the Forge score, 
   rows.push({t:'Balance',v:shown-rows.reduce((a,r)=>a+r.v,0),why:gaps.length?'Points lost for: '+gaps.join(', '):'Nothing important missing'});
   return `<table class="sum"><tbody>${rows.map(r=>`<tr><th scope="row">${esc(r.t)}<span>${esc(r.why)}</span></th><td class="${r.v<0?'neg':''}">${r.v>0?'+':''}${r.v}</td></tr>`).join('')}<tr class="total"><th scope="row">Forge score</th><td>${shown}</td></tr></tbody></table>`;
 }
-function reportHTML(d,shown){
+function reportHTML(d,shown,duo){
   return `<div class="report" hidden>
-    <div class="rcol"><h3>How the score adds up</h3>${scoreSumHTML(d,shown)}<h3>How it handles each threat</h3>${barsHTML(deckRatings(d.ids))}</div>
+    <div class="rcol"><h3>How the score adds up</h3>${scoreSumHTML(d,shown,duo)}<h3>How it handles each threat</h3>${barsHTML(deckRatings(d.ids))}</div>
     <div class="rcol"><h3>Answers to popular win conditions</h3>${winAnswersHTML([{ids:d.ids}])}</div></div>`;
 }
 function duoReportHTML(p,N){
@@ -2035,8 +2062,9 @@ function renderMeta(){
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(d.n)}</h2><div class="dmeta"><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span><span>Synergy <b>${sc.synPct}%</b></span></div></div>
         <div class="score"><span class="num" style="color:var(--good)">${d.wr==null?'n/a':d.wr+'%'}</span><small>Win rate</small></div></div>
+      ${reportHTML({...sc,ids},showScore(sc.s),duo)}
       ${tilesHTML(ids,sc.forms,null)}${notes}
-      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
+      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
     </article>`;}).join('');
 }
 
@@ -2171,9 +2199,10 @@ function renderCreator(){
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(ids))}</h2><div class="dmeta"><span>${esc(d.modes.join(', '))}</span><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span></div></div>
         <div class="score"><span class="num">${d.wins}–${d.losses}</span><small>${d.games} recent game${d.games>1?'s':''}</small></div></div>
+      ${reportHTML({...sc,ids},showScore(sc.s),d.modes.includes('2v2'))}
       ${tilesHTML(ids,sc.forms,null)}
       ${miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`}
-      <div class="actions">${linkBtn(ids,sc.forms,tw?tw.id:'tower-princess')}<button class="btn" type="button" data-credit="${i}">Check with my cards</button></div>
+      <div class="actions">${linkBtn(ids,sc.forms,tw?tw.id:'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-credit="${i}">Check with my cards</button></div>
     </article>`;}).join('');
   if(cr.decks&&!cr.decks.length&&!cr.busy)body='<p class="hint">No recent battles with a full deck were found for this player.</p>';
   $('out').innerHTML=`<section class="panel">
@@ -2294,6 +2323,7 @@ $('out').addEventListener('click',e=>{
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
   state.view=v;['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  if(window.updateFab)window.updateFab();
   if(quiet)return;
   if(v==='meta')renderMeta();
   else if(v==='check')renderCheck();

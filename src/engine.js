@@ -1,5 +1,8 @@
 /* ---------- special-slot assignment ---------- */
 let memo=new Map();
+// A Champion fills the Hero slot at slightly under its card rating: its ability is single-use per deployment,
+// but Champions sit in about four in ten top decks, so the discount is small.
+const CHAMP_SLOT=0.92;
 const NOBAN=new Set();
 function assignForms(ids,ctx){
   const key=(ctx.tag||'')+[...ids].sort().join(',');
@@ -8,7 +11,7 @@ function assignForms(ids,ctx){
   const mand=[],opts=[];
   for(const id of ids){
     const c=C[id],f=ctx.forms[id]||'any',ban=(ctx.ban&&ctx.ban[id])||NOBAN;
-    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)*0.75});continue;}
+    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)*CHAMP_SLOT});continue;}
     if(f==='evo'){if(!c.ev||ban.has('evo'))return done(null);mand.push({id,form:'evo',v:evP(c,ctx)});continue;}
     if(f==='hero'){if(!c.he||ban.has('hero'))return done(null);mand.push({id,form:'hero',v:heP(c,ctx)});continue;}
     if(f==='normal'){if(ban.has('normal'))return done(null);continue;}
@@ -182,7 +185,7 @@ function addHeur(c,deck,ctx){
     if(has(c,'W')&&pc.some(p=>p.id===c.id))v-=6;
     if(has(c,'T')&&c.e>=6&&pc.some(p=>has(p,'T')&&p.e>=6))v-=8;
   }
-  const formPot=isChamp(c)?pw(c,ctx)*0.75:Math.max(evP(c,ctx),heP(c,ctx));
+  const formPot=isChamp(c)?pw(c,ctx)*CHAMP_SLOT:Math.max(evP(c,ctx),heP(c,ctx));
   v+=formPot*0.35;
   if(has(c,'W')){if(k.wc===0)v+=6;else if(k.wc>=2)v-=10;else v-=3;
     if(ctx.style!=='any'&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id))v-=8;}
@@ -247,7 +250,8 @@ function generate(opts){
   const all=[...found.values()].sort((a,b)=>b.s-a.s);
   // Pick decks one at a time. A deck loses points for every free card already used in a picked deck,
   // and for repeating a win condition, so one strong card can't flood every result.
-  const picked=[],uses={},seenWin=new Set();
+  // opts.avoid: cards shown in the previous results, so pressing Forge again brings different options.
+  const picked=[],uses={...(opts.avoid||{})},seenWin=new Set();
   const mainWin=d=>d.ids.filter(id=>has(C[id],'W')&&!locked.includes(id)).sort().join('+');
   while(picked.length<opts.count&&picked.length<all.length){
     let best=null,bestV=-1e9;
@@ -391,7 +395,7 @@ function generateDuo(o){
     }
   }
   const all=[...found.values()].sort((a,b)=>b.s-a.s);
-  const picked=[],uses={},seenPair=new Set();
+  const picked=[],uses={...(o.avoid||{})},seenPair=new Set();
   const winKey=p=>p.A.filter(i=>has(C[i],'W')).sort().join('+')+'/'+p.B.filter(i=>has(C[i],'W')).sort().join('+');
   while(picked.length<o.count&&picked.length<all.length){
     let best=null,bv=-1e9;
@@ -524,6 +528,10 @@ function syncCards(payload){
     if(!C[k]||!id||CARD_IDS[k]===id)continue;
     delete ID_TO_CARD[CARD_IDS[k]];CARD_IDS[k]=id;ID_TO_CARD[id]=k;
   }
+  // Elixir costs follow the game too (balance changes move them).
+  let moved=false;
+  for(const [k,e] of Object.entries((payload&&payload.elixir)||{})){if(C[k]&&Number.isFinite(e)&&e>0&&C[k].e!==e){C[k].e=e;moved=true;}}
+  if(moved){memo=new Map();scCache=new Map();}
   for(const f of (payload&&payload.forms)||[]){
     const c=C[f.id];if(!c||isChamp(c))continue;
     const est=v=>Math.max(5,Math.min(8,v+1));

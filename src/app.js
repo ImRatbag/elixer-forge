@@ -31,6 +31,9 @@ Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TO
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
 const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+/* Cards from recent results, so the next Forge leans toward different ones. Halves each round. */
+const recent={duo:{},'1v1':{}};
+function noteShown(mode,idLists){const r=recent[mode];for(const k in r){r[k]*=0.5;if(r[k]<0.1)delete r[k];}for(const ids of idLists)for(const id of ids)r[id]=Math.min(1.6,(r[id]||0)+0.7);}
 const names=()=>({A:prof('A').name||'Player 1',B:prof('B').name||'Player 2'});
 
 /* ---------- card pictures (official images, linked from Supercell's API through api/cards) ---------- */
@@ -40,14 +43,15 @@ let NEW_FORMS=[];
 function applyArt(j){
   if(!j||!Array.isArray(j.cards))return false;
   const byName={};CARDS.forEach(c=>byName[nkey(c.name)]=c.id);
-  const ids={},forms=[];
+  const ids={},forms=[],elixir={};
   for(const c of j.cards){
     const named=byName[nkey(c.name)],k=named||ID_TO_CARD[c.id];if(!k||!C[k])continue;
     if(c.icon)ART[k]={base:c.icon,evo:c.evo||c.icon,hero:c.hero||c.icon};
     if(named&&c.id)ids[k]=c.id; // the API is the authority on card IDs
     forms.push({id:k,evo:!!c.evo,hero:!!c.hero});
+    if(Number.isFinite(c.elixir))elixir[k]=c.elixir;
   }
-  const payload={ids,forms};
+  const payload={ids,forms,elixir};
   const added=syncCards(payload);
   const w=getWorker();if(w){const id=++jobId;jobs[id]={res(){},rej(){}};w.postMessage({id,kind:'cards',args:payload});}
   if(added.length){
@@ -376,16 +380,16 @@ async function forge(){
   const count=+$('count').value,maxAvg=+$('maxavg').value,vs=state.vs.length?state.vs.slice():null;
   try{
     if(duo){
-      const o={A:sideOpts('A'),B:sideOpts('B'),maxAvg,count,priority:$('priority').value,names:names(),vs,levelW:$('levelmatch').checked?1:0};
+      const o={A:sideOpts('A'),B:sideOpts('B'),maxAvg,count,priority:$('priority').value,names:names(),vs,levelW:$('levelmatch').checked?1:0,avoid:{...recent.duo}};
       const pairs=await runJob('duo',o);
-      state.lastDuo=pairs;state.lastOpts=o;
+      state.lastDuo=pairs;state.lastOpts=o;noteShown('duo',pairs.flatMap(q=>[q.A,q.B]));
       if(!pairs.length){$('out').innerHTML='';setStatus('');showErr('No legal pair fits these rules. Remove a pin or a blocked card and try again.');}
       else{setStatus(pairs.length+' team pair'+(pairs.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDuo(pairs);}
     }else{
       const sa=sideOpts('A');
-      const opts={...sa,maxAvg,count,maxChamps:1,vs,levelW:$('levelmatch').checked?1:0};
+      const opts={...sa,maxAvg,count,maxChamps:1,vs,levelW:$('levelmatch').checked?1:0,avoid:{...recent['1v1']}};
       const decks=await runJob('gen',opts);
-      state.last=decks;state.lastOpts=opts;
+      state.last=decks;state.lastOpts=opts;noteShown('1v1',decks.map(d=>d.ids));
       if(!decks.length){$('out').innerHTML='';setStatus('');showErr('No legal deck fits these rules. Remove a pin or a blocked card and try again.');}
       else{setStatus(decks.length+' deck'+(decks.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDecks(decks);}
     }
@@ -395,7 +399,7 @@ async function forge(){
 }
 /* Phones: a floating Forge button whenever the main one has scrolled out of view. */
 (function(){const fab=$('go-fab'),go=$('go');if(!fab||!('IntersectionObserver' in window))return;
-  let vis=true;const upd=()=>{fab.hidden=vis||!matchMedia('(max-width:900px)').matches||!$('sheet').hidden;fab.textContent=go.textContent;fab.disabled=go.disabled;};
+  let vis=true;const upd=window.updateFab=()=>{fab.hidden=vis||state.view!=='gen'||!matchMedia('(max-width:900px)').matches||!$('sheet').hidden;fab.textContent=go.textContent;fab.disabled=go.disabled;};
   new IntersectionObserver(es=>{vis=es[0].isIntersecting;upd();}).observe(go);
   new MutationObserver(upd).observe(go,{childList:true,characterData:true,subtree:true,attributes:true});
   new MutationObserver(upd).observe($('sheet'),{attributes:true});
@@ -464,15 +468,29 @@ const verdict=v=>v>=75?['Strong','good']:v>=45?['Fair','mid']:['Weak','bad'];
 function barsHTML(rows){
   return `<ul class="bars">${rows.map(r=>{const [w,c]=verdict(r.val);return `<li><span class="blabel">${esc(r.label)}</span><span class="btrack"><i class="${c}" style="width:${Math.max(4,r.val)}%"></i></span><span class="bval ${c}">${w} ${Math.round(r.val/10)}/10</span><span class="bwhy">${esc(r.why)}</span></li>`;}).join('')}</ul>`;
 }
-function winAnswersHTML(decks){ // decks: [{name?,ids}] — answers come from every deck given (both decks in 2v2)
+/* Answers to a win condition: listed hard counters count fully; cards that help by role (a tank killer against
+   a tank, an air hitter against Balloon, a small spell against Goblin Barrel) count as half an answer. */
+function softAnswers(w,ids){
+  const c=C[w],non=ids.filter(i=>C[i].type!=='s');
+  if(['balloon','lava-hound','minion-giant'].includes(w))return non.filter(i=>has(C[i],'A'));
+  if(has(c,'T'))return ids.filter(i=>has(C[i],'K')||(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s'));
+  if(['hog-rider','battle-ram','ram-rider','royal-hogs','wall-breakers'].includes(w))return ids.filter(i=>(C[i].type==='b'&&!has(C[i],'W'))||(has(C[i],'X')&&C[i].type!=='s')||has(C[i],'K'));
+  if(['goblin-barrel','graveyard','skeleton-barrel','goblin-drill'].includes(w))return ids.filter(i=>(C[i].type==='s'&&has(C[i],'s'))||(C[i].type!=='s'&&has(C[i],'S')));
+  if(['x-bow','mortar'].includes(w))return ids.filter(i=>has(C[i],'T')||(C[i].type==='s'&&has(C[i],'F')));
+  if(w==='miner')return ids.filter(i=>has(C[i],'M')||(has(C[i],'X')&&C[i].type!=='s'));
+  return [];
+}
+function winAnswersHTML(decks){ // decks: [{ids}] — answers come from every deck given (both decks in 2v2)
   const all=[...new Set(decks.flatMap(d=>d.ids))];
   return `<ul class="wins">${POPULAR_WINS.filter(w=>C[w]&&COUNTERS[w]).map(w=>{
-    const ans=COUNTERS[w].filter(i=>all.includes(i)),n=ans.length,[word,c]=n>=2?['Strong','good']:n===1?['Fair','mid']:['Weak','bad'];
-    return `<li>${miniCard(w)}<span class="swtxt"><b>${esc(C[w].name)}</b><span>${n?nameList(ans,3):'No clean answer in '+(decks.length>1?'either deck':'this deck')}</span></span><span class="bval ${c}">${word}</span></li>`;}).join('')}</ul>`;
+    const hard=COUNTERS[w].filter(i=>all.includes(i)),soft=softAnswers(w,all).filter(i=>!hard.includes(i)&&i!==w);
+    const v=hard.length+soft.length*0.5,[word,c]=v>=2?['Strong','good']:v>=1?['Fair','mid']:['Weak','bad'];
+    const txt=hard.length||soft.length?[hard.length?nameList(hard,3):'',soft.length?(hard.length?'also helped by ':'Helped by ')+nameList(soft,3):''].filter(Boolean).join('; '):'No answer in '+(decks.length>1?'either deck':'this deck');
+    return `<li>${miniCard(w)}<span class="swtxt"><b>${esc(C[w].name)}</b><span>${esc(txt)}</span></span><span class="bval ${c}">${word}</span></li>`;}).join('')}</ul>`;
 }
-function scoreSumHTML(d,shown){ // 1v1 only: the real parts of the Forge score, scaled to the number shown
+function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge score, scaled to the number shown
   const F=0.82,cards=d.ids.map(i=>C[i]);
-  const strength=cards.reduce((a,c)=>a+c.p,0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
+  const strength=cards.reduce((a,c)=>a+(duo?c.p2:c.p),0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
   const parts=[['Card strength',strength,'How strong these 8 cards are in the current meta'],['Evo, Hero and Wild slots',slots,d.forms&&d.forms.empty?d.forms.empty+' of 3 special slots empty':'All 3 special slots filled with forms this player owns'],['Synergy',syn,d.synPct+'% of the possible combo, support and coverage credit']];
   if(d.vs)parts.push(['Against their deck',vs,'Answers to the opponent\'s win conditions and spells']);
   const rows=parts.map(([t,v,why])=>({t,v:Math.round(v*F),why}));
@@ -485,9 +503,9 @@ function scoreSumHTML(d,shown){ // 1v1 only: the real parts of the Forge score, 
   rows.push({t:'Balance',v:shown-rows.reduce((a,r)=>a+r.v,0),why:gaps.length?'Points lost for: '+gaps.join(', '):'Nothing important missing'});
   return `<table class="sum"><tbody>${rows.map(r=>`<tr><th scope="row">${esc(r.t)}<span>${esc(r.why)}</span></th><td class="${r.v<0?'neg':''}">${r.v>0?'+':''}${r.v}</td></tr>`).join('')}<tr class="total"><th scope="row">Forge score</th><td>${shown}</td></tr></tbody></table>`;
 }
-function reportHTML(d,shown){
+function reportHTML(d,shown,duo){
   return `<div class="report" hidden>
-    <div class="rcol"><h3>How the score adds up</h3>${scoreSumHTML(d,shown)}<h3>How it handles each threat</h3>${barsHTML(deckRatings(d.ids))}</div>
+    <div class="rcol"><h3>How the score adds up</h3>${scoreSumHTML(d,shown,duo)}<h3>How it handles each threat</h3>${barsHTML(deckRatings(d.ids))}</div>
     <div class="rcol"><h3>Answers to popular win conditions</h3>${winAnswersHTML([{ids:d.ids}])}</div></div>`;
 }
 function duoReportHTML(p,N){
@@ -651,8 +669,9 @@ function renderMeta(){
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(d.n)}</h2><div class="dmeta"><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span><span>Synergy <b>${sc.synPct}%</b></span></div></div>
         <div class="score"><span class="num" style="color:var(--good)">${d.wr==null?'n/a':d.wr+'%'}</span><small>Win rate</small></div></div>
+      ${reportHTML({...sc,ids},showScore(sc.s),duo)}
       ${tilesHTML(ids,sc.forms,null)}${notes}
-      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
+      <div class="actions">${linkBtn(ids,sc.forms,'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-mcopy="${i}">Copy list</button>${keys.map(k=>`<button class="btn" type="button" data-mpin="${i}" data-side="${k}">Pin for ${esc(prof(k).name)}</button>`).join('')}</div>
     </article>`;}).join('');
 }
 
@@ -787,9 +806,10 @@ function renderCreator(){
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(ids))}</h2><div class="dmeta"><span>${esc(d.modes.join(', '))}</span><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span></div></div>
         <div class="score"><span class="num">${d.wins}–${d.losses}</span><small>${d.games} recent game${d.games>1?'s':''}</small></div></div>
+      ${reportHTML({...sc,ids},showScore(sc.s),d.modes.includes('2v2'))}
       ${tilesHTML(ids,sc.forms,null)}
       ${miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`}
-      <div class="actions">${linkBtn(ids,sc.forms,tw?tw.id:'tower-princess')}<button class="btn" type="button" data-credit="${i}">Check with my cards</button></div>
+      <div class="actions">${linkBtn(ids,sc.forms,tw?tw.id:'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-credit="${i}">Check with my cards</button></div>
     </article>`;}).join('');
   if(cr.decks&&!cr.decks.length&&!cr.busy)body='<p class="hint">No recent battles with a full deck were found for this player.</p>';
   $('out').innerHTML=`<section class="panel">
@@ -910,6 +930,7 @@ $('out').addEventListener('click',e=>{
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
   state.view=v;['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  if(window.updateFab)window.updateFab();
   if(quiet)return;
   if(v==='meta')renderMeta();
   else if(v==='check')renderCheck();
