@@ -1880,7 +1880,7 @@ function applySkin(id){
   const box=$('skins');
   if(box)box.innerHTML=`<span class="skinlbl">Theme</span>`+SKINS.map(x=>`<button type="button" class="skin" data-skin-pick="${x.id}" aria-pressed="${x.id===k.id}" title="${esc(x.name)}" aria-label="${esc(x.name)}" style="--s1:${x.sw[0]};--s2:${x.sw[1]}">${x.id==='auto'?'<i>A</i>':''}</button>`).join('');
 }
-applySkin(store.get('ef2-skin','auto'));
+applySkin(store.get('ef2-skin','royal')); // Royal Night is the default for every visitor
 document.addEventListener('click',e=>{const b=e.target.closest('[data-skin-pick]');if(b){applySkin(b.dataset.skinPick);toast((SKINS.find(x=>x.id===b.dataset.skinPick)||{}).name+' theme');}});
 
 /* ---------- app state ---------- */
