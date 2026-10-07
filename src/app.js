@@ -505,7 +505,7 @@ const cycleCost=ids=>ids.map(id=>C[id].e).sort((a,b)=>a-b).slice(0,4).reduce((a,
 function archLabel(ids){
   const wins=ids.filter(id=>has(C[id],'W')).sort((a,b)=>C[b].e-C[a].e);
   const st=(ARCH[wins[0]]||[])[0];
-  return (wins.map(id=>C[id].name).join(' + ')||'Control')+(st?' '+STYLE_NAME[st]:'');
+  return (wins.map(id=>C[id].name).join(' + ')||'Support')+(st?' '+STYLE_NAME[st]:'');
 }
 
 const isDefBld=i=>C[i].type==='b'&&!has(C[i],'W')&&i!=='elixir-collector';

@@ -61,7 +61,7 @@ goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
 minion-giant|Minion Giant|4|t|W|8|0|0|10|0|0
 rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
 bomb-tower|Bomb Tower|4|b|BS|7|0|0|5|0|0
-furnace|Furnace|4|b|BAS|8|6|0|9|10|0
+furnace|Furnace|4|t|AS|8|6|0|9|10|0
 goblin-cage|Goblin Cage|4|b|BK|6|7|0|6|7|0
 fireball|Fireball|4|s|F|6|0|0|5|0|0
 baby-dragon|Baby Dragon|4|t|AS|6|7|0|4|10|0
@@ -371,7 +371,7 @@ const TOWER={};TOWERS.forEach(t=>TOWER[t.id]=t);
 
 /* Good answers to each win condition, used for matchup analysis and "build against a deck". */
 const COUNTERS={
-'hog-rider':['cannon','tesla','tornado','inferno-tower','bomb-tower','goblin-cage','mini-pekka','skeletons','guards','ronin','goblin-hut','tombstone','furnace','fisherman','hunter','barbarians','lumberjack','prince','pekka','mighty-miner'],
+'hog-rider':['cannon','tesla','tornado','inferno-tower','bomb-tower','goblin-cage','mini-pekka','skeletons','guards','ronin','goblin-hut','tombstone','fisherman','hunter','barbarians','lumberjack','prince','pekka','mighty-miner'],
 'royal-giant':['inferno-tower','inferno-dragon','mini-pekka','skeleton-army','guards','barbarians','goblin-cage','hunter','ronin','pekka','elite-barbarians','minion-horde','lumberjack','prince','mighty-miner','sparky'],
 'golem':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','elite-barbarians','minion-horde','mighty-miner','sparky'],
 'giant':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','minion-horde','ronin','elite-barbarians','mighty-miner','sparky','lumberjack','prince'],

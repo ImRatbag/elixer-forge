@@ -120,11 +120,13 @@ function scoreDeck(ids,ctx){
   let syn=0;const pairs=[];
   for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const x=SYN[sk(ids[i],ids[j])];if(x){syn+=x.w;pairs.push({a:ids[i],b:ids[j],...x});}}
   if(!forms)s-=60;else s+=forms.value*1.3-forms.empty*25;
-  if(k.wc===0)s-=40;else if(k.wc>2)s-=18*(k.wc-2);
+  // 1v1 decks must have a win condition. In 2v2 a pure support deck is allowed as long as the partner brings one
+  // (teamScore checks the pair), so here it only costs a little: a win condition in both decks is still preferred.
+  if(k.wc===0)s-=ctx.duo?9:40;else if(k.wc>2)s-=18*(k.wc-2);
   // A deck needs a card that can carry a game. Chip cards (Miner, Wall Breakers, Skeleton Barrel, Suspicious Bush,
   // Boss Bandit) count as win conditions, but one of them alone is not a plan; two together are a real chip deck.
   const mainW=cards.filter(c=>has(c,'W')&&!MINOR_WIN.has(c.id)).length;
-  if(k.wc>0&&mainW===0&&ctx.style!=='hyperbait')s-=k.wc>=2?5:16;
+  if(k.wc>0&&mainW===0&&ctx.style!=='hyperbait'&&!ctx.duo)s-=k.wc>=2?5:16;
   // Buildings: two defensive buildings do the same job twice (Cannon + Goblin Cage), and a spawner beside one is
   // nearly as clumsy. A siege or drill building with one defensive building is a normal deck and is left alone.
   const defB=cards.filter(c=>DEF_BLD.has(c.id)).length,otherB=cards.filter(c=>c.type==='b'&&!has(c,'W')&&!DEF_BLD.has(c.id)).length;
@@ -364,12 +366,15 @@ function teamScore(A,B,ctxA,ctxB,w){
   const sa=scoreCached(A,ctxA),sb=scoreCached(B,ctxB);
   const t=teamAnalysis(A,B,sa,sb,w.names);
   const extra=Math.max(0,t.dup.length-2);
-  return{s:(sa.s+sb.s)/2+t.pct*w.wTeam-1.5*Math.min(2,t.dup.length)-30*extra-8*t.sameWin.length-(t.bdA&&t.bdB&&!(sa.role==='attack'||sb.role==='attack')?10:0),sa,sb,t};
+  const noWin=(sa.k.wc===0&&sb.k.wc===0)?45:0; // the team still needs a way to take a tower
+  return{s:(sa.s+sb.s)/2-noWin+t.pct*w.wTeam-1.5*Math.min(2,t.dup.length)-30*extra-8*t.sameWin.length-(t.bdA&&t.bdB&&!(sa.role==='attack'||sb.role==='attack')?10:0),sa,sb,t};
 }
 function buildDeck(side,ctx,pool,objective,partner){
   let deck=[...side.locked];let fixedN=deck.length;
   const lc=deck.map(i=>C[i]);
-  if(deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
+  // Some second decks start without a forced win condition, so a pure support deck can win on merit.
+  const free=partner&&ctx.style==='any'&&partner.some(i=>has(C[i],'W'))&&Math.random()<0.3;
+  if(!free&&deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
     const wins=pool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style))&&!(partner&&partner.includes(id)));
     if(wins.length){const sc=wins.map(id=>{let v=pw(C[id],ctx)+Math.random()*7;if(partner)for(const p of partner){const x=SYN[sk(id,p)];if(x&&!x.meta)v+=x.w*1.5;}return{id,v};}).sort((a,b)=>b.v-a.v);deck.push(sc[0].id);fixedN=deck.length;}
   }
@@ -405,7 +410,7 @@ function generateDuo(o){
   const flip=o.B.locked.length>o.A.locked.length;
   const L=flip?{sd:o.B,ctx:ctxB,pool:poolB}:{sd:o.A,ctx:ctxA,pool:poolA};
   const F=flip?{sd:o.A,ctx:ctxA,pool:poolA}:{sd:o.B,ctx:ctxB,pool:poolB};
-  const valid=(d,ctx)=>{const s=scoreCached(d,ctx);return s.forms&&s.k.wc>=1;};
+  const valid=(d,ctx)=>!!scoreCached(d,ctx).forms;
   const seeds=new Map();
   const nSeeds=L.sd.locked.length>=8?1:18;
   for(let r=0;r<nSeeds;r++){
@@ -428,6 +433,7 @@ function generateDuo(o){
       fol=improve(fol,F.sd.locked.length,F.pool,x=>ts(lead,x).s,1);
       if(!valid(lead,L.ctx)||!valid(fol,F.ctx))continue;
       if(lead.filter(i=>fol.includes(i)).length>2)continue;
+      if(!lead.concat(fol).some(i=>has(C[i],'W')))continue;
       const A=flip?fol:lead,B=flip?lead:fol;
       const key=[...A].sort().join(',')+'/'+[...B].sort().join(',');
       if(!found.has(key))found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});
