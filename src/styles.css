@@ -745,3 +745,55 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
 .toast .undo{all:unset;cursor:pointer;margin-left:10px;padding:2px 10px;border-radius:999px;background:color-mix(in srgb,var(--bg) 16%,transparent);font-weight:700;text-decoration:underline}
 
 .foot .ver{font-size:11.5px;opacity:.7}
+
+/* ---------- Phone-first pass (Oct 2026) ----------
+   Phones are the main way people use this, straight from the game. Everything tappable is at least 40px tall, deck
+   actions sit in tidy rows instead of a ragged wrap, and secondary text gives way to the cards. */
+@media (max-width:540px){
+  .deck>.actions,.solodeck>.actions{display:flex;flex-wrap:wrap;gap:8px;max-width:none}
+  .deck>.actions .btn,.solodeck>.actions .btn{flex:1 1 30%;min-width:0;min-height:44px;padding:9px 8px;font-size:13.5px;justify-content:center;white-space:nowrap}
+  .deck>.actions .btn.primary,.solodeck>.actions .btn.primary{flex:1 1 100%;min-height:48px;font-size:15px}
+  .duodeck .actions .btn,.duodeck .actions .btn.sm{min-height:42px}
+  .tower .hint{display:none}
+  .skin{width:28px;height:28px}
+  .skins{gap:8px;padding:6px 10px}
+  .pswitch{min-height:40px}
+  details>summary{min-height:40px}
+  details.panel{padding-block:8px}
+  .player .btns .btn,.tagrow .btn{min-height:44px}
+  select,input[type=text],input[type=search]{min-height:44px;font-size:16px} /* 16px stops iOS zooming the page on focus */
+  .wrap{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .fab{bottom:calc(12px + env(safe-area-inset-bottom))}
+  .tabs [role=tab]{min-height:42px}
+}
+
+/* Settings bar: on phones the Players and Search panels fold behind this once a collection is loaded. */
+.buildbar{display:none}
+@media (max-width:900px){
+  .buildbar:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:58px;padding:10px 12px 10px 16px;border-radius:18px;border:1px solid var(--line);background:var(--panel);color:inherit;text-align:left;font:inherit;cursor:pointer;box-shadow:0 8px 24px -14px rgba(0,0,0,.6)}
+  .bb-main{display:grid;gap:2px;min-width:0}
+  .bb-main b{font-family:var(--display);font-size:16.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bb-main span{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bb-act{flex:none;padding:9px 13px;border-radius:11px;border:1px solid var(--line2);font-weight:700;font-size:13px}
+  .build.compact>:not(.buildbar){display:none}
+  .build.compact{margin-bottom:-6px}
+}
+/* Phone header: the name never shrinks behind the mode switch; the data chip and themes drop to a second row. */
+@media (max-width:640px){
+  .brand{flex:1 1 auto;min-width:max-content}
+  .brand h1{white-space:nowrap;font-size:26px}
+  .top .seg{flex:none}
+  .datachip{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+}
+@media (max-width:350px){.brand h1{font-size:22px}.brand svg{width:28px;height:28px}}
+.skins{max-width:100%;flex-wrap:wrap}
+.foot .skins{margin:0 0 14px;width:max-content;border-radius:18px}
+@media (max-width:640px){.top{padding-block:14px 12px;margin-bottom:14px}.datachip{font-size:12px;padding:5px 11px}}
+
+.row2{align-items:end}
+.tagrow{grid-template-columns:minmax(0,1fr) auto}
+.tagrow>input{min-width:0}
+#out>.panel,#out>.deck{min-width:0;max-width:100%}
+details.panel:not([open])>summary{margin-bottom:0}
+@media (max-width:540px){details.panel:not([open]){padding-block:6px}}
+html{overflow-x:clip}

@@ -49,3 +49,14 @@ console.log('engine rule tests passed:', decks, 'decks checked');
   E.generate({ locked: ['hog-rider'], forms: {}, exclude: r.exclude, ban: r.ban, style: 'any', maxAvg: 4.3, count: 2, maxChamps: 1 }).forEach(d => check(d, col, ['hog-rider']));
   console.log('syncCards test passed');
 }
+
+// Forms released after launch sit at the end of the Evo/Hero lists, so older collection codes keep their meaning.
+{
+  const E2 = new Function(src + '; return {EVO_CARDS,HERO_CARDS,encodeCollection,decodeCollection,C};')();
+  assert.equal(E2.EVO_CARDS.at(-1), 'electro-giant'); assert.equal(E2.HERO_CARDS.at(-1), 'electro-wizard');
+  assert.equal(E2.C.furnace.type, 't', 'Furnace is a troop');
+  const col = { base: null, evo: new Set(['knight', 'electro-giant']), hero: new Set(['electro-wizard']), towers: new Set(['tower-princess']) };
+  const back = E2.decodeCollection(E2.encodeCollection(col));
+  assert.deepEqual([...back.evo].sort(), ['electro-giant', 'knight']); assert.deepEqual([...back.hero], ['electro-wizard']);
+  console.log('late forms test passed');
+}

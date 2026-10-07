@@ -245,11 +245,11 @@ function generate(opts){
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
   const RESTARTS=opts.restarts||(locked.length>=7?20:140);
-  // Variety at the source: once a card is in over a third of the decks found so far, most later attempts must build
-  // without it. Otherwise every attempt settles on the same few top-rated cards and the picker has nothing else to offer.
+  // Variety at the source: once a card is in over a third of the decks found so far, most attempts in the second half of the search
+  // must build without it (the first half always searches at full strength, so the best deck is never lost). Otherwise every attempt settles on the same few top-rated cards and the picker has nothing else to offer.
   const usedN={};
   for(let r=0;r<RESTARTS;r++){
-    const hot=found.size>=8?Object.keys(usedN).filter(id=>usedN[id]>found.size*0.34&&!locked.includes(id)&&Math.random()<0.65):[];
+    const hot=opts.variety!==false&&r>=RESTARTS*0.45&&found.size>=8?Object.keys(usedN).filter(id=>usedN[id]>found.size*0.34&&!locked.includes(id)&&Math.random()<0.65):[];
     const rpool=hot.length?pool.filter(id=>!hot.includes(id)):pool;
     let deck=[...locked];
     const lc=deck.map(i=>C[i]);
@@ -292,10 +292,14 @@ function generate(opts){
   const picked=[],uses={...(opts.avoid||{})},seenWin=new Set();
   const shown={},cap=Math.max(1,Math.ceil(opts.count/3));
   const mainWin=d=>d.ids.filter(id=>has(C[id],'W')&&!locked.includes(id)).sort().join('+');
+  // Variety never buys a weak deck: nothing more than FLOOR points (about 6 on the displayed score) below the strongest
+  // deck found may be shown, unless there aren't enough decks that good.
+  const FLOOR=7.5,okN=all.filter(d=>d.s>=all[0].s-FLOOR).length;
   while(picked.length<opts.count&&picked.length<all.length){
     let best=null,bestV=-1e9;
     for(const d of all){
       if(picked.includes(d))continue;
+      if(opts.variety!==false&&okN>=opts.count&&d.s<all[0].s-FLOOR)continue;
       let v=d.s;
       // A repeated card costs more each time, and a card already in a third of one set of results is strongly discouraged.
       for(const id of d.ids)if(!locked.includes(id)){const u=uses[id]||0;v-=5*u+1.5*u*u;if((shown[id]||0)>=cap)v-=18;}
@@ -521,7 +525,11 @@ function orderDeck(ids,forms){
 /* ---------- Collection share codes ----------
    A collection is {base:Set|null (null = owns every card), evo:Set, hero:Set, towers:Set}.
    The code is version + three bitfields in base-36, using the card list order, so it stays short. */
-const EVO_CARDS=CARDS.filter(c=>c.ev).map(c=>c.id),HERO_CARDS=CARDS.filter(c=>c.he).map(c=>c.id),BASE_CARDS=CARDS.map(c=>c.id),TOWER_IDS=TOWERS.map(t=>t.id);
+// Collection codes store Evos and Heroes as bit positions, so forms released after launch go at the END of these
+// lists (in release order) however early their card sits in the table. Otherwise every older code would shift.
+const LATE_EVO=['electro-giant'],LATE_HERO=['electro-wizard'];
+const lateLast=(ids,late)=>ids.filter(i=>!late.includes(i)).concat(late.filter(i=>ids.includes(i)));
+const EVO_CARDS=lateLast(CARDS.filter(c=>c.ev).map(c=>c.id),LATE_EVO),HERO_CARDS=lateLast(CARDS.filter(c=>c.he).map(c=>c.id),LATE_HERO),BASE_CARDS=CARDS.map(c=>c.id),TOWER_IDS=TOWERS.map(t=>t.id);
 function bitsToStr(list,set){let b=0n;list.forEach((id,i)=>{if(set.has(id))b|=1n<<BigInt(i);});return b.toString(36);}
 function strToBits(list,str){const set=new Set();let b;try{b=[...str].reduce((a,ch)=>a*36n+BigInt(parseInt(ch,36)),0n);}catch(e){return null;}list.forEach((id,i)=>{if(b&(1n<<BigInt(i)))set.add(id);});return set;}
 function encodeCollection(col){

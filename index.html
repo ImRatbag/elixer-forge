@@ -774,6 +774,58 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
 
 .foot .ver{font-size:11.5px;opacity:.7}
 
+/* ---------- Phone-first pass (Oct 2026) ----------
+   Phones are the main way people use this, straight from the game. Everything tappable is at least 40px tall, deck
+   actions sit in tidy rows instead of a ragged wrap, and secondary text gives way to the cards. */
+@media (max-width:540px){
+  .deck>.actions,.solodeck>.actions{display:flex;flex-wrap:wrap;gap:8px;max-width:none}
+  .deck>.actions .btn,.solodeck>.actions .btn{flex:1 1 30%;min-width:0;min-height:44px;padding:9px 8px;font-size:13.5px;justify-content:center;white-space:nowrap}
+  .deck>.actions .btn.primary,.solodeck>.actions .btn.primary{flex:1 1 100%;min-height:48px;font-size:15px}
+  .duodeck .actions .btn,.duodeck .actions .btn.sm{min-height:42px}
+  .tower .hint{display:none}
+  .skin{width:28px;height:28px}
+  .skins{gap:8px;padding:6px 10px}
+  .pswitch{min-height:40px}
+  details>summary{min-height:40px}
+  details.panel{padding-block:8px}
+  .player .btns .btn,.tagrow .btn{min-height:44px}
+  select,input[type=text],input[type=search]{min-height:44px;font-size:16px} /* 16px stops iOS zooming the page on focus */
+  .wrap{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  .fab{bottom:calc(12px + env(safe-area-inset-bottom))}
+  .tabs [role=tab]{min-height:42px}
+}
+
+/* Settings bar: on phones the Players and Search panels fold behind this once a collection is loaded. */
+.buildbar{display:none}
+@media (max-width:900px){
+  .buildbar:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:58px;padding:10px 12px 10px 16px;border-radius:18px;border:1px solid var(--line);background:var(--panel);color:inherit;text-align:left;font:inherit;cursor:pointer;box-shadow:0 8px 24px -14px rgba(0,0,0,.6)}
+  .bb-main{display:grid;gap:2px;min-width:0}
+  .bb-main b{font-family:var(--display);font-size:16.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bb-main span{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bb-act{flex:none;padding:9px 13px;border-radius:11px;border:1px solid var(--line2);font-weight:700;font-size:13px}
+  .build.compact>:not(.buildbar){display:none}
+  .build.compact{margin-bottom:-6px}
+}
+/* Phone header: the name never shrinks behind the mode switch; the data chip and themes drop to a second row. */
+@media (max-width:640px){
+  .brand{flex:1 1 auto;min-width:max-content}
+  .brand h1{white-space:nowrap;font-size:26px}
+  .top .seg{flex:none}
+  .datachip{flex:0 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+}
+@media (max-width:350px){.brand h1{font-size:22px}.brand svg{width:28px;height:28px}}
+.skins{max-width:100%;flex-wrap:wrap}
+.foot .skins{margin:0 0 14px;width:max-content;border-radius:18px}
+@media (max-width:640px){.top{padding-block:14px 12px;margin-bottom:14px}.datachip{font-size:12px;padding:5px 11px}}
+
+.row2{align-items:end}
+.tagrow{grid-template-columns:minmax(0,1fr) auto}
+.tagrow>input{min-width:0}
+#out>.panel,#out>.deck{min-width:0;max-width:100%}
+details.panel:not([open])>summary{margin-bottom:0}
+@media (max-width:540px){details.panel:not([open]){padding-block:6px}}
+html{overflow-x:clip}
+
 </style>
 <div class="wrap">
   <header class="top">
@@ -791,6 +843,7 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
 
   <div class="layout">
     <aside class="build" aria-label="Build settings">
+      <button class="buildbar" id="buildbar" type="button" aria-expanded="true" aria-controls="players" hidden></button>
       <section class="panel" aria-labelledby="players-h">
         <h2 id="players-h">Players</h2>
         <div id="players"></div>
@@ -854,7 +907,7 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
       <footer class="foot">
         <div class="footbrand"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20.5" fill="none" stroke="url(#lg-ring)" stroke-width="1.6" opacity=".9"/><path d="M22 7.5c5.2 7 10 12 10 17.6a10 10 0 0 1-20 0c0-5.600 4.800-10.600 10-17.600z" fill="url(#lg-drop)"/></svg><span>Elixir Forge</span></div>
         <p id="datanote"></p>
-        <p class="ver">Site version Oct 7, 6:29 PM</p>
+        <p class="ver">Site version Oct 7, 6:43 PM</p>
         <p>Your collections, saved decks and results are stored only in this browser. Looking up a player tag sends that tag to the Elixir Forge server, which asks Supercell's official API for the public profile.</p>
         <p>This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy: www.supercell.com/fan-content-policy.</p>
       </footer>
@@ -880,11 +933,11 @@ bats|Bats|2|t|AX|4|7|0|5|8|0
 berserker|Berserker|2|t||6|0|8|6|0|5
 ice-golem|Ice Golem|2|t|M|6|0|5|3|0|6
 suspicious-bush|Suspicious Bush|2|t|W|7|0|0|8|0|0
-wall-breakers|Wall Breakers|2|t|W|6|6|0|3|7|0
+wall-breakers|Wall Breakers|2|t|W|7|6|0|4|7|0
 zap|Zap|2|s|s|6|8|0|6|8|0
 giant-snowball|Giant Snowball|2|s|s|6|6|0|2|5|0
 the-log|The Log|2|s|s|4|0|0|7|0|0
-barbarian-barrel|Barbarian Barrel|2|s|s|8|0|7|10|0|8
+barbarian-barrel|Barbarian Barrel|2|s|s|7|0|7|9|0|8
 rage|Rage|2|s||6|0|0|2|0|0
 goblin-curse|Goblin Curse|2|s|s|7|0|0|6|0|0
 knight|Knight|3|t|M|5|7|5|4|7|4
@@ -893,7 +946,7 @@ minions|Minions|3|t|AX|7|0|0|5|0|0
 goblin-gang|Goblin Gang|3|t|X|6|0|0|6|0|0
 skeleton-barrel|Skeleton Barrel|3|t|W|5|7|0|5|10|0
 firecracker|Firecracker|3|t|AS|4|4|0|2|6|0
-cannon|Cannon|3|b|B|4|6|0|4|7|0
+cannon|Cannon|3|b|B|4|5|0|4|6|0
 arrows|Arrows|3|s|s|6|0|0|6|0|0
 royal-delivery|Royal Delivery|3|s|s|5|0|0|3|0|0
 mega-minion|Mega Minion|3|t|AK|6|0|6|5|0|7
@@ -903,16 +956,16 @@ tombstone|Tombstone|3|b|BX|5|0|7|5|0|8
 earthquake|Earthquake|3|s||6|0|0|5|0|0
 skeleton-army|Skeleton Army|3|t|XK|4|7|0|3|5|0
 guards|Guards|3|t|X|6|0|0|6|0|0
-goblin-barrel|Goblin Barrel|3|s|W|4|6|0|3|7|0
+goblin-barrel|Goblin Barrel|3|s|W|5|6|0|4|7|0
 tornado|Tornado|3|s||7|0|0|7|0|0
 clone|Clone|3|s||5|0|0|1|0|0
 vines|Vines|3|s|s|6|0|0|6|0|0
 void|Void|5|s|F|6|0|0|3|0|0
-ice-wizard|Ice Wizard|3|t|AS|6|0|6|5|0|9
+ice-wizard|Ice Wizard|3|t|AS|6|0|5|5|0|7
 princess|Princess|3|t|AS|6|6|0|5|7|0
 miner|Miner|3|t|W|6|0|0|4|0|0
 bandit|Bandit|3|t|M|8|0|0|9|0|0
-royal-ghost|Royal Ghost|3|t|S|7|8|0|8|10|0
+royal-ghost|Royal Ghost|3|t|S|6|7|0|7|9|0
 fisherman|Fisherman|3|t||7|0|0|5|0|0
 spirit-empress|Spirit Empress|6|t|S|6|0|0|9|0|0
 little-prince|Little Prince|3|t|AC|7|0|0|8|0|0
@@ -925,7 +978,7 @@ zappies|Zappies|4|t|A|7|0|0|8|0|0
 flying-machine|Flying Machine|4|t|A|7|0|0|8|0|0
 battle-healer|Battle Healer|4|t||6|0|0|3|0|0
 goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
-minion-giant|Minion Giant|4|t|W|8|0|0|10|0|0
+minion-giant|Minion Giant|4|t|W|7|0|0|9|0|0
 rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
 bomb-tower|Bomb Tower|4|b|BS|7|0|0|5|0|0
 furnace|Furnace|4|t|AS|8|6|0|9|10|0
@@ -939,7 +992,7 @@ freeze|Freeze|4|s||7|0|0|3|0|0
 poison|Poison|4|s|F|6|0|0|10|0|0
 lumberjack|Lumberjack|4|t|K|6|6|0|7|10|0
 inferno-dragon|Inferno Dragon|4|t|AK|6|7|0|4|9|0
-electro-wizard|Electro Wizard|4|t|A|7|0|0|9|0|0
+electro-wizard|Electro Wizard|4|t|A|7|0|8|9|0|9
 night-witch|Night Witch|4|t||7|0|0|5|0|0
 magic-archer|Magic Archer|4|t|AS|5|0|5|3|0|4
 mother-witch|Mother Witch|4|t|A|8|0|0|10|0|0
@@ -965,7 +1018,7 @@ bowler|Bowler|5|t|S|7|0|7|7|0|9
 executioner|Executioner|5|t|AS|5|5|0|4|7|0
 cannon-cart|Cannon Cart|5|t|M|9|0|0|9|0|0
 electro-dragon|Electro Dragon|5|t|AS|5|6|0|4|7|0
-ram-rider|Ram Rider|5|t|W|6|0|0|7|0|0
+ram-rider|Ram Rider|5|t|W|7|0|0|8|0|0
 goblin-machine|Goblin Machine|5|t|W|6|0|0|5|0|0
 ronin|Ronin|5|t|KM|6|0|0|10|0|0
 graveyard|Graveyard|5|s|W|7|0|0|6|0|0
@@ -978,15 +1031,15 @@ giant-skeleton|Giant Skeleton|6|t|T|7|0|0|8|0|0
 goblin-giant|Goblin Giant|6|t|WT|6|7|0|4|6|0
 x-bow|X-Bow|6|b|W|6|0|0|2|0|0
 lightning|Lightning|6|s|F|7|0|0|10|0|0
-elixir-collector|Elixir Collector|6|b|B|7|0|0|2|0|0
+elixir-collector|Elixir Collector|6|b|B|6|0|0|2|0|0
 rocket|Rocket|6|s|F|5|0|0|2|0|0
 barbarian-hut|Barbarian Hut|6|b|B|6|0|0|4|0|0
 sparky|Sparky|6|t|SK|7|0|0|3|0|0
 boss-bandit|Boss Bandit|6|t|WMC|5|0|0|6|0|0
 royal-recruits|Royal Recruits|7|t|XM|6|7|0|4|7|0
 pekka|P.E.K.K.A|7|t|KT|6|6|0|3|4|0
-electro-giant|Electro Giant|7|t|WT|7|0|0|5|0|0
-lava-hound|Lava Hound|7|t|WT|7|0|0|6|0|0
+electro-giant|Electro Giant|7|t|WT|7|8|0|5|7|0
+lava-hound|Lava Hound|7|t|WT|8|0|0|7|0|0
 mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
 golem|Golem|8|t|WT|7|0|0|5|0|0
 three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
@@ -1095,6 +1148,11 @@ giant,graveyard,3,Giant Graveyard: tank in front, skeletons on the tower
 electro-giant,tornado,3,Tornado pulls troops into E-Giant's zap
 electro-giant,lightning,2,Lightning removes buildings and ranged troops
 electro-giant,bowler,2,Bowler pushes back the swarms E-Giant can't stop
+electro-giant,golden-knight,2,Golden Knight dashes through the troops E-Giant's zaps have weakened
+electro-giant,goblin-hut,2,Spear Goblins behind E-Giant deal with air while he tanks
+electro-wizard,ram-rider,2,E-Wiz stuns the defenders Ram Rider has snared
+electro-wizard,magic-archer,2,Stunned troops line up for Magic Archer's piercing shot
+lava-hound,lightning,2,Lightning clears the air defence so the Hound's pups reach the tower
 goblin-giant,sparky,3,Sparky rides behind the Spear Goblins on Goblin Giant
 executioner,tornado,3,Tornado gathers troops into Executioner's axe
 ice-wizard,tornado,2,Slow and pull for big defensive swings
@@ -1126,6 +1184,10 @@ SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b
 
 /* Top Ranked decks, RoyaleAPI 7-day, week ending Sept 30 2026. ':evo' / ':hero' marks the form. */
 const META=[
+ {n:'Evo E-Giant Hero Bowler',wr:55.0,cards:['electro-giant:evo','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
+ {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:54.0,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
+ {n:'Hero E-Wiz Ram Rider',wr:53.5,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
+ {n:'Golem Evo E-Drag Beatdown',wr:53.6,cards:['golem','electro-dragon:evo','berserker:hero','elite-barbarians:evo','barbarian-barrel','tornado','skeleton-dragons','elixir-collector']},
  {n:'GK Bandit Evo Ram',wr:55.4,cards:['battle-ram:evo','golden-knight','royal-ghost:evo','ronin','electro-wizard','bandit','furnace','arrows']},
  {n:'Rune Giant Minion Giant 2.9 Cycle',wr:55.3,cards:['cannon:evo','little-prince','bats:evo','minion-giant','rune-giant','poison','skeletons','barbarian-barrel']},
  {n:'Evo Mortar Cannon Cart Bait',wr:55.0,cards:['skeleton-barrel:evo','ice-wizard:hero','mortar:evo','cannon-cart','fireball','goblin-gang','rascals','barbarian-barrel']},
@@ -1272,7 +1334,7 @@ const PRESET_PLAYERS=[];
 /* Featured players for the player-decks tab: their recent decks come from their public battle log.
    Set tag to the player's tag (letters and digits only, no #). An entry without a tag is not shown. */
 const CREATORS=[{key:'ken',name:'Ken',tag:'QQUUCL'}];
-const DATA_DATE='Sept 30, 2026';
+const DATA_DATE='Oct 7, 2026';
 
 /* ---------- special-slot assignment ---------- */
 let memo=new Map();
@@ -1521,11 +1583,11 @@ function generate(opts){
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
   const RESTARTS=opts.restarts||(locked.length>=7?20:140);
-  // Variety at the source: once a card is in over a third of the decks found so far, most later attempts must build
-  // without it. Otherwise every attempt settles on the same few top-rated cards and the picker has nothing else to offer.
+  // Variety at the source: once a card is in over a third of the decks found so far, most attempts in the second half of the search
+  // must build without it (the first half always searches at full strength, so the best deck is never lost). Otherwise every attempt settles on the same few top-rated cards and the picker has nothing else to offer.
   const usedN={};
   for(let r=0;r<RESTARTS;r++){
-    const hot=found.size>=8?Object.keys(usedN).filter(id=>usedN[id]>found.size*0.34&&!locked.includes(id)&&Math.random()<0.65):[];
+    const hot=opts.variety!==false&&r>=RESTARTS*0.45&&found.size>=8?Object.keys(usedN).filter(id=>usedN[id]>found.size*0.34&&!locked.includes(id)&&Math.random()<0.65):[];
     const rpool=hot.length?pool.filter(id=>!hot.includes(id)):pool;
     let deck=[...locked];
     const lc=deck.map(i=>C[i]);
@@ -1568,10 +1630,14 @@ function generate(opts){
   const picked=[],uses={...(opts.avoid||{})},seenWin=new Set();
   const shown={},cap=Math.max(1,Math.ceil(opts.count/3));
   const mainWin=d=>d.ids.filter(id=>has(C[id],'W')&&!locked.includes(id)).sort().join('+');
+  // Variety never buys a weak deck: nothing more than FLOOR points (about 6 on the displayed score) below the strongest
+  // deck found may be shown, unless there aren't enough decks that good.
+  const FLOOR=7.5,okN=all.filter(d=>d.s>=all[0].s-FLOOR).length;
   while(picked.length<opts.count&&picked.length<all.length){
     let best=null,bestV=-1e9;
     for(const d of all){
       if(picked.includes(d))continue;
+      if(opts.variety!==false&&okN>=opts.count&&d.s<all[0].s-FLOOR)continue;
       let v=d.s;
       // A repeated card costs more each time, and a card already in a third of one set of results is strongly discouraged.
       for(const id of d.ids)if(!locked.includes(id)){const u=uses[id]||0;v-=5*u+1.5*u*u;if((shown[id]||0)>=cap)v-=18;}
@@ -1797,7 +1863,11 @@ function orderDeck(ids,forms){
 /* ---------- Collection share codes ----------
    A collection is {base:Set|null (null = owns every card), evo:Set, hero:Set, towers:Set}.
    The code is version + three bitfields in base-36, using the card list order, so it stays short. */
-const EVO_CARDS=CARDS.filter(c=>c.ev).map(c=>c.id),HERO_CARDS=CARDS.filter(c=>c.he).map(c=>c.id),BASE_CARDS=CARDS.map(c=>c.id),TOWER_IDS=TOWERS.map(t=>t.id);
+// Collection codes store Evos and Heroes as bit positions, so forms released after launch go at the END of these
+// lists (in release order) however early their card sits in the table. Otherwise every older code would shift.
+const LATE_EVO=['electro-giant'],LATE_HERO=['electro-wizard'];
+const lateLast=(ids,late)=>ids.filter(i=>!late.includes(i)).concat(late.filter(i=>ids.includes(i)));
+const EVO_CARDS=lateLast(CARDS.filter(c=>c.ev).map(c=>c.id),LATE_EVO),HERO_CARDS=lateLast(CARDS.filter(c=>c.he).map(c=>c.id),LATE_HERO),BASE_CARDS=CARDS.map(c=>c.id),TOWER_IDS=TOWERS.map(t=>t.id);
 function bitsToStr(list,set){let b=0n;list.forEach((id,i)=>{if(set.has(id))b|=1n<<BigInt(i);});return b.toString(36);}
 function strToBits(list,str){const set=new Set();let b;try{b=[...str].reduce((a,ch)=>a*36n+BigInt(parseInt(ch,36)),0n);}catch(e){return null;}list.forEach((id,i)=>{if(b&(1n<<BigInt(i)))set.add(id);});return set;}
 function encodeCollection(col){
@@ -2038,7 +2108,22 @@ async function lookupTag(key,raw,opt){
 }
 
 /* ---------- small UI helpers ---------- */
-function showErr(m){$('err').textContent=m;$('err').hidden=false;}
+function showErr(m){$('err').textContent=m;$('err').hidden=false;if(typeof openBuild==='function')openBuild();}
+/* Phones: once a collection is loaded, the settings fold into one bar so the decks are the first thing on screen.
+   Anything that needs the settings (an error, pinning a deck to tweak) opens them again. */
+const buildUI={open:null};
+function updateBuildBar(){
+  const bar=$('buildbar');if(!bar)return;
+  const keys=state.mode==='duo'?['A','B']:['A'],ready=keys.every(k=>prof(k).source!=='unset'),N=names();
+  if(buildUI.open===null)buildUI.open=!ready;
+  if(!ready)buildUI.open=true;
+  bar.hidden=!ready;bar.setAttribute('aria-expanded',buildUI.open);
+  bar.innerHTML=`<span class="bb-main"><b>${esc(keys.map(k=>N[k]).join(' + '))}</b><span>${buildUI.open?'Tap to hide settings':'Players, playstyle and search'}</span></span><span class="bb-act">${buildUI.open?'Hide':'Settings'}</span>`;
+  document.querySelector('.build').classList.toggle('compact',ready&&!buildUI.open);
+  if(window.updateFab)window.updateFab();
+}
+function openBuild(){if(buildUI.open)return;buildUI.open=true;updateBuildBar();}
+document.addEventListener('click',e=>{if(e.target.closest('#buildbar')){buildUI.open=!buildUI.open;updateBuildBar();}});
 function hideErr(){$('err').hidden=true;}
 function setStatus(t){$('status').textContent=t;}
 function relTime(t){const m=Math.round((Date.now()-t)/60000);if(m<2)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<48)return h+' h ago';return Math.round(h/24)+' days ago';}
@@ -2096,7 +2181,7 @@ function renderPlayers(){
   const ws=$('welcomeslot');if(ws)ws.innerHTML=welcomeHTML();
   const keys=state.mode==='duo'?['A','B']:['A'];
   $('players').innerHTML=keys.map(playerHTML).join('<div style="height:10px"></div>');
-  keys.forEach(renderChips);
+  keys.forEach(renderChips);updateBuildBar();
   const anyLevels=keys.some(k=>prof(k).levels);
   $('levelhint').textContent=anyLevels?'':'(needs a player tag)';
 }
@@ -2414,9 +2499,9 @@ function deckRatings(ids){
   const sum=cs.reduce((a,c)=>a+c.e,0),avg=sum/8;
   return[
     {label:'Against air',val:clamp100([8,38,64,84,100][Math.min(4,air.length)]+Math.min(10,airSp.length*5)),why:air.length?nameList(air)+' hit air'+(airSp.length?', plus '+nameList(airSp,2):''):'No troop or building in this deck hits air'},
-    {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+' clear groups of small troops':'No splash damage and no small spell'},
-    {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+' heavy troops':'No tank killer and no defensive building'},
-    {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+' get through defensive buildings and siege':'No big spell or tank to push through a building'},
+    {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+(splash.length+small.length===1?' clears':' clear')+' groups of small troops':'No splash damage and no small spell'},
+    {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+(kill.length+bld.length===1?'s':'')+' heavy troops':'No tank killer and no defensive building'},
+    {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+(big.length+(eq?1:0)+tanks.length===1?' gets':' get')+' through defensive buildings and siege':'No big spell or tank to push through a building'},
     {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards die to Fireball ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
     {label:'Cycle speed',val:clamp100((4.7-avg)/(4.7-2.6)*100),why:'Average elixir '+avg.toFixed(1)+'; four cheapest cards cost '+cycleCost(ids)}
   ];
@@ -2882,7 +2967,7 @@ $('out').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(d.copy!=null){const x=state.last[+d.copy];copyText(deckText(x.ids,x.forms,x._tower),b);}
   if(d.save!=null){const x=state.last[+d.save];saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:x._tower}]});}
-  if(d.pin!=null){const x=state.last[+d.pin];state.rules.A.locks=lockList(x.ids,x.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('All 8 cards pinned. Remove the ones to swap, then Forge.');}
+  if(d.pin!=null){const x=state.last[+d.pin];state.rules.A.locks=lockList(x.ids,x.forms);renderPlayers();openBuild();window.scrollTo({top:0,behavior:'smooth'});toast('All 8 cards pinned. Remove the ones to swap, then Forge.');}
   if(d.dcopy!=null){const p=state.lastDuo[+d.dcopy];const k=d.side;copyText(deckText(k==='A'?p.A:p.B,(k==='A'?p.sa:p.sb).forms,p._towers[k==='A'?0:1]),b);}
   if(d.dshare!=null){ // one message with both decks and both game links, for the teammate
     const p=state.lastDuo[+d.dshare],N=names();
@@ -2892,13 +2977,13 @@ $('out').addEventListener('click',e=>{
     else copyText(text,b);
   }
   if(d.dsave!=null){const p=state.lastDuo[+d.dsave];const N=names();saveEntry({at:Date.now(),mode:'duo',title:archLabel(p.A)+' with '+archLabel(p.B),w:0,l:0,decks:[{key:'A',who:N.A,ids:p.A,specials:p.sa.forms.specials,empty:p.sa.forms.empty,tower:p._towers[0]},{key:'B',who:N.B,ids:p.B,specials:p.sb.forms.specials,empty:p.sb.forms.empty,tower:p._towers[1]}]});}
-  if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
+  if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();openBuild();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
   if(d.medit!=null){const x=(state.mode==='duo'?META2:META)[+d.medit];startEdit(x.cards.map(c=>c.split(':')[0]),null,null);return;}
   if(d.mcopy!=null||d.mpin!=null){
     const list=state.mode==='duo'?META2:META;const x=list[+(d.mcopy??d.mpin)];
     const order=x.cards.map(c=>{const[a,f]=c.split(':');return{id:a,form:f||(isChamp(C[a])?'champ':null)};});
     if(d.mcopy!=null)copyText(order.map(o=>displayName(o.id,o.form)).join(', '),b);
-    else{state.rules[d.side].locks=order.map(o=>({id:o.id,form:o.form==='evo'||o.form==='hero'?o.form:isChamp(C[o.id])?'any':'normal'}));renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Pinned for '+prof(d.side).name);}
+    else{state.rules[d.side].locks=order.map(o=>({id:o.id,form:o.form==='evo'||o.form==='hero'?o.form:isChamp(C[o.id])?'any':'normal'}));renderPlayers();openBuild();window.scrollTo({top:0,behavior:'smooth'});toast('Pinned for '+prof(d.side).name);}
   }
   if(d.scopy!=null){const s=state.saved[+d.scopy],dk=s.decks[+d.d];copyText(deckText(dk.ids,{specials:dk.specials},dk.tower),b);}
   if(d.win!=null||d.loss!=null){const s=state.saved[+(d.win??d.loss)];d.win!=null?s.w++:s.l++;store.set('ef2-saved',state.saved);renderSaved();}
@@ -2929,7 +3014,7 @@ function setMode(m){
   if(typeof setDataNote==='function'&&setDataNote.last)setDataNote(...setDataNote.last);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');
   document.querySelectorAll('.duo-only').forEach(el=>el.hidden=m!=='duo');
-  $('count-lbl').textContent=m==='duo'?'Number of team pairs':'Number of decks';
+  $('count-lbl').textContent=m==='duo'?'Team pairs':'Number of decks';
   $('go').textContent=m==='duo'?'Forge team':'Forge decks';
   $('tab-meta').textContent=m==='duo'?'Top 2v2 decks':'Top Ranked decks';
   hideErr();renderPlayers();setView(state.view==='saved'?'saved':state.view==='meta'?'meta':'gen');
@@ -2942,7 +3027,7 @@ const metaLive={ranked:false,duo:false};
 function setDataNote(date,live){
   setDataNote.last=[date,live];
   $('datachip').textContent='Meta data: '+(state.mode==='duo'?(metaLive.duo?date:DATA_DATE):(metaLive.ranked?date:DATA_DATE));
-  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s 7-day stats as of '+DATA_DATE;
+  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s stats from late September, adjusted by hand for the Season 88 balance changes ('+DATA_DATE+')';
   $('datanote').textContent=(metaLive.ranked===metaLive.duo?'Card strength comes from '+(metaLive.ranked?api:ra)+': Ranked numbers drive 1v1, 2v2 numbers drive team mode.':'1v1 card strength comes from '+(metaLive.ranked?api:ra)+'. 2v2 card strength comes from '+(metaLive.duo?api:ra)+', because top players\' logs hold too few 2v2 games to measure.')+' Rarely played cards are pulled toward average so a small sample can\'t dominate.';
   if(NEW_FORMS.length)$('datanote').textContent+=' '+NEW_FORMS.length+' newer Evo or Hero form'+(NEW_FORMS.length>1?'s were':' was')+' picked up from the game ('+NEW_FORMS.slice(0,6).map(x=>displayName(x.id,x.form)).join(', ')+(NEW_FORMS.length>6?' and more':'')+'); their strength is estimated until it is measured.';
 }
@@ -2991,7 +3076,7 @@ async function loadLinkedTags(){
   if(ok(b))setMode('duo');
   if(ok(a)){slotForTag('A',a);await lookupTag('A',a,{quiet:true});}
   if(ok(b)&&b!==a){slotForTag('B',b);await lookupTag('B',b,{quiet:true});}
-  store.set('ef2-welcomed',true);renderPlayers();
+  store.set('ef2-welcomed',true);buildUI.open=false;renderPlayers();
 }
 /* A collection loaded from a tag more than 12 hours ago is refreshed quietly, so new unlocks and levels show up. */
 async function refreshStale(){
@@ -2999,6 +3084,10 @@ async function refreshStale(){
   for(const key of state.mode==='duo'?['A','B']:['A']){const p=prof(key);if(p&&p.source==='tag'&&p.tag&&Date.now()-p.updated>12*36e5)await lookupTag(key,p.tag,{quiet:true});}
 }
 Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).then(()=>forge());
+/* Phones: the theme picker is a set-once control, so it lives in the footer and leaves the top of the screen to the decks. */
+(function(){const sk=$('skins'),ft=document.querySelector('.foot'),top=document.querySelector('.top');if(!sk||!ft||!top)return;
+  const mq=matchMedia('(max-width:640px)'),place=()=>{if(mq.matches){if(sk.parentNode!==ft)ft.insertBefore(sk,ft.firstChild);}else if(sk.parentNode!==top)top.appendChild(sk);};
+  place();mq.addEventListener&&mq.addEventListener('change',place);})();
 
 </script>
 

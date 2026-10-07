@@ -148,7 +148,22 @@ async function lookupTag(key,raw,opt){
 }
 
 /* ---------- small UI helpers ---------- */
-function showErr(m){$('err').textContent=m;$('err').hidden=false;}
+function showErr(m){$('err').textContent=m;$('err').hidden=false;if(typeof openBuild==='function')openBuild();}
+/* Phones: once a collection is loaded, the settings fold into one bar so the decks are the first thing on screen.
+   Anything that needs the settings (an error, pinning a deck to tweak) opens them again. */
+const buildUI={open:null};
+function updateBuildBar(){
+  const bar=$('buildbar');if(!bar)return;
+  const keys=state.mode==='duo'?['A','B']:['A'],ready=keys.every(k=>prof(k).source!=='unset'),N=names();
+  if(buildUI.open===null)buildUI.open=!ready;
+  if(!ready)buildUI.open=true;
+  bar.hidden=!ready;bar.setAttribute('aria-expanded',buildUI.open);
+  bar.innerHTML=`<span class="bb-main"><b>${esc(keys.map(k=>N[k]).join(' + '))}</b><span>${buildUI.open?'Tap to hide settings':'Players, playstyle and search'}</span></span><span class="bb-act">${buildUI.open?'Hide':'Settings'}</span>`;
+  document.querySelector('.build').classList.toggle('compact',ready&&!buildUI.open);
+  if(window.updateFab)window.updateFab();
+}
+function openBuild(){if(buildUI.open)return;buildUI.open=true;updateBuildBar();}
+document.addEventListener('click',e=>{if(e.target.closest('#buildbar')){buildUI.open=!buildUI.open;updateBuildBar();}});
 function hideErr(){$('err').hidden=true;}
 function setStatus(t){$('status').textContent=t;}
 function relTime(t){const m=Math.round((Date.now()-t)/60000);if(m<2)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<48)return h+' h ago';return Math.round(h/24)+' days ago';}
@@ -206,7 +221,7 @@ function renderPlayers(){
   const ws=$('welcomeslot');if(ws)ws.innerHTML=welcomeHTML();
   const keys=state.mode==='duo'?['A','B']:['A'];
   $('players').innerHTML=keys.map(playerHTML).join('<div style="height:10px"></div>');
-  keys.forEach(renderChips);
+  keys.forEach(renderChips);updateBuildBar();
   const anyLevels=keys.some(k=>prof(k).levels);
   $('levelhint').textContent=anyLevels?'':'(needs a player tag)';
 }
@@ -524,9 +539,9 @@ function deckRatings(ids){
   const sum=cs.reduce((a,c)=>a+c.e,0),avg=sum/8;
   return[
     {label:'Against air',val:clamp100([8,38,64,84,100][Math.min(4,air.length)]+Math.min(10,airSp.length*5)),why:air.length?nameList(air)+' hit air'+(airSp.length?', plus '+nameList(airSp,2):''):'No troop or building in this deck hits air'},
-    {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+' clear groups of small troops':'No splash damage and no small spell'},
-    {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+' heavy troops':'No tank killer and no defensive building'},
-    {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+' get through defensive buildings and siege':'No big spell or tank to push through a building'},
+    {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+(splash.length+small.length===1?' clears':' clear')+' groups of small troops':'No splash damage and no small spell'},
+    {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+(kill.length+bld.length===1?'s':'')+' heavy troops':'No tank killer and no defensive building'},
+    {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+(big.length+(eq?1:0)+tanks.length===1?' gets':' get')+' through defensive buildings and siege':'No big spell or tank to push through a building'},
     {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards die to Fireball ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
     {label:'Cycle speed',val:clamp100((4.7-avg)/(4.7-2.6)*100),why:'Average elixir '+avg.toFixed(1)+'; four cheapest cards cost '+cycleCost(ids)}
   ];
@@ -992,7 +1007,7 @@ $('out').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset;
   if(d.copy!=null){const x=state.last[+d.copy];copyText(deckText(x.ids,x.forms,x._tower),b);}
   if(d.save!=null){const x=state.last[+d.save];saveEntry({at:Date.now(),mode:'1v1',title:archLabel(x.ids),w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:x._tower}]});}
-  if(d.pin!=null){const x=state.last[+d.pin];state.rules.A.locks=lockList(x.ids,x.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('All 8 cards pinned. Remove the ones to swap, then Forge.');}
+  if(d.pin!=null){const x=state.last[+d.pin];state.rules.A.locks=lockList(x.ids,x.forms);renderPlayers();openBuild();window.scrollTo({top:0,behavior:'smooth'});toast('All 8 cards pinned. Remove the ones to swap, then Forge.');}
   if(d.dcopy!=null){const p=state.lastDuo[+d.dcopy];const k=d.side;copyText(deckText(k==='A'?p.A:p.B,(k==='A'?p.sa:p.sb).forms,p._towers[k==='A'?0:1]),b);}
   if(d.dshare!=null){ // one message with both decks and both game links, for the teammate
     const p=state.lastDuo[+d.dshare],N=names();
@@ -1002,13 +1017,13 @@ $('out').addEventListener('click',e=>{
     else copyText(text,b);
   }
   if(d.dsave!=null){const p=state.lastDuo[+d.dsave];const N=names();saveEntry({at:Date.now(),mode:'duo',title:archLabel(p.A)+' with '+archLabel(p.B),w:0,l:0,decks:[{key:'A',who:N.A,ids:p.A,specials:p.sa.forms.specials,empty:p.sa.forms.empty,tower:p._towers[0]},{key:'B',who:N.B,ids:p.B,specials:p.sb.forms.specials,empty:p.sb.forms.empty,tower:p._towers[1]}]});}
-  if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
+  if(d.dpin!=null){const p=state.lastDuo[+d.dpin];state.rules.A.locks=lockList(p.A,p.sa.forms);state.rules.B.locks=lockList(p.B,p.sb.forms);renderPlayers();openBuild();window.scrollTo({top:0,behavior:'smooth'});toast('Both decks pinned');}
   if(d.medit!=null){const x=(state.mode==='duo'?META2:META)[+d.medit];startEdit(x.cards.map(c=>c.split(':')[0]),null,null);return;}
   if(d.mcopy!=null||d.mpin!=null){
     const list=state.mode==='duo'?META2:META;const x=list[+(d.mcopy??d.mpin)];
     const order=x.cards.map(c=>{const[a,f]=c.split(':');return{id:a,form:f||(isChamp(C[a])?'champ':null)};});
     if(d.mcopy!=null)copyText(order.map(o=>displayName(o.id,o.form)).join(', '),b);
-    else{state.rules[d.side].locks=order.map(o=>({id:o.id,form:o.form==='evo'||o.form==='hero'?o.form:isChamp(C[o.id])?'any':'normal'}));renderPlayers();window.scrollTo({top:0,behavior:'smooth'});toast('Pinned for '+prof(d.side).name);}
+    else{state.rules[d.side].locks=order.map(o=>({id:o.id,form:o.form==='evo'||o.form==='hero'?o.form:isChamp(C[o.id])?'any':'normal'}));renderPlayers();openBuild();window.scrollTo({top:0,behavior:'smooth'});toast('Pinned for '+prof(d.side).name);}
   }
   if(d.scopy!=null){const s=state.saved[+d.scopy],dk=s.decks[+d.d];copyText(deckText(dk.ids,{specials:dk.specials},dk.tower),b);}
   if(d.win!=null||d.loss!=null){const s=state.saved[+(d.win??d.loss)];d.win!=null?s.w++:s.l++;store.set('ef2-saved',state.saved);renderSaved();}
@@ -1039,7 +1054,7 @@ function setMode(m){
   if(typeof setDataNote==='function'&&setDataNote.last)setDataNote(...setDataNote.last);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');
   document.querySelectorAll('.duo-only').forEach(el=>el.hidden=m!=='duo');
-  $('count-lbl').textContent=m==='duo'?'Number of team pairs':'Number of decks';
+  $('count-lbl').textContent=m==='duo'?'Team pairs':'Number of decks';
   $('go').textContent=m==='duo'?'Forge team':'Forge decks';
   $('tab-meta').textContent=m==='duo'?'Top 2v2 decks':'Top Ranked decks';
   hideErr();renderPlayers();setView(state.view==='saved'?'saved':state.view==='meta'?'meta':'gen');
@@ -1052,7 +1067,7 @@ const metaLive={ranked:false,duo:false};
 function setDataNote(date,live){
   setDataNote.last=[date,live];
   $('datachip').textContent='Meta data: '+(state.mode==='duo'?(metaLive.duo?date:DATA_DATE):(metaLive.ranked?date:DATA_DATE));
-  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s 7-day stats as of '+DATA_DATE;
+  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s stats from late September, adjusted by hand for the Season 88 balance changes ('+DATA_DATE+')';
   $('datanote').textContent=(metaLive.ranked===metaLive.duo?'Card strength comes from '+(metaLive.ranked?api:ra)+': Ranked numbers drive 1v1, 2v2 numbers drive team mode.':'1v1 card strength comes from '+(metaLive.ranked?api:ra)+'. 2v2 card strength comes from '+(metaLive.duo?api:ra)+', because top players\' logs hold too few 2v2 games to measure.')+' Rarely played cards are pulled toward average so a small sample can\'t dominate.';
   if(NEW_FORMS.length)$('datanote').textContent+=' '+NEW_FORMS.length+' newer Evo or Hero form'+(NEW_FORMS.length>1?'s were':' was')+' picked up from the game ('+NEW_FORMS.slice(0,6).map(x=>displayName(x.id,x.form)).join(', ')+(NEW_FORMS.length>6?' and more':'')+'); their strength is estimated until it is measured.';
 }
@@ -1101,7 +1116,7 @@ async function loadLinkedTags(){
   if(ok(b))setMode('duo');
   if(ok(a)){slotForTag('A',a);await lookupTag('A',a,{quiet:true});}
   if(ok(b)&&b!==a){slotForTag('B',b);await lookupTag('B',b,{quiet:true});}
-  store.set('ef2-welcomed',true);renderPlayers();
+  store.set('ef2-welcomed',true);buildUI.open=false;renderPlayers();
 }
 /* A collection loaded from a tag more than 12 hours ago is refreshed quietly, so new unlocks and levels show up. */
 async function refreshStale(){
@@ -1109,3 +1124,7 @@ async function refreshStale(){
   for(const key of state.mode==='duo'?['A','B']:['A']){const p=prof(key);if(p&&p.source==='tag'&&p.tag&&Date.now()-p.updated>12*36e5)await lookupTag(key,p.tag,{quiet:true});}
 }
 Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).then(()=>forge());
+/* Phones: the theme picker is a set-once control, so it lives in the footer and leaves the top of the screen to the decks. */
+(function(){const sk=$('skins'),ft=document.querySelector('.foot'),top=document.querySelector('.top');if(!sk||!ft||!top)return;
+  const mq=matchMedia('(max-width:640px)'),place=()=>{if(mq.matches){if(sk.parentNode!==ft)ft.insertBefore(sk,ft.firstChild);}else if(sk.parentNode!==top)top.appendChild(sk);};
+  place();mq.addEventListener&&mq.addEventListener('change',place);})();

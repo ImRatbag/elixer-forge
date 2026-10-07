@@ -13,11 +13,11 @@ bats|Bats|2|t|AX|4|7|0|5|8|0
 berserker|Berserker|2|t||6|0|8|6|0|5
 ice-golem|Ice Golem|2|t|M|6|0|5|3|0|6
 suspicious-bush|Suspicious Bush|2|t|W|7|0|0|8|0|0
-wall-breakers|Wall Breakers|2|t|W|6|6|0|3|7|0
+wall-breakers|Wall Breakers|2|t|W|7|6|0|4|7|0
 zap|Zap|2|s|s|6|8|0|6|8|0
 giant-snowball|Giant Snowball|2|s|s|6|6|0|2|5|0
 the-log|The Log|2|s|s|4|0|0|7|0|0
-barbarian-barrel|Barbarian Barrel|2|s|s|8|0|7|10|0|8
+barbarian-barrel|Barbarian Barrel|2|s|s|7|0|7|9|0|8
 rage|Rage|2|s||6|0|0|2|0|0
 goblin-curse|Goblin Curse|2|s|s|7|0|0|6|0|0
 knight|Knight|3|t|M|5|7|5|4|7|4
@@ -26,7 +26,7 @@ minions|Minions|3|t|AX|7|0|0|5|0|0
 goblin-gang|Goblin Gang|3|t|X|6|0|0|6|0|0
 skeleton-barrel|Skeleton Barrel|3|t|W|5|7|0|5|10|0
 firecracker|Firecracker|3|t|AS|4|4|0|2|6|0
-cannon|Cannon|3|b|B|4|6|0|4|7|0
+cannon|Cannon|3|b|B|4|5|0|4|6|0
 arrows|Arrows|3|s|s|6|0|0|6|0|0
 royal-delivery|Royal Delivery|3|s|s|5|0|0|3|0|0
 mega-minion|Mega Minion|3|t|AK|6|0|6|5|0|7
@@ -36,16 +36,16 @@ tombstone|Tombstone|3|b|BX|5|0|7|5|0|8
 earthquake|Earthquake|3|s||6|0|0|5|0|0
 skeleton-army|Skeleton Army|3|t|XK|4|7|0|3|5|0
 guards|Guards|3|t|X|6|0|0|6|0|0
-goblin-barrel|Goblin Barrel|3|s|W|4|6|0|3|7|0
+goblin-barrel|Goblin Barrel|3|s|W|5|6|0|4|7|0
 tornado|Tornado|3|s||7|0|0|7|0|0
 clone|Clone|3|s||5|0|0|1|0|0
 vines|Vines|3|s|s|6|0|0|6|0|0
 void|Void|5|s|F|6|0|0|3|0|0
-ice-wizard|Ice Wizard|3|t|AS|6|0|6|5|0|9
+ice-wizard|Ice Wizard|3|t|AS|6|0|5|5|0|7
 princess|Princess|3|t|AS|6|6|0|5|7|0
 miner|Miner|3|t|W|6|0|0|4|0|0
 bandit|Bandit|3|t|M|8|0|0|9|0|0
-royal-ghost|Royal Ghost|3|t|S|7|8|0|8|10|0
+royal-ghost|Royal Ghost|3|t|S|6|7|0|7|9|0
 fisherman|Fisherman|3|t||7|0|0|5|0|0
 spirit-empress|Spirit Empress|6|t|S|6|0|0|9|0|0
 little-prince|Little Prince|3|t|AC|7|0|0|8|0|0
@@ -58,7 +58,7 @@ zappies|Zappies|4|t|A|7|0|0|8|0|0
 flying-machine|Flying Machine|4|t|A|7|0|0|8|0|0
 battle-healer|Battle Healer|4|t||6|0|0|3|0|0
 goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
-minion-giant|Minion Giant|4|t|W|8|0|0|10|0|0
+minion-giant|Minion Giant|4|t|W|7|0|0|9|0|0
 rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
 bomb-tower|Bomb Tower|4|b|BS|7|0|0|5|0|0
 furnace|Furnace|4|t|AS|8|6|0|9|10|0
@@ -72,7 +72,7 @@ freeze|Freeze|4|s||7|0|0|3|0|0
 poison|Poison|4|s|F|6|0|0|10|0|0
 lumberjack|Lumberjack|4|t|K|6|6|0|7|10|0
 inferno-dragon|Inferno Dragon|4|t|AK|6|7|0|4|9|0
-electro-wizard|Electro Wizard|4|t|A|7|0|0|9|0|0
+electro-wizard|Electro Wizard|4|t|A|7|0|8|9|0|9
 night-witch|Night Witch|4|t||7|0|0|5|0|0
 magic-archer|Magic Archer|4|t|AS|5|0|5|3|0|4
 mother-witch|Mother Witch|4|t|A|8|0|0|10|0|0
@@ -98,7 +98,7 @@ bowler|Bowler|5|t|S|7|0|7|7|0|9
 executioner|Executioner|5|t|AS|5|5|0|4|7|0
 cannon-cart|Cannon Cart|5|t|M|9|0|0|9|0|0
 electro-dragon|Electro Dragon|5|t|AS|5|6|0|4|7|0
-ram-rider|Ram Rider|5|t|W|6|0|0|7|0|0
+ram-rider|Ram Rider|5|t|W|7|0|0|8|0|0
 goblin-machine|Goblin Machine|5|t|W|6|0|0|5|0|0
 ronin|Ronin|5|t|KM|6|0|0|10|0|0
 graveyard|Graveyard|5|s|W|7|0|0|6|0|0
@@ -111,15 +111,15 @@ giant-skeleton|Giant Skeleton|6|t|T|7|0|0|8|0|0
 goblin-giant|Goblin Giant|6|t|WT|6|7|0|4|6|0
 x-bow|X-Bow|6|b|W|6|0|0|2|0|0
 lightning|Lightning|6|s|F|7|0|0|10|0|0
-elixir-collector|Elixir Collector|6|b|B|7|0|0|2|0|0
+elixir-collector|Elixir Collector|6|b|B|6|0|0|2|0|0
 rocket|Rocket|6|s|F|5|0|0|2|0|0
 barbarian-hut|Barbarian Hut|6|b|B|6|0|0|4|0|0
 sparky|Sparky|6|t|SK|7|0|0|3|0|0
 boss-bandit|Boss Bandit|6|t|WMC|5|0|0|6|0|0
 royal-recruits|Royal Recruits|7|t|XM|6|7|0|4|7|0
 pekka|P.E.K.K.A|7|t|KT|6|6|0|3|4|0
-electro-giant|Electro Giant|7|t|WT|7|0|0|5|0|0
-lava-hound|Lava Hound|7|t|WT|7|0|0|6|0|0
+electro-giant|Electro Giant|7|t|WT|7|8|0|5|7|0
+lava-hound|Lava Hound|7|t|WT|8|0|0|7|0|0
 mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
 golem|Golem|8|t|WT|7|0|0|5|0|0
 three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
@@ -228,6 +228,11 @@ giant,graveyard,3,Giant Graveyard: tank in front, skeletons on the tower
 electro-giant,tornado,3,Tornado pulls troops into E-Giant's zap
 electro-giant,lightning,2,Lightning removes buildings and ranged troops
 electro-giant,bowler,2,Bowler pushes back the swarms E-Giant can't stop
+electro-giant,golden-knight,2,Golden Knight dashes through the troops E-Giant's zaps have weakened
+electro-giant,goblin-hut,2,Spear Goblins behind E-Giant deal with air while he tanks
+electro-wizard,ram-rider,2,E-Wiz stuns the defenders Ram Rider has snared
+electro-wizard,magic-archer,2,Stunned troops line up for Magic Archer's piercing shot
+lava-hound,lightning,2,Lightning clears the air defence so the Hound's pups reach the tower
 goblin-giant,sparky,3,Sparky rides behind the Spear Goblins on Goblin Giant
 executioner,tornado,3,Tornado gathers troops into Executioner's axe
 ice-wizard,tornado,2,Slow and pull for big defensive swings
@@ -259,6 +264,10 @@ SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b
 
 /* Top Ranked decks, RoyaleAPI 7-day, week ending Sept 30 2026. ':evo' / ':hero' marks the form. */
 const META=[
+ {n:'Evo E-Giant Hero Bowler',wr:55.0,cards:['electro-giant:evo','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
+ {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:54.0,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
+ {n:'Hero E-Wiz Ram Rider',wr:53.5,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
+ {n:'Golem Evo E-Drag Beatdown',wr:53.6,cards:['golem','electro-dragon:evo','berserker:hero','elite-barbarians:evo','barbarian-barrel','tornado','skeleton-dragons','elixir-collector']},
  {n:'GK Bandit Evo Ram',wr:55.4,cards:['battle-ram:evo','golden-knight','royal-ghost:evo','ronin','electro-wizard','bandit','furnace','arrows']},
  {n:'Rune Giant Minion Giant 2.9 Cycle',wr:55.3,cards:['cannon:evo','little-prince','bats:evo','minion-giant','rune-giant','poison','skeletons','barbarian-barrel']},
  {n:'Evo Mortar Cannon Cart Bait',wr:55.0,cards:['skeleton-barrel:evo','ice-wizard:hero','mortar:evo','cannon-cart','fireball','goblin-gang','rascals','barbarian-barrel']},
@@ -405,4 +414,4 @@ const PRESET_PLAYERS=[];
 /* Featured players for the player-decks tab: their recent decks come from their public battle log.
    Set tag to the player's tag (letters and digits only, no #). An entry without a tag is not shown. */
 const CREATORS=[{key:'ken',name:'Ken',tag:'QQUUCL'}];
-const DATA_DATE='Sept 30, 2026';
+const DATA_DATE='Oct 7, 2026';
