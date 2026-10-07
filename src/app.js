@@ -154,11 +154,11 @@ function showErr(m){$('err').textContent=m;$('err').hidden=false;if(typeof openB
 const buildUI={open:null};
 function updateBuildBar(){
   const bar=$('buildbar');if(!bar)return;
-  const keys=state.mode==='duo'?['A','B']:['A'],ready=keys.every(k=>prof(k).source!=='unset'),N=names();
+  const keys=state.mode==='duo'?['A','B']:['A'],ready=prof('A').source!=='unset',N=names(),mateMissing=state.mode==='duo'&&prof('B').source==='unset';
   if(buildUI.open===null)buildUI.open=!ready;
   if(!ready)buildUI.open=true;
   bar.hidden=!ready;bar.setAttribute('aria-expanded',buildUI.open);
-  bar.innerHTML=`<span class="bb-main"><b>${esc(keys.map(k=>N[k]).join(' + '))}</b><span>${buildUI.open?'Tap to hide settings':'Players, playstyle and search'}</span></span><span class="bb-act">${buildUI.open?'Hide':'Settings'}</span>`;
+  bar.innerHTML=`<span class="bb-main"><b>${esc(keys.filter(k=>!(k==='B'&&mateMissing)).map(k=>N[k]).join(' + '))}${mateMissing?' + teammate':''}</b><span>${buildUI.open?'Tap to hide settings':mateMissing?'Add your teammate\'s tag here':'Players, playstyle and search'}</span></span><span class="bb-act">${buildUI.open?'Hide':'Settings'}</span>`;
   document.querySelector('.build').classList.toggle('compact',ready&&!buildUI.open);
   if(window.updateFab)window.updateFab();
 }

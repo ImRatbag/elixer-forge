@@ -150,6 +150,11 @@ function scoreDeck(ids,ctx){
   const avg=k.sum/8;
   if(avg>ctx.maxAvg)s-=(avg-ctx.maxAvg)*40;
   if(avg<2.5)s-=(2.5-avg)*30;
+  // Siege wins by out-cycling: an X-Bow or Mortar deck weighed down with heavy support can't defend its own building.
+  if(ids.includes('x-bow')&&avg>3.5)s-=(avg-3.5)*25;
+  else if(ids.includes('mortar')&&avg>3.8)s-=(avg-3.8)*20;
+  // Graveyard needs something in front to soak the tower's shots.
+  if(ids.includes('graveyard')&&!cards.some(c=>has(c,'T')||has(c,'M')||(isChamp(c)&&c.type==='t'&&c.e>=4)))s-=6;
   const bigTanks=cards.filter(c=>has(c,'T')&&c.e>=6).length;
   if(bigTanks>1)s-=8*(bigTanks-1);
   if(!fitsStyle(cards,ctx.style))s-=40;

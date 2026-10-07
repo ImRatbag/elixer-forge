@@ -805,3 +805,4 @@ html{overflow-x:clip}
   .toast{font-size:13.5px;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;padding:10px 16px}
   .toast:has(.undo){white-space:normal}
 }
+@media (max-width:540px){.sheet .btn.sm,#out .btn.sm{min-height:40px}}
