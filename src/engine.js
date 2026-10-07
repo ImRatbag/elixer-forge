@@ -417,9 +417,14 @@ function generateDuo(o){
   const valid=(d,ctx)=>!!scoreCached(d,ctx).forms;
   const seeds=new Map();
   const nSeeds=L.sd.locked.length>=8?1:18;
+  // Variety, as in 1v1: once a card is in over a third of the decks built so far, most later builds go without it.
+  // The first builds on each side always search at full strength, and the picker's floor keeps weak pairs out.
+  const vary=o.variety!==false;
+  const thin=(pool,used,n,locked)=>{if(!vary||n<6)return pool;const hot=Object.keys(used).filter(id=>used[id]>n*0.34&&!locked.includes(id)&&Math.random()<0.65);return hot.length?pool.filter(id=>!hot.includes(id)):pool;};
+  const usedL={},usedF={};
   for(let r=0;r<nSeeds;r++){
-    const d=buildDeck(L.sd,L.ctx,L.pool,x=>scoreCached(x,L.ctx).s,null);
-    if(d&&valid(d,L.ctx))seeds.set([...d].sort().join(','),d);
+    const d=buildDeck(L.sd,L.ctx,thin(L.pool,usedL,seeds.size,L.sd.locked),x=>scoreCached(x,L.ctx).s,null);
+    if(d&&valid(d,L.ctx)){const k=[...d].sort().join(',');if(!seeds.has(k)){seeds.set(k,d);d.forEach(id=>usedL[id]=(usedL[id]||0)+1);}}
   }
   const seedList=[...seeds.values()].sort((a,b)=>scoreCached(b,L.ctx).s-scoreCached(a,L.ctx).s);
   const pickedSeeds=[];const seenW=new Set();
@@ -431,30 +436,35 @@ function generateDuo(o){
   for(const seed of pickedSeeds){
     for(let r=0;r<perSeed;r++){
       let lead=seed.slice();
-      let fol=buildDeck(F.sd,F.ctx,F.pool,x=>ts(lead,x).s,lead);
+      const fp=thin(F.pool,usedF,found.size,F.sd.locked);
+      let fol=buildDeck(F.sd,F.ctx,fp,x=>ts(lead,x).s,lead);
       if(!fol)continue;
-      lead=improve(lead,L.sd.locked.length,L.pool,x=>ts(x,fol).s,1);
-      fol=improve(fol,F.sd.locked.length,F.pool,x=>ts(lead,x).s,1);
+      lead=improve(lead,L.sd.locked.length,thin(L.pool,usedL,seeds.size,L.sd.locked),x=>ts(x,fol).s,1);
+      fol=improve(fol,F.sd.locked.length,fp,x=>ts(lead,x).s,1);
       if(!valid(lead,L.ctx)||!valid(fol,F.ctx))continue;
       if(lead.filter(i=>fol.includes(i)).length>2)continue;
       if(!lead.concat(fol).some(i=>has(C[i],'W')))continue;
       const A=flip?fol:lead,B=flip?lead:fol;
       const key=[...A].sort().join(',')+'/'+[...B].sort().join(',');
-      if(!found.has(key))found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});
+      if(!found.has(key)){found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});fol.forEach(id=>usedF[id]=(usedF[id]||0)+1);}
     }
   }
   const all=[...found.values()].sort((a,b)=>b.s-a.s);
   const picked=[],uses={...(o.avoid||{})},seenPair=new Set();
+  // Nothing more than DFLOOR points (about 4 on the displayed team score) below the best pair is shown for variety's sake.
+  const DFLOOR=6.5,okN=all.length?all.filter(p=>p.s>=all[0].s-DFLOOR).length:0,shownN={},cap=Math.max(1,Math.ceil(o.count/3))*2;
   const winKey=p=>p.A.filter(i=>has(C[i],'W')).sort().join('+')+'/'+p.B.filter(i=>has(C[i],'W')).sort().join('+');
   while(picked.length<o.count&&picked.length<all.length){
     let best=null,bv=-1e9;
     for(const p of all){if(picked.includes(p))continue;let v=p.s;
-      for(const id of p.A)if(!o.A.locked.includes(id))v-=3*(uses[id]||0)*(has(C[id],'W')?2:1);
-      for(const id of p.B)if(!o.B.locked.includes(id))v-=3*(uses[id]||0)*(has(C[id],'W')?2:1);
+      if(vary&&okN>=o.count&&p.s<all[0].s-DFLOOR)continue;
+      const pen=id=>{const u=uses[id]||0;return (3*u+u*u)*(has(C[id],'W')?2:1)+((shownN[id]||0)>=cap?10:0);};
+      for(const id of p.A)if(!o.A.locked.includes(id))v-=pen(id);
+      for(const id of p.B)if(!o.B.locked.includes(id))v-=pen(id);
       if(seenPair.has(winKey(p)))v-=12;
       if(v>bv){bv=v;best=p;}}
     picked.push(best);seenPair.add(winKey(best));
-    best.A.concat(best.B).forEach(i=>uses[i]=(uses[i]||0)+1);
+    best.A.concat(best.B).forEach(i=>{uses[i]=(uses[i]||0)+1;shownN[i]=(shownN[i]||0)+1;});
   }
   return picked.map(p=>{if(!p.sa.adj&&!p.sb.adj)return p;const sa={...p.sa,s:p.sa.s-p.sa.adj},sb={...p.sb,s:p.sb.s-p.sb.adj};return{...p,sa,sb,s:p.s-(p.sa.adj+p.sb.adj)/2};});
 }

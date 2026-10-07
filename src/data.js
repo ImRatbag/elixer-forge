@@ -264,9 +264,11 @@ SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b
 
 /* Top Ranked decks, RoyaleAPI 7-day, week ending Sept 30 2026. ':evo' / ':hero' marks the form. */
 const META=[
- {n:'Evo E-Giant Hero Bowler',wr:55.0,cards:['electro-giant:evo','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
- {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:54.0,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
- {n:'Hero E-Wiz Ram Rider',wr:53.5,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
+ {n:'Hero E-Wiz Goblin Giant Sparky',wr:56.9,cards:['goblin-giant:evo','sparky','electro-wizard:hero','elite-barbarians:evo','dark-prince','heal-spirit','rage','zap']},
+ {n:'Hero E-Wiz GK Bandit Evo Ram',wr:59.2,cards:['battle-ram:evo','electro-wizard:hero','golden-knight','bandit','royal-ghost','ronin','mother-witch','arrows']},
+ {n:'Evo E-Giant Hero Bowler',wr:52.3,cards:['electro-giant:evo','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
+ {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:52.1,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
+ {n:'Hero E-Wiz Ram Rider',wr:53.3,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
  {n:'Golem Evo E-Drag Beatdown',wr:53.6,cards:['golem','electro-dragon:evo','berserker:hero','elite-barbarians:evo','barbarian-barrel','tornado','skeleton-dragons','elixir-collector']},
  {n:'GK Bandit Evo Ram',wr:55.4,cards:['battle-ram:evo','golden-knight','royal-ghost:evo','ronin','electro-wizard','bandit','furnace','arrows']},
  {n:'Rune Giant Minion Giant 2.9 Cycle',wr:55.3,cards:['cannon:evo','little-prince','bats:evo','minion-giant','rune-giant','poison','skeletons','barbarian-barrel']},

@@ -797,3 +797,11 @@ body{background:var(--bgimg,radial-gradient(560px 300px at 8% -80px,color-mix(in
 details.panel:not([open])>summary{margin-bottom:0}
 @media (max-width:540px){details.panel:not([open]){padding-block:6px}}
 html{overflow-x:clip}
+.tile.pic[data-cardname]{cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tile.pic[data-cardname]:active .picbox{transform:scale(.96)}
+@media (max-width:900px){.toast{bottom:calc(84px + env(safe-area-inset-bottom))}}
+@media (max-width:540px){
+  .deck>.actions .btn:not(.primary),.solodeck>.actions .btn:not(.primary){flex:1 1 auto;min-width:max-content;padding-inline:12px}
+  .toast{font-size:13.5px;white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis;padding:10px 16px}
+  .toast:has(.undo){white-space:normal}
+}

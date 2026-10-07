@@ -610,7 +610,7 @@ function tile(o,levels,ref){
   if(a){ // picture tile: the official card image carries the name, rarity and Evo/Hero look by itself
     const src=f==='evo'?a.evo:f==='hero'?a.hero:a.base;
     const label=(f==='evo'?'Evo ':f==='hero'?'Hero ':'')+c.name;
-    return `<div class="tile pic" title="${esc(label)}">
+    return `<div class="tile pic" title="${esc(label)}" data-cardname="${esc(label+' · '+c.e+' elixir'+(L!=null?' · level '+L:''))}">
       <div class="picbox"><img class="art" src="${esc(src)}" alt="${esc(label)}, ${c.e} elixir" loading="lazy" decoding="async" onerror="this.closest('.tile').classList.add('noart');this.remove()">
         <span class="fallname" aria-hidden="true">${esc(label)}</span>
         <div class="drop" aria-hidden="true"><span>${c.e}</span></div></div>
@@ -1128,3 +1128,5 @@ Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).th
 (function(){const sk=$('skins'),ft=document.querySelector('.foot'),top=document.querySelector('.top');if(!sk||!ft||!top)return;
   const mq=matchMedia('(max-width:640px)'),place=()=>{if(mq.matches){if(sk.parentNode!==ft)ft.insertBefore(sk,ft.firstChild);}else if(sk.parentNode!==top)top.appendChild(sk);};
   place();mq.addEventListener&&mq.addEventListener('change',place);})();
+/* Tiles are pictures only, and phones have no hover: tapping a card names it. */
+document.addEventListener('click',e=>{const t=e.target.closest('.tile.pic[data-cardname]');if(t&&!e.target.closest('button,a'))toast(t.dataset.cardname);});
