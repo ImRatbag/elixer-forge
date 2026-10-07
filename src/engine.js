@@ -73,6 +73,8 @@ function fitsStyle(cards,style){return style==='any'||cards.some(c=>has(c,'W')&&
    minus (4) shared weaknesses, where one spell or counter answers several of your cards at once. */
 const SMALL_VULN=new Set('suspicious-bush rascals skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
 const FB_VULN=new Set('musketeer wizard witch executioner electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch night-witch flying-machine zappies hunter three-musketeers rascals mega-minion goblin-demolisher spirit-empress little-prince'.split(' '));
+const MINOR_WIN=new Set(['miner','wall-breakers','skeleton-barrel','suspicious-bush','boss-bandit']);
+const DEF_BLD=new Set(['cannon','tesla','bomb-tower','inferno-tower','goblin-cage','tombstone']);
 const BAIT_CORE=new Set(['goblin-barrel','goblin-drill','skeleton-barrel','suspicious-bush']);
 function synergyOf(ids,k,pairs){
   const cards=ids.map(i=>C[i]);
@@ -119,6 +121,16 @@ function scoreDeck(ids,ctx){
   for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const x=SYN[sk(ids[i],ids[j])];if(x){syn+=x.w;pairs.push({a:ids[i],b:ids[j],...x});}}
   if(!forms)s-=60;else s+=forms.value*1.3-forms.empty*25;
   if(k.wc===0)s-=40;else if(k.wc>2)s-=18*(k.wc-2);
+  // A deck needs a card that can carry a game. Chip cards (Miner, Wall Breakers, Skeleton Barrel, Suspicious Bush,
+  // Boss Bandit) count as win conditions, but one of them alone is not a plan; two together are a real chip deck.
+  const mainW=cards.filter(c=>has(c,'W')&&!MINOR_WIN.has(c.id)).length;
+  if(k.wc>0&&mainW===0&&ctx.style!=='hyperbait')s-=k.wc>=2?5:16;
+  // Buildings: two defensive buildings do the same job twice (Cannon + Goblin Cage), and a spawner beside one is
+  // nearly as clumsy. A siege or drill building with one defensive building is a normal deck and is left alone.
+  const defB=cards.filter(c=>DEF_BLD.has(c.id)).length,otherB=cards.filter(c=>c.type==='b'&&!has(c,'W')&&!DEF_BLD.has(c.id)).length;
+  if(defB>1)s-=14*(defB-1);
+  if(otherB>1)s-=10*(otherB-1);
+  if(defB>=1&&otherB>=1)s-=7;
   const wins=ids.filter(i=>has(C[i],'W'));
   const clash=wins.length>=2&&!((SYN[sk(wins[0],wins[1])]||{}).w>=2)&&!(ctx.style==='hyperbait'&&wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'));
   const baitPair=wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'||i==='miner');
@@ -231,19 +243,24 @@ function generate(opts){
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
   const RESTARTS=opts.restarts||(locked.length>=7?20:140);
+  // Variety at the source: once a card is in over a third of the decks found so far, most later attempts must build
+  // without it. Otherwise every attempt settles on the same few top-rated cards and the picker has nothing else to offer.
+  const usedN={};
   for(let r=0;r<RESTARTS;r++){
+    const hot=found.size>=8?Object.keys(usedN).filter(id=>usedN[id]>found.size*0.34&&!locked.includes(id)&&Math.random()<0.65):[];
+    const rpool=hot.length?pool.filter(id=>!hot.includes(id)):pool;
     let deck=[...locked];
     const lc=deck.map(i=>C[i]);
     let fixedN=locked.length;
     if(deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
-      const wins=pool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style)));
+      const wins=rpool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style)));
       if(wins.length){
         const scored=wins.map(id=>({id,v:C[id].p+Math.random()*7})).sort((a,b)=>b.v-a.v);
         deck.push(scored[0].id);fixedN=deck.length;
       }
     }
     while(deck.length<8){
-      const cands=pool.filter(id=>!deck.includes(id)).map(id=>({id,v:addHeur(C[id],deck,ctx)+Math.random()*4}));
+      const cands=rpool.filter(id=>!deck.includes(id)).map(id=>({id,v:addHeur(C[id],deck,ctx)+Math.random()*4}));
       cands.sort((a,b)=>b.v-a.v);
       if(!cands.length)break;
       deck.push(cands[Math.random()*Math.min(3,cands.length)|0].id);
@@ -253,7 +270,7 @@ function generate(opts){
     for(let pass=0;pass<2;pass++){
       let improved=false;
       for(let i=fixedN;i<8;i++){
-        const sample=shuffle(pool.filter(id=>!deck.includes(id))).slice(0,45);
+        const sample=shuffle(rpool.filter(id=>!deck.includes(id))).slice(0,45);
         for(const id of sample){
           const trial=deck.slice();trial[i]=id;
           const sc=scoreDeck(trial,ctx);
@@ -264,25 +281,27 @@ function generate(opts){
     }
     if(!cur.forms||cur.k.wc<1)continue;
     const key=[...deck].sort().join(',');
-    if(!found.has(key))found.set(key,{ids:deck,...cur});
+    if(!found.has(key)){found.set(key,{ids:deck,...cur});deck.forEach(id=>usedN[id]=(usedN[id]||0)+1);}
   }
   const all=[...found.values()].sort((a,b)=>b.s-a.s);
   // Pick decks one at a time. A deck loses points for every free card already used in a picked deck,
   // and for repeating a win condition, so one strong card can't flood every result.
   // opts.avoid: cards shown in the previous results, so pressing Forge again brings different options.
   const picked=[],uses={...(opts.avoid||{})},seenWin=new Set();
+  const shown={},cap=Math.max(1,Math.ceil(opts.count/3));
   const mainWin=d=>d.ids.filter(id=>has(C[id],'W')&&!locked.includes(id)).sort().join('+');
   while(picked.length<opts.count&&picked.length<all.length){
     let best=null,bestV=-1e9;
     for(const d of all){
       if(picked.includes(d))continue;
       let v=d.s;
-      for(const id of d.ids)if(!locked.includes(id))v-=4*(uses[id]||0);
+      // A repeated card costs more each time, and a card already in a third of one set of results is strongly discouraged.
+      for(const id of d.ids)if(!locked.includes(id)){const u=uses[id]||0;v-=5*u+1.5*u*u;if((shown[id]||0)>=cap)v-=18;}
       const w=mainWin(d);if(w&&seenWin.has(w))v-=10;
       if(v>bestV){bestV=v;best=d;}
     }
     picked.push(best);seenWin.add(mainWin(best));
-    best.ids.forEach(id=>uses[id]=(uses[id]||0)+1);
+    best.ids.forEach(id=>{uses[id]=(uses[id]||0)+1;shown[id]=(shown[id]||0)+1;});
   }
   return picked.map(d=>d.adj?{...d,s:d.s-d.adj}:d);
 }
