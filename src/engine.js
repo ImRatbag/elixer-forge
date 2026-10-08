@@ -3,6 +3,7 @@ let memo=new Map();
 // A Champion fills the Hero slot at slightly under its card rating: its ability is single-use per deployment,
 // but Champions sit in about four in ten top decks, so the discount is small.
 const CHAMP_SLOT=0.92;
+const SLOT_BASE_1V1=2.1,SLOT_BASE_2V2=3.4; // typical gain of a chosen form in each mode's ratings
 const NOBAN=new Set();
 function assignForms(ids,ctx){
   const key=(ctx.tag||'')+[...ids].sort().join(',');
@@ -34,12 +35,12 @@ function assignForms(ids,ctx){
       if(e>2||h>2)return;
       if(total===3&&(e<1||h<1))return;
       if(mustSpecial.some(id=>!all.some(x=>x.id===id)))return;
-      const v=all.reduce((a,x)=>a+x.v,0);
-      // Choose by what the slot adds, not just how strong the form is: Evo Goblin Barrel lifts a weak card a long way,
-      // while Hero Barbarian Barrel barely improves a card that is already strong. `o` ranks the options; the
-      // reported value stays the plain sum so scores keep their scale.
-      const o=all.reduce((a,x)=>a+x.v+(x.form==='champ'?0:Math.max(0,x.v-pw(C[x.id],ctx))),0);
-      if(!best||o>best.o)best={specials:all,value:v,empty:3-total,o};
+      // A slot is worth the form's strength plus what it adds over the normal card, so Evo Goblin Barrel (a weak card
+      // made strong) beats Hero Barbarian Barrel (a strong card made slightly stronger). SLOT_BASE takes the typical
+      // gain back off so scores keep the scale they had when slots counted strength alone.
+      const SLOT_BASE=ctx.duo?SLOT_BASE_2V2:SLOT_BASE_1V1;
+      const v=all.reduce((a,x)=>a+x.v+(x.form==='champ'?SLOT_BASE:Math.max(0,x.v-pw(C[x.id],ctx)))-SLOT_BASE,0);
+      if(!best||v>best.value)best={specials:all,value:v,empty:3-total};
     };
     const rec=(start,sel)=>{
       if(sel.length===need){test(sel);return;}
@@ -75,8 +76,9 @@ function fitsStyle(cards,style){return style==='any'||cards.some(c=>has(c,'W')&&
 /* Synergy model. Based on deck-building guides: synergy is (1) direct combos where one card amplifies or covers
    for another, (2) support for the win condition, (3) the deck covering each other's weaknesses (complementary roles),
    minus (4) shared weaknesses, where one spell or counter answers several of your cards at once. */
-const SMALL_VULN=new Set('suspicious-bush rascals skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
-const FB_VULN=new Set('musketeer wizard witch executioner electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch night-witch flying-machine zappies hunter three-musketeers rascals mega-minion goblin-demolisher spirit-empress little-prince'.split(' '));
+const SMALL_VULN=new Set('suspicious-bush skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
+// Support troops a Fireball removes or leaves one hit from dead. Tougher ones (Executioner, Witch, Hunter, Mega Minion) are left out.
+const FB_VULN=new Set('musketeer wizard electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch flying-machine zappies three-musketeers rascals goblin-demolisher'.split(' '));
 const MINOR_WIN=new Set(['miner','wall-breakers','skeleton-barrel','suspicious-bush','boss-bandit']);
 const DEF_BLD=new Set(['cannon','tesla','bomb-tower','inferno-tower','goblin-cage','tombstone']);
 const BAIT_CORE=new Set(['goblin-barrel','goblin-drill','skeleton-barrel','suspicious-bush']);
@@ -102,8 +104,8 @@ function synergyOf(ids,k,pairs){
   const roles=[k.air>=2,k.splash>=1,k.small>=1,k.big>=1,k.kill>=1,k.cheap>=2];
   const covS=roles.filter(Boolean).length/roles.length;
   let weak=1;
-  if(!bait){if(small>=4){weak-=0.45;notes.push(small+' cards die to one Log or Zap');}else if(small===3){weak-=0.25;notes.push('3 cards die to one Log or Zap');}else if(small===2)weak-=0.1;}
-  if(fb>=3){weak-=0.4;notes.push(fb+' cards die to one Fireball');}else if(fb===2){weak-=0.2;notes.push('2 support cards die to one Fireball');}
+  if(!bait){if(small>=4){weak-=0.45;notes.push(small+' cards die to one small spell (Log, Zap or Arrows)');}else if(small===3){weak-=0.25;notes.push('3 cards die to one small spell (Log, Zap or Arrows)');}else if(small===2)weak-=0.1;}
+  if(fb>=3){weak-=0.4;notes.push(fb+' cards are wiped out or left on a sliver of health by one Fireball');}else if(fb===2){weak-=0.2;notes.push('2 support cards go down to one Fireball');}
   if(k.air<2){weak-=0.3;}
   const tanks=cards.filter(c=>has(c,'T')).length;if(tanks>2){weak-=0.2;notes.push('Too many tanks fighting for elixir');}
   weak=Math.max(0,weak);
@@ -367,8 +369,8 @@ function teamAnalysis(A,B,sa,sb,names){
   const fb=all.filter(i=>FB_VULN.has(i)).length;
   const bait=all.some(i=>BAIT_CORE.has(i));
   const small=all.filter(i=>SMALL_VULN.has(i)).length;
-  if(fb>=5){weak-=0.4;notes.push(fb+' of the team\'s 16 cards die to Fireball; clumped together, one spell wipes the shared defense');}else if(fb===4)weak-=0.2;
-  if(!bait&&small>=6){weak-=0.3;notes.push(small+' team cards die to Log or Zap');}
+  if(fb>=5){weak-=0.4;notes.push(fb+' of the team\'s 16 cards are Fireball targets; clumped together, one spell wipes the shared defense');}else if(fb===4)weak-=0.2;
+  if(!bait&&small>=6){weak-=0.3;notes.push(small+' team cards die to a small spell (Log, Zap or Arrows)');}
   if(air<5){weak-=0.3;notes.push('Only '+air+' cards across both decks hit air, so double air pushes are a problem');}
   weak=Math.max(0,weak);
   const pct=Math.round(100*(0.4*Math.min(1,combo)+0.15*wc+0.15*covS+0.15*comp+0.15*weak));
@@ -614,6 +616,7 @@ function syncCards(payload){
     if(f.evo&&!c.ev&&!c.ev2){c.ev=est(c.p);c.ev2=est(c.p2);EVO_CARDS.push(c.id);added.push({id:c.id,form:'evo'});}
     if(f.hero&&!c.he&&!c.he2){c.he=est(c.p);c.he2=est(c.p2);HERO_CARDS.push(c.id);added.push({id:c.id,form:'hero'});}
   }
+  normForms();
   if(added.length){memo=new Map();scCache=new Map();}
   return added;
 }
@@ -633,6 +636,6 @@ function applyMeta(meta){
       if(list.length>=5){const target=mode==='ranked'?META:META2;target.length=0;list.forEach(x=>target.push(x));}
     }
   }
-  memo=new Map();scCache=new Map();
+  normForms();memo=new Map();scCache=new Map();
   return true;
 }

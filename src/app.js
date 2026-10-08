@@ -517,9 +517,9 @@ function vsHTML(vs){
   return `<div><h3 class="${vs.notes.length?'bad':'good'}" style="font-size:14px;font-weight:900;margin:0 0 6px">${vs.meta?'Against the current meta':'Against their deck'}</h3><ul style="margin:0;padding:0;list-style:none;display:grid;gap:7px;font-size:14px">${rows}${vs.notes.map(n=>`<li><b>Watch out</b><span>${esc(n)}</span></li>`).join('')}</ul></div>`;
 }
 const cycleCost=ids=>ids.map(id=>C[id].e).sort((a,b)=>a-b).slice(0,4).reduce((a,b)=>a+b,0);
-function archLabel(ids){
+function archLabel(ids,pref){ // pref: the playstyle the player asked for, used when the deck's win conditions fit it
   const wins=ids.filter(id=>has(C[id],'W')).sort((a,b)=>C[b].e-C[a].e);
-  const st=(ARCH[wins[0]]||[])[0];
+  const st=pref&&STYLE_NAME[pref]&&wins.some(w=>(ARCH[w]||[]).includes(pref))?pref:(ARCH[wins[0]]||[])[0];
   return (wins.map(id=>C[id].name).join(' + ')||'Support')+(st?' '+STYLE_NAME[st]:'');
 }
 
@@ -531,7 +531,7 @@ const clamp100=v=>Math.max(0,Math.min(100,Math.round(v)));
 const nameList=(ids,max)=>{const n=ids.map(i=>C[i].name);return n.length>(max||4)?n.slice(0,max||4).join(', ')+' and '+(n.length-(max||4))+' more':n.join(', ');};
 function deckRatings(ids){
   const cs=ids.map(i=>C[i]),non=ids.filter(i=>C[i].type!=='s');
-  const air=non.filter(i=>has(C[i],'A')&&C[i].e>1),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake','royal-delivery'].includes(i));
+  const air=non.filter(i=>has(C[i],'A')&&C[i].e>1),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake'].includes(i));
   const splash=non.filter(i=>has(C[i],'S')),small=ids.filter(i=>C[i].type==='s'&&has(C[i],'s'));
   const kill=ids.filter(i=>has(C[i],'K')),bld=ids.filter(i=>isDefBld(i));
   const big=ids.filter(i=>C[i].type==='s'&&has(C[i],'F')),tanks=ids.filter(i=>has(C[i],'T')),eq=ids.includes('earthquake');
@@ -542,7 +542,7 @@ function deckRatings(ids){
     {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+(splash.length+small.length===1?' clears':' clear')+' groups of small troops':'No splash damage and no small spell'},
     {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+(kill.length+bld.length===1?'s':'')+' heavy troops':'No tank killer and no defensive building'},
     {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+(big.length+(eq?1:0)+tanks.length===1?' gets':' get')+' through defensive buildings and siege':'No big spell or tank to push through a building'},
-    {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards die to Fireball ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
+    {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards are Fireball targets ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
     {label:'Cycle speed',val:clamp100((4.7-avg)/(4.7-2.6)*100),why:'Average elixir '+avg.toFixed(1)+'; four cheapest cards cost '+cycleCost(ids)}
   ];
 }
@@ -582,8 +582,16 @@ function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge sco
   if(k.air+Math.min(1,(k.airSp||0)*0.5)<2)gaps.push('too little air defence');if(k.splash<1)gaps.push('no splash damage');if(k.small<1)gaps.push('no small spell');
   if(k.big<1)gaps.push('no big spell');if(k.kill<1)gaps.push('no tank killer');if(k.cheap<2)gaps.push('too few cheap cards');
   if(k.spells>3)gaps.push('too many spells');if(k.bld>2)gaps.push('too many buildings');if(d.avg<2.5)gaps.push('very low elixir cost');
+  const wins=cards.filter(c=>has(c,'W')),chip=new Set(['miner','wall-breakers','skeleton-barrel','suspicious-bush','boss-bandit']);
+  if(wins.length===1&&chip.has(wins[0].id))gaps.push('a chip card as the only win condition');
+  if(cards.filter(c=>['cannon','tesla','bomb-tower','inferno-tower','goblin-cage','tombstone'].includes(c.id)).length>1)gaps.push('two defensive buildings');
+  if(d.syn&&d.syn.notes.some(n=>n.startsWith('Two win conditions')))gaps.push('win conditions that don\'t support each other');
+  if(cards.filter(c=>has(c,'T')&&c.e>=6).length>1)gaps.push('two heavy tanks');
+  if(d.ids.includes('x-bow')&&d.avg>3.5)gaps.push('too heavy for a siege deck');
+  if(d.avg>+$('maxavg').value)gaps.push('over your elixir limit');
   if(d.lv&&d.lv.under&&d.lv.under.length)gaps.push(d.lv.under.length+' under-levelled card'+(d.lv.under.length>1?'s':''));
-  rows.push({t:'Balance',v:shown-rows.reduce((a,r)=>a+r.v,0),why:gaps.length?'Points lost for: '+gaps.join(', '):'Nothing important missing'});
+  const bal=shown-rows.reduce((a,r)=>a+r.v,0);
+  rows.push({t:'Balance',v:bal,why:gaps.length?'Points lost for: '+gaps.join(', '):bal<-1?'Small deductions for elixir curve, card levels or overlapping roles':'Nothing important missing'});
   return `<table class="sum"><tbody>${rows.map(r=>`<tr><th scope="row">${esc(r.t)}<span>${esc(r.why)}</span></th><td class="${r.v<0?'neg':''}">${r.v>0?'+':''}${r.v}</td></tr>`).join('')}<tr class="total"><th scope="row">Forge score</th><td>${shown}</td></tr></tbody></table>`;
 }
 function reportHTML(d,shown,duo){
@@ -662,7 +670,7 @@ function renderDecks(decks){
     const t=towerFor('A',d,d.ids,false);d._tower=t.id;
     const pc=prosCons(d);const li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;const sy=d.syn.parts;
     return `<article class="deck">
-      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
+      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids,(state.lastOpts||{}).style))}</h2>
         <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span>${d.lv&&d.lv.avg?`<span>Average level <b>${d.lv.avg.toFixed(1)}</b></span>`:''}</div></div>
         ${scoreBtn(showScore(d.s),'Forge score')}</div>
       ${reportHTML(d,showScore(d.s))}
@@ -851,7 +859,7 @@ async function runCheck(){
       const pairs=await runJob('duo',{A:fix('A',ids),B:fix('B',idsB),maxAvg:9,count:1,priority:$('priority').value,names:names(),vs,levelW});
       const same=(x,y)=>[...x].sort().join()===[...y].sort().join();
       const pr=pairs.find(q=>same(q.A,ids)&&same(q.B,idsB));
-      ck.result=pr?{pair:pr}:{error:'That team can\'t be scored. Each deck needs at least one win condition.'};
+      ck.result=pr?{pair:pr}:{error:'That team can\'t be scored. At least one of the two decks needs a win condition.'};
     }else{
       const so=sideOpts('A');
       const base={...so,locked:ids,forms:{},style:'any',exclude:new Set([...so.exclude].filter(x=>!ids.includes(x))),maxAvg:9,count:1,maxChamps:1,vs,levelW};
@@ -870,9 +878,11 @@ async function runCheck(){
       }
     }
   }catch(e){ck.result={error:'The check hit an error: '+e.message};}
+  if(ck.first&&ck.result&&!ck.result.error){ck.base=ck.result.pair?teamShown(ck.result.pair):showScore(ck.result.deck.s);ck.first=false;}
   ck.busy=false;if(state.view==='check')renderCheck();
 }
-function startEdit(ids,idsB,base){state.check={ids:[...ids],idsB:idsB?[...idsB]:null,base,result:null,busy:false};setView('check');runCheck();window.scrollTo({top:$('out').getBoundingClientRect().top+scrollY-70,behavior:'auto'});}
+// The baseline is the first score this tab computes, so the change shown always comes from the edit itself.
+function startEdit(ids,idsB,base){state.check={ids:[...ids],idsB:idsB?[...idsB]:null,base:null,first:true,result:null,busy:false};setView('check');runCheck();window.scrollTo({top:$('out').getBoundingClientRect().top+scrollY-70,behavior:'auto'});}
 $('out').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset,ck=state.check;
   if(d.edit!=null){const x=state.last[+d.edit];startEdit(x.ids,null,showScore(x.s));return;}
@@ -1059,8 +1069,10 @@ function setMode(m){
   $('tab-meta').textContent=m==='duo'?'Top 2v2 decks':'Top Ranked decks';
   hideErr();renderPlayers();setView(state.view==='saved'?'saved':state.view==='meta'?'meta':'gen');
 }
-$('mode-1v1').addEventListener('click',()=>setMode('1v1'));
-$('mode-duo').addEventListener('click',()=>setMode('duo'));
+// Switching mode shows that mode's last results, or builds some straight away if there are none yet.
+const switchMode=m=>{if(state.mode===m)return;setMode(m);if(state.view==='gen'&&!(m==='duo'?state.lastDuo:state.last).length)forge();};
+$('mode-1v1').addEventListener('click',()=>switchMode('1v1'));
+$('mode-duo').addEventListener('click',()=>switchMode('duo'));
 
 /* ---------- data freshness ---------- */
 const metaLive={ranked:false,duo:false};

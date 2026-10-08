@@ -60,3 +60,37 @@ console.log('engine rule tests passed:', decks, 'decks checked');
   assert.deepEqual([...back.evo].sort(), ['electro-giant', 'knight']); assert.deepEqual([...back.hero], ['electro-wizard']);
   console.log('late forms test passed');
 }
+
+// Data integrity: every reference points at a real card, every list is legal, and no form is rated below its own card.
+{
+  const D = new Function(src + '; return {C,CARDS,has,META,META2,COUNTERS,SPELL_VULN,ARCH,CARD_IDS,WIN_COUNTER,SYN_RAW,isChamp};')();
+  const bad = [], C = D.C, chk = (id, w) => { if (!C[id]) bad.push('unknown ' + w + ': ' + id); };
+  for (const c of D.CARDS) {
+    for (const [b, f] of [['p', 'ev'], ['p', 'he'], ['p2', 'ev2'], ['p2', 'he2']]) if (c[f] && c[f] <= c[b]) bad.push(f + ' not above base: ' + c.id);
+    if (!!c.ev !== !!c.ev2 || !!c.he !== !!c.he2) bad.push('form in one mode only: ' + c.id);
+    if (!D.CARD_IDS[c.id]) bad.push('no game id: ' + c.id);
+    if (D.isChamp(c) && (c.ev || c.he)) bad.push('champion with a form: ' + c.id);
+    if (D.has(c, 'W') && !D.COUNTERS[c.id]) bad.push('win condition without counters: ' + c.id);
+    if (D.has(c, 'W') && !D.ARCH[c.id]) bad.push('win condition without a playstyle: ' + c.id);
+  }
+  const seen = {};
+  D.SYN_RAW.trim().split('\n').forEach(l => { const [a, b, w] = l.split(','); chk(a, 'synergy'); chk(b, 'synergy'); const k = [a, b].sort().join('|'); if (seen[k] || a === b || !(+w > 0)) bad.push('bad synergy row: ' + l.slice(0, 40)); seen[k] = 1; });
+  for (const [k, v] of Object.entries(D.COUNTERS)) { chk(k, 'counter key'); v.forEach(i => chk(i, 'counter of ' + k)); if (new Set(v).size !== v.length || v.includes(k)) bad.push('bad counter list: ' + k); }
+  for (const k of [...Object.keys(D.SPELL_VULN), ...Object.keys(D.ARCH), ...Object.keys(D.WIN_COUNTER)]) chk(k, 'table key');
+  for (const [nm, L] of [['Ranked', D.META], ['2v2', D.META2]]) for (const d of L) {
+    const ids = d.cards.map(x => x.split(':')[0]); let e = 0, h = 0;
+    d.cards.forEach(x => { const [i, f] = x.split(':'); chk(i, nm + ' deck'); if (!C[i]) return; if (f === 'evo') { e++; if (!C[i].ev) bad.push('no Evo of ' + i); } if (f === 'hero') { h++; if (!C[i].he) bad.push('no Hero of ' + i); } if (D.isChamp(C[i])) h++; });
+    if (ids.length !== 8 || new Set(ids).size !== 8 || e > 2 || h > 2 || e + h > 3 || !ids.some(i => C[i] && D.has(C[i], 'W'))) bad.push('illegal ' + nm + ' top deck: ' + d.n);
+  }
+  assert.deepEqual(bad, []);
+  console.log('data integrity test passed');
+}
+
+// Special slots go to the forms that add the most: Evo Goblin Barrel (weak card made strong) must get a slot.
+{
+  const A = new Function(src + '; return {assignForms};')();
+  const ids = ['princess', 'ice-wizard', 'barbarian-barrel', 'suspicious-bush', 'goblin-barrel', 'poison', 'cannon-cart', 'ronin'];
+  const sp = A.assignForms(ids, { forms: {}, ban: {}, maxChamps: 1, duo: true, tag: 'd|' }).specials;
+  assert.ok(sp.some(x => x.id === 'goblin-barrel' && x.form === 'evo'), 'Evo Goblin Barrel takes a slot in 2v2');
+  console.log('slot choice test passed');
+}

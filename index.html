@@ -916,7 +916,7 @@ html{overflow-x:clip}
       <footer class="foot">
         <div class="footbrand"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20.5" fill="none" stroke="url(#lg-ring)" stroke-width="1.6" opacity=".9"/><path d="M22 7.5c5.2 7 10 12 10 17.6a10 10 0 0 1-20 0c0-5.600 4.800-10.600 10-17.600z" fill="url(#lg-drop)"/></svg><span>Elixir Forge</span></div>
         <p id="datanote"></p>
-        <p class="ver">Site version Oct 7, 8:48 PM</p>
+        <p class="ver">Site version Oct 7, 9:39 PM</p>
         <p>Your collections, saved decks and results are stored only in this browser. Looking up a player tag sends that tag to the Elixir Forge server, which asks Supercell's official API for the public profile.</p>
         <p>This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy: www.supercell.com/fan-content-policy.</p>
       </footer>
@@ -985,7 +985,7 @@ hog-rider|Hog Rider|4|t|W|4|0|0|6|0|0
 battle-ram|Battle Ram|4|t|W|6|8|0|5|10|0
 zappies|Zappies|4|t|A|7|0|0|8|0|0
 flying-machine|Flying Machine|4|t|A|7|0|0|8|0|0
-battle-healer|Battle Healer|4|t||6|0|0|3|0|0
+battle-healer|Battle Healer|4|t|M|6|0|0|3|0|0
 goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
 minion-giant|Minion Giant|4|t|W|7|0|0|9|0|0
 rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
@@ -1018,7 +1018,7 @@ rascals|Rascals|5|t|AM|8|0|0|7|0|0
 giant|Giant|5|t|WT|7|0|7|3|0|5
 wizard|Wizard|5|t|AS|4|6|4|2|8|5
 royal-hogs|Royal Hogs|5|t|W|6|6|0|2|6|0
-inferno-tower|Inferno Tower|5|b|BK|5|0|0|3|0|0
+inferno-tower|Inferno Tower|5|b|BKA|5|0|0|3|0|0
 goblin-hut|Goblin Hut|4|b|B|7|0|0|8|0|0
 balloon|Balloon|5|t|W|6|0|6|5|0|5
 witch|Witch|5|t|AS|4|5|0|1|4|0
@@ -1055,6 +1055,11 @@ three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
 mirror|Mirror|3|s||3|0|0|2|0|0`;
 
 const CARDS=RAW.trim().split('\n').map(l=>{const[id,name,e,type,tags,p,ev,he,p2,ev2,he2]=l.split('|');return{id,name,e:+e,type,tags,p:+p,ev:+ev,he:+he,p2:+p2,ev2:+ev2,he2:+he2}});
+/* An Evo or Hero is the same card with something extra, so it can never be rated below its own card. Usage-based
+   ratings can say otherwise (a brand-new Hero has almost no games yet), so every form is held at least one point above
+   its card. Run after anything that changes ratings. */
+function normForms(){for(const c of CARDS)for(const [b,fs] of [['p',['ev','he']],['p2',['ev2','he2']]])for(const f of fs)if(c[f])c[f]=Math.min(11,Math.max(c[f],c[b]+1));}
+normForms();
 const C={};CARDS.forEach(c=>C[c.id]=c);
 const has=(c,t)=>c.tags.includes(t);
 const isChamp=c=>has(c,'C');
@@ -1195,7 +1200,7 @@ SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b
 const META=[
  {n:'Hero E-Wiz Goblin Giant Sparky',wr:56.9,cards:['goblin-giant:evo','sparky','electro-wizard:hero','elite-barbarians:evo','dark-prince','heal-spirit','rage','zap']},
  {n:'Hero E-Wiz GK Bandit Evo Ram',wr:59.2,cards:['battle-ram:evo','electro-wizard:hero','golden-knight','bandit','royal-ghost','ronin','mother-witch','arrows']},
- {n:'Evo E-Giant Hero Bowler',wr:52.3,cards:['electro-giant:evo','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
+ {n:'E-Giant Golden Knight Hero Bowler',wr:52.3,cards:['electro-giant','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
  {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:52.1,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
  {n:'Hero E-Wiz Ram Rider',wr:53.3,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
  {n:'Golem Evo E-Drag Beatdown',wr:53.6,cards:['golem','electro-dragon:evo','berserker:hero','elite-barbarians:evo','barbarian-barrel','tornado','skeleton-dragons','elixir-collector']},
@@ -1318,19 +1323,19 @@ const COUNTERS={
 'electro-giant':['pekka','mini-pekka','skeleton-army','barbarians','hunter','tornado','lightning','minion-horde','bowler','elite-barbarians'],
 'goblin-giant':['inferno-tower','inferno-dragon','mini-pekka','pekka','executioner','valkyrie','bowler','minion-horde'],
 'elixir-golem':['inferno-tower','pekka','mini-pekka','executioner','bowler','valkyrie'],
-'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde'],
+'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde','inferno-tower','tesla','mega-minion','hunter','magic-archer','flying-machine'],
 'balloon':['musketeer','hunter','archers','tesla','inferno-tower','bats','minions','electro-wizard','little-prince','mega-minion','inferno-dragon','minion-horde','archer-queen','magic-archer','executioner','wizard','phoenix','flying-machine','dart-goblin','firecracker','tornado'],
 'minion-giant':['musketeer','electro-wizard','inferno-dragon','hunter','archers','tesla','inferno-tower','bats','little-prince','mega-minion','minion-horde','archer-queen','magic-archer','executioner','wizard','phoenix','flying-machine','dart-goblin'],
 'mortar':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
 'x-bow':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
 'goblin-barrel':['the-log','zap','arrows','barbarian-barrel','giant-snowball','valkyrie','bomber','firecracker','goblin-curse','dark-prince','royal-delivery','tornado'],
-'goblin-drill':['valkyrie','skeletons','knight','bomber','the-log','guards','tornado','dark-prince'],
+'goblin-drill':['valkyrie','skeletons','knight','bomber','the-log','guards','tornado','dark-prince','bomb-tower','mega-knight','goblin-gang'],
 'skeleton-barrel':['the-log','zap','arrows','bats','minions','firecracker','barbarian-barrel','spear-goblins'],
 'graveyard':['poison','valkyrie','baby-dragon','wizard','bowler','executioner','mother-witch','bomber','dark-prince','bomb-tower','archers','minions','skeleton-dragons','arrows'],
 'miner':['knight','skeletons','mini-pekka','valkyrie','guards','bats','ice-golem','goblins','bandit','royal-ghost','lumberjack','berserker','goblin-gang','tornado'],
 'battle-ram':['skeleton-army','guards','goblin-gang','cannon','tesla','inferno-tower','ronin','mini-pekka','goblin-cage','tombstone','barbarians','knight','valkyrie','bomb-tower','hunter'],
-'ram-rider':['skeleton-army','guards','cannon','inferno-tower','mini-pekka','goblin-cage','tombstone'],
-'royal-hogs':['valkyrie','bowler','executioner','wizard','baby-dragon','firecracker','bomb-tower','dark-prince'],
+'ram-rider':['skeleton-army','guards','cannon','inferno-tower','mini-pekka','goblin-cage','tombstone','tesla','bomb-tower','ronin','hunter','barbarians','knight','valkyrie'],
+'royal-hogs':['valkyrie','bowler','executioner','wizard','baby-dragon','firecracker','bomb-tower','dark-prince','mega-knight','barbarians','bomber','goblin-cage'],
 'wall-breakers':['the-log','zap','skeletons','bats','goblins','giant-snowball','arrows'],
 'goblinstein':['inferno-tower','inferno-dragon','mini-pekka','pekka','hunter','ronin'],
 'boss-bandit':['ronin','skeleton-army','guards','mini-pekka','pekka','goblin-cage'],
@@ -1352,6 +1357,7 @@ let memo=new Map();
 // A Champion fills the Hero slot at slightly under its card rating: its ability is single-use per deployment,
 // but Champions sit in about four in ten top decks, so the discount is small.
 const CHAMP_SLOT=0.92;
+const SLOT_BASE_1V1=2.1,SLOT_BASE_2V2=3.4; // typical gain of a chosen form in each mode's ratings
 const NOBAN=new Set();
 function assignForms(ids,ctx){
   const key=(ctx.tag||'')+[...ids].sort().join(',');
@@ -1383,12 +1389,12 @@ function assignForms(ids,ctx){
       if(e>2||h>2)return;
       if(total===3&&(e<1||h<1))return;
       if(mustSpecial.some(id=>!all.some(x=>x.id===id)))return;
-      const v=all.reduce((a,x)=>a+x.v,0);
-      // Choose by what the slot adds, not just how strong the form is: Evo Goblin Barrel lifts a weak card a long way,
-      // while Hero Barbarian Barrel barely improves a card that is already strong. `o` ranks the options; the
-      // reported value stays the plain sum so scores keep their scale.
-      const o=all.reduce((a,x)=>a+x.v+(x.form==='champ'?0:Math.max(0,x.v-pw(C[x.id],ctx))),0);
-      if(!best||o>best.o)best={specials:all,value:v,empty:3-total,o};
+      // A slot is worth the form's strength plus what it adds over the normal card, so Evo Goblin Barrel (a weak card
+      // made strong) beats Hero Barbarian Barrel (a strong card made slightly stronger). SLOT_BASE takes the typical
+      // gain back off so scores keep the scale they had when slots counted strength alone.
+      const SLOT_BASE=ctx.duo?SLOT_BASE_2V2:SLOT_BASE_1V1;
+      const v=all.reduce((a,x)=>a+x.v+(x.form==='champ'?SLOT_BASE:Math.max(0,x.v-pw(C[x.id],ctx)))-SLOT_BASE,0);
+      if(!best||v>best.value)best={specials:all,value:v,empty:3-total};
     };
     const rec=(start,sel)=>{
       if(sel.length===need){test(sel);return;}
@@ -1424,8 +1430,9 @@ function fitsStyle(cards,style){return style==='any'||cards.some(c=>has(c,'W')&&
 /* Synergy model. Based on deck-building guides: synergy is (1) direct combos where one card amplifies or covers
    for another, (2) support for the win condition, (3) the deck covering each other's weaknesses (complementary roles),
    minus (4) shared weaknesses, where one spell or counter answers several of your cards at once. */
-const SMALL_VULN=new Set('suspicious-bush rascals skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
-const FB_VULN=new Set('musketeer wizard witch executioner electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch night-witch flying-machine zappies hunter three-musketeers rascals mega-minion goblin-demolisher spirit-empress little-prince'.split(' '));
+const SMALL_VULN=new Set('suspicious-bush skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
+// Support troops a Fireball removes or leaves one hit from dead. Tougher ones (Executioner, Witch, Hunter, Mega Minion) are left out.
+const FB_VULN=new Set('musketeer wizard electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch flying-machine zappies three-musketeers rascals goblin-demolisher'.split(' '));
 const MINOR_WIN=new Set(['miner','wall-breakers','skeleton-barrel','suspicious-bush','boss-bandit']);
 const DEF_BLD=new Set(['cannon','tesla','bomb-tower','inferno-tower','goblin-cage','tombstone']);
 const BAIT_CORE=new Set(['goblin-barrel','goblin-drill','skeleton-barrel','suspicious-bush']);
@@ -1451,8 +1458,8 @@ function synergyOf(ids,k,pairs){
   const roles=[k.air>=2,k.splash>=1,k.small>=1,k.big>=1,k.kill>=1,k.cheap>=2];
   const covS=roles.filter(Boolean).length/roles.length;
   let weak=1;
-  if(!bait){if(small>=4){weak-=0.45;notes.push(small+' cards die to one Log or Zap');}else if(small===3){weak-=0.25;notes.push('3 cards die to one Log or Zap');}else if(small===2)weak-=0.1;}
-  if(fb>=3){weak-=0.4;notes.push(fb+' cards die to one Fireball');}else if(fb===2){weak-=0.2;notes.push('2 support cards die to one Fireball');}
+  if(!bait){if(small>=4){weak-=0.45;notes.push(small+' cards die to one small spell (Log, Zap or Arrows)');}else if(small===3){weak-=0.25;notes.push('3 cards die to one small spell (Log, Zap or Arrows)');}else if(small===2)weak-=0.1;}
+  if(fb>=3){weak-=0.4;notes.push(fb+' cards are wiped out or left on a sliver of health by one Fireball');}else if(fb===2){weak-=0.2;notes.push('2 support cards go down to one Fireball');}
   if(k.air<2){weak-=0.3;}
   const tanks=cards.filter(c=>has(c,'T')).length;if(tanks>2){weak-=0.2;notes.push('Too many tanks fighting for elixir');}
   weak=Math.max(0,weak);
@@ -1716,8 +1723,8 @@ function teamAnalysis(A,B,sa,sb,names){
   const fb=all.filter(i=>FB_VULN.has(i)).length;
   const bait=all.some(i=>BAIT_CORE.has(i));
   const small=all.filter(i=>SMALL_VULN.has(i)).length;
-  if(fb>=5){weak-=0.4;notes.push(fb+' of the team\'s 16 cards die to Fireball; clumped together, one spell wipes the shared defense');}else if(fb===4)weak-=0.2;
-  if(!bait&&small>=6){weak-=0.3;notes.push(small+' team cards die to Log or Zap');}
+  if(fb>=5){weak-=0.4;notes.push(fb+' of the team\'s 16 cards are Fireball targets; clumped together, one spell wipes the shared defense');}else if(fb===4)weak-=0.2;
+  if(!bait&&small>=6){weak-=0.3;notes.push(small+' team cards die to a small spell (Log, Zap or Arrows)');}
   if(air<5){weak-=0.3;notes.push('Only '+air+' cards across both decks hit air, so double air pushes are a problem');}
   weak=Math.max(0,weak);
   const pct=Math.round(100*(0.4*Math.min(1,combo)+0.15*wc+0.15*covS+0.15*comp+0.15*weak));
@@ -1963,6 +1970,7 @@ function syncCards(payload){
     if(f.evo&&!c.ev&&!c.ev2){c.ev=est(c.p);c.ev2=est(c.p2);EVO_CARDS.push(c.id);added.push({id:c.id,form:'evo'});}
     if(f.hero&&!c.he&&!c.he2){c.he=est(c.p);c.he2=est(c.p2);HERO_CARDS.push(c.id);added.push({id:c.id,form:'hero'});}
   }
+  normForms();
   if(added.length){memo=new Map();scCache=new Map();}
   return added;
 }
@@ -1982,7 +1990,7 @@ function applyMeta(meta){
       if(list.length>=5){const target=mode==='ranked'?META:META2;target.length=0;list.forEach(x=>target.push(x));}
     }
   }
-  memo=new Map();scCache=new Map();
+  normForms();memo=new Map();scCache=new Map();
   return true;
 }
 
@@ -2507,9 +2515,9 @@ function vsHTML(vs){
   return `<div><h3 class="${vs.notes.length?'bad':'good'}" style="font-size:14px;font-weight:900;margin:0 0 6px">${vs.meta?'Against the current meta':'Against their deck'}</h3><ul style="margin:0;padding:0;list-style:none;display:grid;gap:7px;font-size:14px">${rows}${vs.notes.map(n=>`<li><b>Watch out</b><span>${esc(n)}</span></li>`).join('')}</ul></div>`;
 }
 const cycleCost=ids=>ids.map(id=>C[id].e).sort((a,b)=>a-b).slice(0,4).reduce((a,b)=>a+b,0);
-function archLabel(ids){
+function archLabel(ids,pref){ // pref: the playstyle the player asked for, used when the deck's win conditions fit it
   const wins=ids.filter(id=>has(C[id],'W')).sort((a,b)=>C[b].e-C[a].e);
-  const st=(ARCH[wins[0]]||[])[0];
+  const st=pref&&STYLE_NAME[pref]&&wins.some(w=>(ARCH[w]||[]).includes(pref))?pref:(ARCH[wins[0]]||[])[0];
   return (wins.map(id=>C[id].name).join(' + ')||'Support')+(st?' '+STYLE_NAME[st]:'');
 }
 
@@ -2521,7 +2529,7 @@ const clamp100=v=>Math.max(0,Math.min(100,Math.round(v)));
 const nameList=(ids,max)=>{const n=ids.map(i=>C[i].name);return n.length>(max||4)?n.slice(0,max||4).join(', ')+' and '+(n.length-(max||4))+' more':n.join(', ');};
 function deckRatings(ids){
   const cs=ids.map(i=>C[i]),non=ids.filter(i=>C[i].type!=='s');
-  const air=non.filter(i=>has(C[i],'A')&&C[i].e>1),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake','royal-delivery'].includes(i));
+  const air=non.filter(i=>has(C[i],'A')&&C[i].e>1),airSp=ids.filter(i=>C[i].type==='s'&&(has(C[i],'s')||has(C[i],'F'))&&!['the-log','barbarian-barrel','earthquake'].includes(i));
   const splash=non.filter(i=>has(C[i],'S')),small=ids.filter(i=>C[i].type==='s'&&has(C[i],'s'));
   const kill=ids.filter(i=>has(C[i],'K')),bld=ids.filter(i=>isDefBld(i));
   const big=ids.filter(i=>C[i].type==='s'&&has(C[i],'F')),tanks=ids.filter(i=>has(C[i],'T')),eq=ids.includes('earthquake');
@@ -2532,7 +2540,7 @@ function deckRatings(ids){
     {label:'Against swarms',val:clamp100(splash.length*28+small.length*26+(big.length?8:0)),why:splash.length||small.length?nameList([...splash,...small])+(splash.length+small.length===1?' clears':' clear')+' groups of small troops':'No splash damage and no small spell'},
     {label:'Against tanks',val:clamp100(kill.length*38+bld.length*22+(ids.some(i=>INFERNO.has(i))?12:0)),why:kill.length||bld.length?nameList([...kill,...bld])+(kill.length?' melt':' distract')+(kill.length+bld.length===1?'s':'')+' heavy troops':'No tank killer and no defensive building'},
     {label:'Against buildings',val:clamp100(big.length*34+(eq?22:0)+tanks.length*22+(ids.includes('miner')?14:0)),why:big.length||tanks.length||eq?nameList([...big,...(eq?['earthquake']:[]),...tanks])+(big.length+(eq?1:0)+tanks.length===1?' gets':' get')+' through defensive buildings and siege':'No big spell or tank to push through a building'},
-    {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards die to Fireball ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
+    {label:'Holding up to spells',val:clamp100(100-Math.max(0,sv.length-1)*17-Math.max(0,fv.length-1)*17),why:(sv.length>1?sv.length+' cards die to a small spell ('+nameList(sv,3)+'). ':'')+(fv.length>1?fv.length+' cards are Fireball targets ('+nameList(fv,3)+').':'')||'One spell can\'t take out much of this deck'},
     {label:'Cycle speed',val:clamp100((4.7-avg)/(4.7-2.6)*100),why:'Average elixir '+avg.toFixed(1)+'; four cheapest cards cost '+cycleCost(ids)}
   ];
 }
@@ -2572,8 +2580,16 @@ function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge sco
   if(k.air+Math.min(1,(k.airSp||0)*0.5)<2)gaps.push('too little air defence');if(k.splash<1)gaps.push('no splash damage');if(k.small<1)gaps.push('no small spell');
   if(k.big<1)gaps.push('no big spell');if(k.kill<1)gaps.push('no tank killer');if(k.cheap<2)gaps.push('too few cheap cards');
   if(k.spells>3)gaps.push('too many spells');if(k.bld>2)gaps.push('too many buildings');if(d.avg<2.5)gaps.push('very low elixir cost');
+  const wins=cards.filter(c=>has(c,'W')),chip=new Set(['miner','wall-breakers','skeleton-barrel','suspicious-bush','boss-bandit']);
+  if(wins.length===1&&chip.has(wins[0].id))gaps.push('a chip card as the only win condition');
+  if(cards.filter(c=>['cannon','tesla','bomb-tower','inferno-tower','goblin-cage','tombstone'].includes(c.id)).length>1)gaps.push('two defensive buildings');
+  if(d.syn&&d.syn.notes.some(n=>n.startsWith('Two win conditions')))gaps.push('win conditions that don\'t support each other');
+  if(cards.filter(c=>has(c,'T')&&c.e>=6).length>1)gaps.push('two heavy tanks');
+  if(d.ids.includes('x-bow')&&d.avg>3.5)gaps.push('too heavy for a siege deck');
+  if(d.avg>+$('maxavg').value)gaps.push('over your elixir limit');
   if(d.lv&&d.lv.under&&d.lv.under.length)gaps.push(d.lv.under.length+' under-levelled card'+(d.lv.under.length>1?'s':''));
-  rows.push({t:'Balance',v:shown-rows.reduce((a,r)=>a+r.v,0),why:gaps.length?'Points lost for: '+gaps.join(', '):'Nothing important missing'});
+  const bal=shown-rows.reduce((a,r)=>a+r.v,0);
+  rows.push({t:'Balance',v:bal,why:gaps.length?'Points lost for: '+gaps.join(', '):bal<-1?'Small deductions for elixir curve, card levels or overlapping roles':'Nothing important missing'});
   return `<table class="sum"><tbody>${rows.map(r=>`<tr><th scope="row">${esc(r.t)}<span>${esc(r.why)}</span></th><td class="${r.v<0?'neg':''}">${r.v>0?'+':''}${r.v}</td></tr>`).join('')}<tr class="total"><th scope="row">Forge score</th><td>${shown}</td></tr></tbody></table>`;
 }
 function reportHTML(d,shown,duo){
@@ -2652,7 +2668,7 @@ function renderDecks(decks){
     const t=towerFor('A',d,d.ids,false);d._tower=t.id;
     const pc=prosCons(d);const li=x=>`<li><b>${esc(x.t)}</b><span>${esc(x.d)}</span></li>`;const sy=d.syn.parts;
     return `<article class="deck">
-      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids))}</h2>
+      <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(d.ids,(state.lastOpts||{}).style))}</h2>
         <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span>${d.lv&&d.lv.avg?`<span>Average level <b>${d.lv.avg.toFixed(1)}</b></span>`:''}</div></div>
         ${scoreBtn(showScore(d.s),'Forge score')}</div>
       ${reportHTML(d,showScore(d.s))}
@@ -2841,7 +2857,7 @@ async function runCheck(){
       const pairs=await runJob('duo',{A:fix('A',ids),B:fix('B',idsB),maxAvg:9,count:1,priority:$('priority').value,names:names(),vs,levelW});
       const same=(x,y)=>[...x].sort().join()===[...y].sort().join();
       const pr=pairs.find(q=>same(q.A,ids)&&same(q.B,idsB));
-      ck.result=pr?{pair:pr}:{error:'That team can\'t be scored. Each deck needs at least one win condition.'};
+      ck.result=pr?{pair:pr}:{error:'That team can\'t be scored. At least one of the two decks needs a win condition.'};
     }else{
       const so=sideOpts('A');
       const base={...so,locked:ids,forms:{},style:'any',exclude:new Set([...so.exclude].filter(x=>!ids.includes(x))),maxAvg:9,count:1,maxChamps:1,vs,levelW};
@@ -2860,9 +2876,11 @@ async function runCheck(){
       }
     }
   }catch(e){ck.result={error:'The check hit an error: '+e.message};}
+  if(ck.first&&ck.result&&!ck.result.error){ck.base=ck.result.pair?teamShown(ck.result.pair):showScore(ck.result.deck.s);ck.first=false;}
   ck.busy=false;if(state.view==='check')renderCheck();
 }
-function startEdit(ids,idsB,base){state.check={ids:[...ids],idsB:idsB?[...idsB]:null,base,result:null,busy:false};setView('check');runCheck();window.scrollTo({top:$('out').getBoundingClientRect().top+scrollY-70,behavior:'auto'});}
+// The baseline is the first score this tab computes, so the change shown always comes from the edit itself.
+function startEdit(ids,idsB,base){state.check={ids:[...ids],idsB:idsB?[...idsB]:null,base:null,first:true,result:null,busy:false};setView('check');runCheck();window.scrollTo({top:$('out').getBoundingClientRect().top+scrollY-70,behavior:'auto'});}
 $('out').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;const d=b.dataset,ck=state.check;
   if(d.edit!=null){const x=state.last[+d.edit];startEdit(x.ids,null,showScore(x.s));return;}
@@ -3049,8 +3067,10 @@ function setMode(m){
   $('tab-meta').textContent=m==='duo'?'Top 2v2 decks':'Top Ranked decks';
   hideErr();renderPlayers();setView(state.view==='saved'?'saved':state.view==='meta'?'meta':'gen');
 }
-$('mode-1v1').addEventListener('click',()=>setMode('1v1'));
-$('mode-duo').addEventListener('click',()=>setMode('duo'));
+// Switching mode shows that mode's last results, or builds some straight away if there are none yet.
+const switchMode=m=>{if(state.mode===m)return;setMode(m);if(state.view==='gen'&&!(m==='duo'?state.lastDuo:state.last).length)forge();};
+$('mode-1v1').addEventListener('click',()=>switchMode('1v1'));
+$('mode-duo').addEventListener('click',()=>switchMode('duo'));
 
 /* ---------- data freshness ---------- */
 const metaLive={ranked:false,duo:false};

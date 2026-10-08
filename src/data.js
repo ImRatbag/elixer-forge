@@ -56,7 +56,7 @@ hog-rider|Hog Rider|4|t|W|4|0|0|6|0|0
 battle-ram|Battle Ram|4|t|W|6|8|0|5|10|0
 zappies|Zappies|4|t|A|7|0|0|8|0|0
 flying-machine|Flying Machine|4|t|A|7|0|0|8|0|0
-battle-healer|Battle Healer|4|t||6|0|0|3|0|0
+battle-healer|Battle Healer|4|t|M|6|0|0|3|0|0
 goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
 minion-giant|Minion Giant|4|t|W|7|0|0|9|0|0
 rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
@@ -89,7 +89,7 @@ rascals|Rascals|5|t|AM|8|0|0|7|0|0
 giant|Giant|5|t|WT|7|0|7|3|0|5
 wizard|Wizard|5|t|AS|4|6|4|2|8|5
 royal-hogs|Royal Hogs|5|t|W|6|6|0|2|6|0
-inferno-tower|Inferno Tower|5|b|BK|5|0|0|3|0|0
+inferno-tower|Inferno Tower|5|b|BKA|5|0|0|3|0|0
 goblin-hut|Goblin Hut|4|b|B|7|0|0|8|0|0
 balloon|Balloon|5|t|W|6|0|6|5|0|5
 witch|Witch|5|t|AS|4|5|0|1|4|0
@@ -126,6 +126,11 @@ three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
 mirror|Mirror|3|s||3|0|0|2|0|0`;
 
 const CARDS=RAW.trim().split('\n').map(l=>{const[id,name,e,type,tags,p,ev,he,p2,ev2,he2]=l.split('|');return{id,name,e:+e,type,tags,p:+p,ev:+ev,he:+he,p2:+p2,ev2:+ev2,he2:+he2}});
+/* An Evo or Hero is the same card with something extra, so it can never be rated below its own card. Usage-based
+   ratings can say otherwise (a brand-new Hero has almost no games yet), so every form is held at least one point above
+   its card. Run after anything that changes ratings. */
+function normForms(){for(const c of CARDS)for(const [b,fs] of [['p',['ev','he']],['p2',['ev2','he2']]])for(const f of fs)if(c[f])c[f]=Math.min(11,Math.max(c[f],c[b]+1));}
+normForms();
 const C={};CARDS.forEach(c=>C[c.id]=c);
 const has=(c,t)=>c.tags.includes(t);
 const isChamp=c=>has(c,'C');
@@ -266,7 +271,7 @@ SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b
 const META=[
  {n:'Hero E-Wiz Goblin Giant Sparky',wr:56.9,cards:['goblin-giant:evo','sparky','electro-wizard:hero','elite-barbarians:evo','dark-prince','heal-spirit','rage','zap']},
  {n:'Hero E-Wiz GK Bandit Evo Ram',wr:59.2,cards:['battle-ram:evo','electro-wizard:hero','golden-knight','bandit','royal-ghost','ronin','mother-witch','arrows']},
- {n:'Evo E-Giant Hero Bowler',wr:52.3,cards:['electro-giant:evo','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
+ {n:'E-Giant Golden Knight Hero Bowler',wr:52.3,cards:['electro-giant','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
  {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:52.1,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
  {n:'Hero E-Wiz Ram Rider',wr:53.3,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
  {n:'Golem Evo E-Drag Beatdown',wr:53.6,cards:['golem','electro-dragon:evo','berserker:hero','elite-barbarians:evo','barbarian-barrel','tornado','skeleton-dragons','elixir-collector']},
@@ -389,19 +394,19 @@ const COUNTERS={
 'electro-giant':['pekka','mini-pekka','skeleton-army','barbarians','hunter','tornado','lightning','minion-horde','bowler','elite-barbarians'],
 'goblin-giant':['inferno-tower','inferno-dragon','mini-pekka','pekka','executioner','valkyrie','bowler','minion-horde'],
 'elixir-golem':['inferno-tower','pekka','mini-pekka','executioner','bowler','valkyrie'],
-'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde'],
+'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde','inferno-tower','tesla','mega-minion','hunter','magic-archer','flying-machine'],
 'balloon':['musketeer','hunter','archers','tesla','inferno-tower','bats','minions','electro-wizard','little-prince','mega-minion','inferno-dragon','minion-horde','archer-queen','magic-archer','executioner','wizard','phoenix','flying-machine','dart-goblin','firecracker','tornado'],
 'minion-giant':['musketeer','electro-wizard','inferno-dragon','hunter','archers','tesla','inferno-tower','bats','little-prince','mega-minion','minion-horde','archer-queen','magic-archer','executioner','wizard','phoenix','flying-machine','dart-goblin'],
 'mortar':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
 'x-bow':['knight','valkyrie','giant','royal-giant','golem','pekka','mega-knight','earthquake','rocket','lightning','miner','ice-golem'],
 'goblin-barrel':['the-log','zap','arrows','barbarian-barrel','giant-snowball','valkyrie','bomber','firecracker','goblin-curse','dark-prince','royal-delivery','tornado'],
-'goblin-drill':['valkyrie','skeletons','knight','bomber','the-log','guards','tornado','dark-prince'],
+'goblin-drill':['valkyrie','skeletons','knight','bomber','the-log','guards','tornado','dark-prince','bomb-tower','mega-knight','goblin-gang'],
 'skeleton-barrel':['the-log','zap','arrows','bats','minions','firecracker','barbarian-barrel','spear-goblins'],
 'graveyard':['poison','valkyrie','baby-dragon','wizard','bowler','executioner','mother-witch','bomber','dark-prince','bomb-tower','archers','minions','skeleton-dragons','arrows'],
 'miner':['knight','skeletons','mini-pekka','valkyrie','guards','bats','ice-golem','goblins','bandit','royal-ghost','lumberjack','berserker','goblin-gang','tornado'],
 'battle-ram':['skeleton-army','guards','goblin-gang','cannon','tesla','inferno-tower','ronin','mini-pekka','goblin-cage','tombstone','barbarians','knight','valkyrie','bomb-tower','hunter'],
-'ram-rider':['skeleton-army','guards','cannon','inferno-tower','mini-pekka','goblin-cage','tombstone'],
-'royal-hogs':['valkyrie','bowler','executioner','wizard','baby-dragon','firecracker','bomb-tower','dark-prince'],
+'ram-rider':['skeleton-army','guards','cannon','inferno-tower','mini-pekka','goblin-cage','tombstone','tesla','bomb-tower','ronin','hunter','barbarians','knight','valkyrie'],
+'royal-hogs':['valkyrie','bowler','executioner','wizard','baby-dragon','firecracker','bomb-tower','dark-prince','mega-knight','barbarians','bomber','goblin-cage'],
 'wall-breakers':['the-log','zap','skeletons','bats','goblins','giant-snowball','arrows'],
 'goblinstein':['inferno-tower','inferno-dragon','mini-pekka','pekka','hunter','ronin'],
 'boss-bandit':['ronin','skeleton-army','guards','mini-pekka','pekka','goblin-cage'],
