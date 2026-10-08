@@ -82,6 +82,8 @@ function fitsStyle(cards,style){return style==='any'||cards.some(c=>has(c,'W')&&
 const SMALL_VULN=new Set('suspicious-bush skeletons goblins spear-goblins goblin-gang skeleton-army princess dart-goblin wall-breakers bomber goblin-barrel skeleton-barrel bats minions minion-horde'.split(' '));
 // Support troops a Fireball removes or leaves one hit from dead. Tougher ones (Executioner, Witch, Hunter, Mega Minion) are left out.
 const FB_VULN=new Set('musketeer wizard electro-wizard ice-wizard magic-archer archers firecracker dart-goblin princess mother-witch flying-machine zappies three-musketeers rascals goblin-demolisher'.split(' '));
+// Troops that fly (and Skeleton Barrel's balloon). An Air deck attacks with several of these, not just its win condition.
+const FLYING=new Set('lava-hound balloon minion-giant bats minions minion-horde mega-minion baby-dragon inferno-dragon electro-dragon skeleton-dragons phoenix flying-machine skeleton-barrel'.split(' '));
 const MINOR_WIN=new Set(['miner','wall-breakers','skeleton-barrel','suspicious-bush','boss-bandit']);
 const DEF_BLD=new Set(['cannon','tesla','bomb-tower','inferno-tower','goblin-cage','tombstone']);
 const BAIT_CORE=new Set(['goblin-barrel','goblin-drill','skeleton-barrel','suspicious-bush']);
@@ -170,6 +172,8 @@ function scoreDeck(ids,ctx){
   if(bigTanks>1)s-=8*(bigTanks-1);
   if(!fitsStyle(cards,ctx.style))s-=40;
   else if(ctx.style!=='any'){const off=cards.filter(c=>has(c,'W')&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id)).length;s-=12*off;}
+  // Air playstyle: the win condition flying isn't enough; the attack needs at least three flying cards in all.
+  if(ctx.style==='air'){const fly=ids.filter(i=>FLYING.has(i)).length;if(fly<3)s-=12*(3-fly);else if(fly>=4)s+=3;}
   if(ctx.style==='hyperbait'){
     const sv=ids.filter(i=>SMALL_VULN.has(i)).length,bw=ids.filter(i=>BAIT_CORE.has(i)||i==='wall-breakers').length;
     s+=Math.min(5,Math.max(0,sv-3))*3+(bw>=2?6:-6);
@@ -215,6 +219,7 @@ function addHeur(c,deck,ctx){
   if(ctx.role==='defend'){if(c.type!=='s'&&(has(c,'A')||has(c,'K')||has(c,'S'))||c.type==='b')v+=2;if(has(c,'W')&&has(c,'T')&&c.e>=5)v-=8;}
   else if(ctx.role==='attack'){if(has(c,'W')||has(c,'T'))v+=2;}
   if(ctx.style==='hyperbait'&&(SMALL_VULN.has(c.id)||BAIT_CORE.has(c.id)))v+=2;
+  if(ctx.style==='air'&&FLYING.has(c.id))v+=4;
   if(ctx.partner){
     const shared=deck.filter(d=>ctx.partner.includes(d)).length;
     for(const d of ctx.partner){if(d===c.id)v-=shared>=2?40:2;const x=SYN[sk(c.id,d)];if(x&&!x.meta)v+=x.w*1.8;}
@@ -507,7 +512,7 @@ function matchup(mine,opp){
     score+=Math.min(cs.length,2)*4;
     if(!cs.length){score-=6;notes.push('Nothing in this deck is a clean answer to '+C[w].name);}
   }
-  const oppAir=opp.filter(i=>C[i]&&C[i].type!=='s'&&(['lava-hound','balloon','minion-giant','bats','minions','minion-horde','mega-minion','baby-dragon','inferno-dragon','electro-dragon','skeleton-dragons','phoenix','flying-machine'].includes(i))).length;
+  const oppAir=opp.filter(i=>FLYING.has(i)&&i!=='skeleton-barrel').length;
   const myAir=mine.filter(i=>C[i].type!=='s'&&has(C[i],'A')&&C[i].e>1).length;
   if(oppAir>=3&&myAir<3){score-=8;notes.push('Their deck has '+oppAir+' air cards; you have only '+myAir+' that hit air');}
   const spells=opp.filter(i=>SPELL_VULN[i]);

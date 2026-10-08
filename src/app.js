@@ -555,7 +555,10 @@ function vsHTML(vs){
 const cycleCost=ids=>ids.map(id=>C[id].e).sort((a,b)=>a-b).slice(0,4).reduce((a,b)=>a+b,0);
 function archLabel(ids,pref){ // pref: the playstyle the player asked for, used when the deck's win conditions fit it
   const wins=ids.filter(id=>has(C[id],'W')).sort((a,b)=>C[b].e-C[a].e);
-  const st=pref&&STYLE_NAME[pref]&&wins.some(w=>(ARCH[w]||[]).includes(pref))?pref:(ARCH[wins[0]]||[])[0];
+  // "Air" only when the deck really attacks from the air (three or more flying cards); otherwise the win
+  // condition's next playstyle (Minion Giant with ground support is a cycle deck, Skeleton Barrel a bait deck).
+  const fly=ids.filter(i=>FLYING.has(i)).length,ok=x=>x!=='air'||fly>=3;
+  const st=pref&&STYLE_NAME[pref]&&ok(pref)&&wins.some(w=>(ARCH[w]||[]).includes(pref))?pref:(ARCH[wins[0]]||[]).find(ok);
   return (wins.map(id=>C[id].name).join(' + ')||'Support')+(st?' '+STYLE_NAME[st]:'');
 }
 
