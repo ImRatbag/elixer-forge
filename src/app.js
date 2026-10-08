@@ -13,12 +13,41 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTim
 /* ---------- profiles (a player's collection) ---------- */
 const allEvo=()=>EVO_CARDS.slice(),allHero=()=>HERO_CARDS.slice();
 function newProfile(name,extra){return Object.assign({id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,tag:null,source:'unset',col:{base:null,evo:allEvo(),hero:allHero(),towers:TOWER_IDS.slice()},levels:null,updated:Date.now()},extra||{});}
-let profiles=store.get('ef2-profiles',null);
+/* Everything read back from this browser's storage or from a pasted backup code goes through these, so an entry from
+   an older version, a hand-edited value or a crafted code can't break the page or put markup into it. */
+const TAG_OK=/^[0289PYLQGRJCUV]{3,14}$/;
+const cleanIds=a=>Array.isArray(a)?[...new Set(a.filter(i=>typeof i==='string'&&C[i]))]:null;
+function cleanProfile(x){
+  if(!x||typeof x!=='object')return null;
+  const col=x.col&&typeof x.col==='object'?x.col:{},lv={};
+  if(x.levels&&typeof x.levels==='object')for(const [k,v] of Object.entries(x.levels))if(C[k]&&Number.isFinite(+v))lv[k]=Math.max(1,Math.min(16,Math.round(+v)));
+  const towers=Array.isArray(col.towers)?col.towers.filter(t=>TOWER[t]):[];
+  return{id:typeof x.id==='string'&&/^[a-z0-9]{3,24}$/i.test(x.id)?x.id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+    name:String(x.name==null?'':x.name).trim().slice(0,24)||'Player',tag:typeof x.tag==='string'&&TAG_OK.test(x.tag)?x.tag:null,
+    source:['unset','manual','tag','code'].includes(x.source)?x.source:'manual',
+    col:{base:cleanIds(col.base),evo:cleanIds(col.evo)||allEvo(),hero:cleanIds(col.hero)||allHero(),towers:towers.length?towers:['tower-princess']},
+    levels:Object.keys(lv).length?lv:null,updated:Number.isFinite(+x.updated)?+x.updated:Date.now(),trophies:Number.isFinite(+x.trophies)&&x.trophies!=null?+x.trophies:null,current:cleanIds(x.current)||[],edited:!!x.edited};
+}
+function cleanSaved(list){
+  if(!Array.isArray(list))return [];
+  const FORMS=['evo','hero','champ'];
+  return list.map(x=>{
+    if(!x||typeof x!=='object'||!Array.isArray(x.decks))return null;
+    const decks=x.decks.slice(0,2).map(d=>{
+      if(!d||!Array.isArray(d.ids))return null;const ids=cleanIds(d.ids);if(ids.length!==8||d.ids.length!==8)return null;
+      const specials=(Array.isArray(d.specials)?d.specials:[]).filter(sp=>sp&&ids.includes(sp.id)&&FORMS.includes(sp.form)).slice(0,3).map(sp=>({id:sp.id,form:sp.form}));
+      return{key:d.key==='B'?'B':'A',who:String(d.who==null?'':d.who).slice(0,24),ids,specials,empty:Math.max(0,Math.min(3,+d.empty||0)),tower:TOWER[d.tower]?d.tower:'tower-princess'};});
+    if(!decks.length||decks.some(d=>!d))return null;
+    return{at:Number.isFinite(+x.at)?+x.at:Date.now(),mode:decks.length===2?'duo':'1v1',title:String(x.title==null?'Saved deck':x.title).slice(0,90),w:Math.max(0,Math.round(+x.w)||0),l:Math.max(0,Math.round(+x.l)||0),decks};
+  }).filter(Boolean).slice(0,60);
+}
+let profiles=(Array.isArray(store.get('ef2-profiles',null))?store.get('ef2-profiles',null):[]).map(cleanProfile).filter(Boolean);
+{const seen=new Set();profiles=profiles.filter(p=>!seen.has(p.id)&&seen.add(p.id));}
 if(!profiles||!profiles.length){
   profiles=PRESET_PLAYERS.length?PRESET_PLAYERS.map(p=>newProfile(p.name,{source:'manual',col:{base:null,evo:EVO_CARDS.filter(i=>!p.missingEvo.includes(i)),hero:HERO_CARDS.filter(i=>!p.missingHero.includes(i)),towers:TOWER_IDS.slice()}})):[newProfile('Player 1'),newProfile('Player 2')];
 }
 let slots=store.get('ef2-slots',null);
-if(!slots||!profiles.find(p=>p.id===slots.A))slots={A:profiles[0].id,B:(profiles[1]||profiles[0]).id};
+if(!slots||typeof slots!=='object'||!profiles.find(p=>p.id===slots.A))slots={A:profiles[0].id,B:(profiles[1]||profiles[0]).id};
 if(!profiles.find(p=>p.id===slots.B))slots.B=profiles.find(p=>p.id!==slots.A)?.id||slots.A;
 function saveProfiles(){store.set('ef2-profiles',profiles);store.set('ef2-slots',slots);}
 saveProfiles();
@@ -26,7 +55,7 @@ const prof=key=>profiles.find(p=>p.id===slots[key]);
 const colSets=p=>({base:p.col.base?new Set(p.col.base):null,evo:new Set(p.col.evo),hero:new Set(p.col.hero),towers:new Set(p.col.towers&&p.col.towers.length?p.col.towers:['tower-princess'])});
 
 /* tower troop IDs learned from earlier tag lookups */
-Object.entries(store.get('ef2-towerids',{})).forEach(([k,v])=>{if(TOWER[k]&&v)TOWER[k].tid=v;});
+Object.entries(store.get('ef2-towerids',{})||{}).forEach(([k,v])=>{if(TOWER[k]&&Number.isInteger(v)&&v>0)TOWER[k].tid=v;});
 
 /* ---------- colour themes ---------- */
 const SKINS=[
@@ -65,7 +94,7 @@ window.addEventListener('unhandledrejection',e=>{try{toast('Something went wrong
 
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
-const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:store.get('ef2-saved',[]),api:null};
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:cleanSaved(store.get('ef2-saved',[])),api:null};
 /* Cards from recent results, so the next Forge leans toward different ones. Halves each round. */
 const recent={duo:{},'1v1':{}};
 function noteShown(mode,idLists){const r=recent[mode];for(const k in r){r[k]*=0.5;if(r[k]<0.1)delete r[k];}for(const ids of idLists)for(const id of ids)r[id]=Math.min(1.6,(r[id]||0)+0.7);}
@@ -130,6 +159,7 @@ async function lookupTag(key,raw,opt){
   try{
     const r=await fetch('api/player?tag='+encodeURIComponent(tag));const j=await r.json();
     if(!r.ok)throw new Error(j.message||('Lookup failed ('+r.status+')'));
+    if(!j||!Array.isArray(j.cards)||!j.cards.length)throw new Error('That player\'s card collection came back empty. Try again in a minute.');
     // A different player's tag opens as its own profile, so the collection that was here stays in the switcher.
     slotForTag(key,tag);
     const p=prof(key);
@@ -139,9 +169,9 @@ async function lookupTag(key,raw,opt){
     (j.towers||[]).forEach(t=>{const x=TOWERS.find(y=>y.name===t.name);if(x&&t.id)x.tid=t.id;});
     store.set('ef2-towerids',Object.fromEntries(TOWERS.map(t=>[t.id,t.tid])));
     const towers=(j.towers||[]).map(t=>TOWERS.find(x=>x.tid===t.id||x.name===t.name)).filter(Boolean).map(t=>t.id);
-    p.col={base,evo,hero,towers:towers.length?towers:['tower-princess']};p.levels=levels;p.tag=tag;p.source='tag';p.updated=Date.now();p.trophies=j.trophies??null;p.current=(j.currentDeck||[]).map(i=>ID_TO_CARD[i]).filter(k=>k&&C[k]);
+    p.col={base,evo,hero,towers:towers.length?towers:['tower-princess']};p.levels=levels;p.tag=tag;p.source='tag';p.edited=false;p.updated=Date.now();p.trophies=j.trophies??null;p.current=(j.currentDeck||[]).map(i=>ID_TO_CARD[i]).filter(k=>k&&C[k]);
     if(/^Player \d$/.test(p.name)||!p.name)p.name=j.name||p.name;
-    saveProfiles();renderPlayers();
+    saveProfiles();playerChanged(key);renderPlayers();
     if(!quiet){toast('Loaded '+j.name+': '+evo.length+' Evos, '+hero.length+' Heroes');if(state.view==='gen')forge();else setStatus('');}
     return true;
   }catch(e){renderPlayers();return fail(e.message||'Lookup failed. Check the tag and try again.');}
@@ -180,7 +210,7 @@ function playerHTML(key){
   const p=prof(key),r=state.rules[key],duo=state.mode==='duo';
   const cs=colSets(p);
   const baseHave=cs.base?cs.base.size:BASE_CARDS.length;
-  const opts=profiles.map(x=>`<option value="${x.id}"${x.id===p.id?' selected':''}>${esc(x.name)}</option>`).join('');
+  const opts=profiles.map(x=>`<option value="${esc(x.id)}"${x.id===p.id?' selected':''}>${esc(x.name)}</option>`).join('');
   const towerOpts=['auto',...TOWER_IDS.filter(t=>cs.towers.has(t))].map(t=>`<option value="${t}"${r.tower===t?' selected':''}>${t==='auto'?'Recommended for each deck':TOWER[t].name}</option>`).join('');
   return `<div class="player ${key==='B'?'b':''}" data-key="${key}">
     <div class="phead"><span class="pbadge" aria-hidden="true">${key==='A'?1:2}</span>
@@ -307,15 +337,15 @@ $('players').addEventListener('change',e=>{
     if(t.value==='__new'){const p=newProfile('Player '+(profiles.length+1));profiles.push(p);slots[key]=p.id;saveProfiles();renderPlayers();openEditor(key);return;}
     if(t.value==='__code'){openShare(key,true);renderPlayers();return;}
     if(t.value==='__del'){const other=slots[key==='A'?'B':'A'],gone=slots[key];const next=profiles.find(x=>x.id!==gone&&x.id!==other);if(next){profiles=profiles.filter(x=>x.id!==gone);slots[key]=next.id;saveProfiles();toast('Player removed');}renderPlayers();return;}
-    slots[key]=t.value;saveProfiles();renderPlayers();
+    slots[key]=t.value;saveProfiles();playerChanged(key);renderPlayers();
+    if(state.view==='gen')forge();
   }
 });
-$('players').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id&&e.target.id.startsWith('tag-')){e.preventDefault();lookupTag(e.target.id.slice(4),e.target.value);}});
 
 /* ---------- collection editor ---------- */
 let editor=null;
 function openEditor(key){editor={key,tab:'evo',q:''};renderEditor();$('sheet').hidden=false;if(matchMedia('(hover:hover) and (pointer:fine)').matches)setTimeout(()=>{const s=$('ed-search');if(s)s.focus();},30);}
-function closeSheet(){$('sheet').hidden=true;$('sheet').innerHTML='';editor=null;renderPlayers();}
+function closeSheet(){const k=editor&&editor.key;$('sheet').hidden=true;$('sheet').innerHTML='';editor=null;if(k)playerChanged(k);renderPlayers();}
 function editorItems(){
   const p=prof(editor.key),cs=colSets(p);const q=editor.q.toLowerCase();
   let list;
@@ -360,6 +390,7 @@ function toggleMany(p,ids,on){
   if(t==='base'){let base=p.col.base?new Set(p.col.base):new Set(BASE_CARDS);ids.forEach(id=>on?base.add(id):base.delete(id));p.col.base=base.size===BASE_CARDS.length?null:[...base];}
   else{const f=t==='evo'?'evo':t==='hero'?'hero':'towers';const s=new Set(p.col[f]);ids.forEach(id=>on?s.add(id):s.delete(id));if(f==='towers'&&!s.size)s.add('tower-princess');p.col[f]=[...s];}
   if(p.source==='unset')p.source='manual';
+  p.edited=true; // hand edits win over the quiet 12-hour refresh; pressing Load reads the game again
   p.updated=Date.now();saveProfiles();
 }
 
@@ -423,7 +454,7 @@ function validate(key){
 }
 
 /* ---------- background worker: keeps the page responsive during the search ---------- */
-let worker=null,jobId=0;const jobs={};
+let worker=null,workerDead=false,jobId=0;const jobs={};
 function getWorker(){
   if(worker)return worker;
   try{
@@ -436,20 +467,22 @@ self.onmessage=e=>{const{id,kind,args}=e.data;try{
 }catch(err){self.postMessage({id,error:String(err&&err.message||err)});}};`;
     worker=new Worker(URL.createObjectURL(new Blob([src],{type:'text/javascript'})));
     worker.onmessage=e=>{const j=jobs[e.data.id];if(!j)return;delete jobs[e.data.id];e.data.error?j.rej(new Error(e.data.error)):j.res(e.data.res);};
-    worker.onerror=()=>{worker=null;};
+    worker.onerror=()=>{worker=null;workerDead=true;for(const k of Object.keys(jobs)){jobs[k].rej(new Error('the search stopped unexpectedly. Press Forge again'));delete jobs[k];}};
   }catch(e){worker=null;}
   return worker;
 }
 function runJob(kind,args){
-  const w=getWorker();
+  const w=workerDead?null:getWorker(); // after a worker failure, searches run on the page itself
   if(!w)return new Promise((res,rej)=>setTimeout(()=>{try{memo=new Map();scCache=new Map();res(kind==='duo'?generateDuo(args):generate(args));}catch(e){rej(e);}},30));
   return new Promise((res,rej)=>{const id=++jobId;jobs[id]={res,rej};w.postMessage({id,kind,args});});
 }
 
 /* ---------- forge ---------- */
+let forgeRun=0;
 async function forge(){
   hideErr();saveRules();
-  const duo=state.mode==='duo';
+  const duo=state.mode==='duo',run=++forgeRun; // run: only the newest search may draw, and only on the tab it was started for
+  const live=()=>run===forgeRun&&state.view==='gen'&&(state.mode==='duo')===duo;
   const v=validate('A')||(duo&&validate('B'));
   if(v){showErr(v);return;}
   if(duo){const a=state.rules.A.locks.map(l=>l.id);const sh=state.rules.B.locks.filter(l=>a.includes(l.id)).length;if(sh>2){showErr('The two decks can share at most 2 cards, but '+sh+' of the same cards are pinned.');return;}}
@@ -464,19 +497,22 @@ async function forge(){
       const o={A:sideOpts('A'),B:sideOpts('B'),maxAvg,count,priority:$('priority').value,names:names(),vs,levelW:$('levelmatch').checked?1:0,avoid:{...recent.duo}};
       const pairs=await runJob('duo',o);
       state.lastDuo=pairs;state.lastOpts=o;noteShown('duo',pairs.flatMap(q=>[q.A,q.B]));
-      if(!pairs.length){$('out').innerHTML='';setStatus('');showErr('No legal pair fits these rules. Remove a pin or a blocked card and try again.');}
+      if(!live()){}
+      else if(!pairs.length){$('out').innerHTML='';setStatus('');showErr('No legal pair fits these rules. Remove a pin or a blocked card and try again.');}
       else{setStatus(pairs.length+' team pair'+(pairs.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDuo(pairs);}
     }else{
       const sa=sideOpts('A');
       const opts={...sa,maxAvg,count,maxChamps:1,vs,levelW:$('levelmatch').checked?1:0,avoid:{...recent['1v1']}};
       const decks=await runJob('gen',opts);
       state.last=decks;state.lastOpts=opts;noteShown('1v1',decks.map(d=>d.ids));
-      if(!decks.length){$('out').innerHTML='';setStatus('');showErr('No legal deck fits these rules. Remove a pin or a blocked card and try again.');}
+      if(!live()){}
+      else if(!decks.length){$('out').innerHTML='';setStatus('');showErr('No legal deck fits these rules. Remove a pin or a blocked card and try again.');}
       else{setStatus(decks.length+' deck'+(decks.length>1?'s':'')+' in '+((performance.now()-t)/1000).toFixed(1)+' s. Forge again for fresh options.');renderDecks(decks);}
     }
-  }catch(e){showErr('The search hit an error: '+e.message);}
+  }catch(e){if(run===forgeRun)showErr('The search hit an error: '+e.message);}
+  if(run!==forgeRun)return; // a newer search owns the button and the status line
   $('out').classList.remove('stale');
-  btn.disabled=false;btn.textContent=duo?'Forge team':'Forge decks';
+  btn.disabled=false;btn.textContent=state.mode==='duo'?'Forge team':'Forge decks';
 }
 /* Phones: a floating Forge button whenever the main one has scrolled out of view. */
 (function(){const fab=$('go-fab'),go=$('go');if(!fab||!('IntersectionObserver' in window))return;
@@ -779,9 +815,14 @@ function makeBackup(){return 'efb1.'+btoa(unescape(encodeURIComponent(JSON.strin
 function useBackup(code){
   try{const m=String(code||'').trim().match(/^efb1\.([A-Za-z0-9+/=]+)$/);if(!m)throw 0;
     const d=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-    if(!Array.isArray(d.profiles)||!d.profiles.length||!d.profiles.every(x=>x&&x.id&&x.col&&Array.isArray(x.col.evo)&&Array.isArray(x.col.hero)))throw 0;
-    profiles=d.profiles;slots=d.slots&&profiles.find(x=>x.id===d.slots.A)?d.slots:{A:profiles[0].id,B:(profiles[1]||profiles[0]).id};
-    state.saved=Array.isArray(d.saved)?d.saved.filter(x=>x&&Array.isArray(x.decks)&&x.decks.every(k=>Array.isArray(k.ids)&&k.ids.every(i=>C[i]))):[];
+    if(!d||!Array.isArray(d.profiles)||!d.profiles.length||!d.profiles.every(x=>x&&x.id&&x.col&&Array.isArray(x.col.evo)&&Array.isArray(x.col.hero)))throw 0;
+    const ps=d.profiles.map(cleanProfile).filter(Boolean),seen=new Set(),uniq=ps.filter(x=>!seen.has(x.id)&&seen.add(x.id));
+    if(!uniq.length)throw 0;
+    if(uniq.length<2)uniq.push(newProfile('Player 2'));
+    profiles=uniq;
+    const has=id=>typeof id==='string'&&profiles.some(x=>x.id===id),ds=d.slots&&typeof d.slots==='object'?d.slots:{};
+    slots={A:has(ds.A)?ds.A:profiles[0].id,B:has(ds.B)?ds.B:profiles[1].id};
+    state.saved=cleanSaved(d.saved);state.rules={A:blankRules(),B:blankRules()};state.unlock={result:null,busy:false,done:0,total:0};
     saveProfiles();store.set('ef2-saved',state.saved);renderPlayers();renderSaved();toast('Backup restored');
   }catch(e){toast('That backup code isn\'t valid');}
 }
@@ -792,7 +833,7 @@ function renderSaved(){
   $('out').innerHTML=state.saved.map((s,i)=>{
     const total=s.w+s.l;
     return `<article class="deck"><div class="dhead"><div><h2 class="dtitle">${esc(s.title)}</h2><div class="dmeta"><span>${s.mode==='duo'?'2v2 pair':'1v1'}</span><span>Saved ${new Date(s.at).toLocaleDateString()}</span></div></div>
-      <div class="score"><span class="num">${total?Math.round(s.w/total*100)+'%':'–'}</span><small>${total?s.w+' W, '+s.l+' L':'No games logged'}</small></div></div>
+      <div class="score"><span class="num">${total?Math.round(s.w/total*100)+'%':'–'}</span><small>${total?(+s.w||0)+' W, '+(+s.l||0)+' L':'No games logged'}</small></div></div>
       <div class="${s.mode==='duo'?'pair':'solo'}">${s.decks.map(dk=>`<div class="${s.mode==='duo'?'duodeck':'solodeck'} ${dk.key==='B'?'b':''}">${s.mode==='duo'?`<p class="who"><span class="tag">${esc(dk.who)}</span></p>`:''}${tilesHTML(dk.ids,{specials:dk.specials,empty:dk.empty||0},null)}<div class="actions">${linkBtn(dk.ids,{specials:dk.specials},dk.tower)}<button class="btn sm" type="button" data-scopy="${i}" data-d="${s.decks.indexOf(dk)}">Copy list</button></div></div>`).join('')}</div>
       <div class="actions wl"><button class="btn" type="button" data-win="${i}">Log a win</button><button class="btn" type="button" data-loss="${i}">Log a loss</button><button class="btn" type="button" data-sedit="${i}">Edit</button><button class="btn" type="button" data-del="${i}">Delete</button></div>
     </article>`;}).join('')+backupHTML();
@@ -878,6 +919,8 @@ async function runCheck(){
       }
     }
   }catch(e){ck.result={error:'The check hit an error: '+e.message};}
+  if(state.check!==ck)return; // a different deck was opened meanwhile
+  if(ck.ids.join()!==ids.join()||(ck.idsB?ck.idsB.join():'')!==(idsB?idsB.join():'')){ck.busy=false;ck.result=null;return runCheck();} // cards changed mid-check: score the new ones
   if(ck.first&&ck.result&&!ck.result.error){ck.base=ck.result.pair?teamShown(ck.result.pair):showScore(ck.result.deck.s);ck.first=false;}
   ck.busy=false;if(state.view==='check')renderCheck();
 }
@@ -1007,6 +1050,7 @@ async function runUnlock(){
     rows.sort((a,b)=>b.s-a.s);
     u.result={rows:rows.slice(0,6),base:s0,missing:cand.missing,name:p.name,duo};
   }catch(e){u.result={error:'The test hit an error: '+e.message};}
+  if(u.stale){u.stale=false;u.result=null;u.auto=null;} // the player or mode changed while this ran
   u.busy=false;if(state.view==='unlock')renderUnlock();
 }
 $('out').addEventListener('click',e=>{if(e.target.closest('[data-unlockgo]'))runUnlock();});
@@ -1058,8 +1102,16 @@ function setView(v,quiet){
   else{$('out').innerHTML='<div class="empty-state"><b>Ready when you are</b>Set up each player\'s collection, then press '+(state.mode==='duo'?'Forge team':'Forge decks')+'.</div>';setStatus('');}
 }
 function rerender(){setView(state.view);}
+/* The player in a slot changed (switch, tag load, collection edit): drop results worked out for the old collection. */
+function playerChanged(key){
+  const r=state.rules[key];if(r&&r.tower!=='auto'&&!colSets(prof(key)).towers.has(r.tower))r.tower='auto';
+  {const u=state.unlock;u.result=null;u.auto=null;u.stale=u.busy;}
+  if(state.check.result){state.check.result=null;if(state.view==='check'&&checkReady())runCheck();}
+  if(state.view!=='gen'&&state.view!=='check')rerender();
+}
 ['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>{setView(x);const t=document.querySelector('main .tabs');if(t&&t.getBoundingClientRect().top<0)t.scrollIntoView({block:'start'});$('tab-'+x).scrollIntoView({block:'nearest',inline:'center'});}));
 function setMode(m){
+  if(state.mode!==m){const u=state.unlock;u.result=null;u.auto=null;u.stale=u.busy;}
   state.mode=m;store.set('ef2-mode',m);
   if(typeof setDataNote==='function'&&setDataNote.last)setDataNote(...setDataNote.last);
   $('mode-1v1').setAttribute('aria-pressed',m==='1v1');$('mode-duo').setAttribute('aria-pressed',m==='duo');
@@ -1126,14 +1178,14 @@ async function loadLinkedTags(){
   const ok=t=>/^[0289PYLQGRJCUV]{3,14}$/.test(t);
   if(!ok(a)&&!ok(b))return;
   if(ok(b))setMode('duo');
-  if(ok(a)){slotForTag('A',a);await lookupTag('A',a,{quiet:true});}
-  if(ok(b)&&b!==a){slotForTag('B',b);await lookupTag('B',b,{quiet:true});}
+  if(ok(a))await lookupTag('A',a,{quiet:true});
+  if(ok(b)&&b!==a)await lookupTag('B',b,{quiet:true});
   store.set('ef2-welcomed',true);buildUI.open=false;renderPlayers();
 }
 /* A collection loaded from a tag more than 12 hours ago is refreshed quietly, so new unlocks and levels show up. */
 async function refreshStale(){
   if(!state.api)return;
-  for(const key of state.mode==='duo'?['A','B']:['A']){const p=prof(key);if(p&&p.source==='tag'&&p.tag&&Date.now()-p.updated>12*36e5)await lookupTag(key,p.tag,{quiet:true});}
+  for(const key of state.mode==='duo'?['A','B']:['A']){const p=prof(key);if(p&&p.source==='tag'&&p.tag&&!p.edited&&Date.now()-p.updated>12*36e5)await lookupTag(key,p.tag,{quiet:true});}
 }
 Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).then(()=>forge());
 /* Phones: the theme picker is a set-once control, so it lives in the footer and leaves the top of the screen to the decks. */

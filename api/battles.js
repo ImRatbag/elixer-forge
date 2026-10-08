@@ -52,11 +52,16 @@ async function handler(req, res) {
     r = await fetch(`${API_BASE}/players/%23${tag}/battlelog`, { headers: { Authorization: `Bearer ${process.env.CR_API_KEY}`, Accept: 'application/json', 'User-Agent': 'ElixirForge/1.0 (+deck builder)' } });
   } catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'network', message: 'Could not reach the Clash Royale API. Try again in a minute.' })); }
   if (r.status === 404) { res.statusCode = 404; return res.end(JSON.stringify({ error: 'not_found', message: `No player found with tag #${tag}.` })); }
+  if (r.status === 403) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'forbidden', message: 'The API key was refused.' })); }
+  if (r.status === 503) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'maintenance', message: 'Clash Royale is under maintenance. Try again later.' })); }
   if (r.status === 429) { res.statusCode = 429; return res.end(JSON.stringify({ error: 'rate_limited', message: 'Too many lookups right now. Try again in a minute.' })); }
   if (!r.ok) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'upstream', message: `The Clash Royale API answered ${r.status}.` })); }
+  let out;
+  try { out = toDecks(await r.json(), tag); }
+  catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'bad_response', message: 'The Clash Royale API sent an answer that could not be read. Try again in a minute.' })); }
   res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1800');
   res.statusCode = 200;
-  return res.end(JSON.stringify(toDecks(await r.json(), tag)));
+  return res.end(JSON.stringify(out));
 }
 
 module.exports = handler;

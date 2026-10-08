@@ -42,11 +42,14 @@ module.exports = async (req, res) => {
   const tag = String((req.query && req.query.tag) || '').toUpperCase().replace(/[^0289PYLQGRJCUV]/g, '');
   if (tag) {
     res.setHeader('Content-Type', 'application/json');
+    if (tag.length < 3 || tag.length > 14) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'bad_tag' })); }
     if (!process.env.CR_API_KEY) { res.statusCode = 503; return res.end(JSON.stringify({ error: 'no_key' })); }
     try {
       const r = await fetch(`${API_BASE}/players/%23${tag}`, { headers: { Authorization: `Bearer ${process.env.CR_API_KEY}`, Accept: 'application/json' } });
       if (!r.ok) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'upstream', status: r.status })); }
-      return res.end(JSON.stringify(auditPlayer(await r.json())));
+      const body = auditPlayer(await r.json());
+      res.setHeader('Cache-Control', 's-maxage=600, stale-while-revalidate=1800');
+      return res.end(JSON.stringify(body));
     } catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'network' })); }
   }
   res.setHeader('Content-Type', 'application/json');

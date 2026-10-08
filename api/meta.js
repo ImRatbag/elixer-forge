@@ -46,10 +46,17 @@ module.exports = async (req, res) => {
       }
       const names = l => l.map(x => { const [id, rest] = x.split(': '); return (byId.get(id) || { name: id }).name + ': ' + rest; });
       const top = m => Object.entries(m.cards).map(([id, c]) => ({ id, u: c.base.usage, wr: Math.round(c.base.wins / c.base.games * 100) })).sort((a, b) => b.u - a.u).slice(0, 12).map(x => `${x.id}: ${x.u}% use, ${x.wr}% wins`);
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
       return res.end(JSON.stringify({ ms: Date.now() - t0, playersListed: tags.length, fetched, failed, battles: battles.length, rankedSides: agg.ranked.sides, duoSides: agg.duo.sides, rankedCards: Object.keys(agg.ranked.cards).length, duoCards: Object.keys(agg.duo.cards).length, rankedDecks: agg.ranked.decks.length, duoDecks: agg.duo.decks.length, rankedTop: names(top(agg.ranked)), livePowerSpread: dist, bigMovers: movers, topDecks: agg.ranked.decks.slice(0, 4).map(d => ({ cards: d.cards.map(x => { const [id, f] = x.split(':'); return (f ? f + ' ' : '') + (byId.get(id) || { name: id }).name; }), games: d.games, wins: d.wins })) }));
     }
-    if (agg.ranked.sides < 500) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'thin_sample', sides: agg.ranked.sides })); }
+    if (agg.ranked.sides < 500) { res.setHeader('Cache-Control', 's-maxage=300'); res.statusCode = 502; return res.end(JSON.stringify({ error: 'thin_sample', sides: agg.ranked.sides })); }
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
     return res.end(JSON.stringify(meta));
-  } catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'failed', message: String(e.message || e), ms: Date.now() - t0 })); }
+  } catch (e) {
+    // Details stay in the server log; callers only learn that it failed. A short cache stops a retry storm, since each
+    // uncached call fans out to well over a hundred requests on the API key.
+    console.error('meta failed:', e && e.message || e);
+    res.setHeader('Cache-Control', 's-maxage=300');
+    res.statusCode = 502; return res.end(JSON.stringify({ error: 'failed', message: 'The meta could not be built right now.', ms: Date.now() - t0 }));
+  }
 };

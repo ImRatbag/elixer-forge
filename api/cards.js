@@ -25,9 +25,12 @@ async function handler(req, res) {
     r = await fetch(`${API_BASE}/cards`, { headers: { Authorization: `Bearer ${process.env.CR_API_KEY}`, Accept: 'application/json', 'User-Agent': 'ElixirForge/1.0 (+deck builder)' } });
   } catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'network' })); }
   if (!r.ok) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'upstream', status: r.status })); }
+  let out;
+  try { out = toCards(await r.json()); }
+  catch (e) { res.statusCode = 502; return res.end(JSON.stringify({ error: 'bad_response' })); }
   res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
   res.statusCode = 200;
-  return res.end(JSON.stringify(toCards(await r.json())));
+  return res.end(JSON.stringify(out));
 }
 
 module.exports = handler;
