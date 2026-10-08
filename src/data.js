@@ -23,7 +23,7 @@ goblin-curse|Goblin Curse|2|s|s|7|0|0|6|0|0
 knight|Knight|3|t|M|5|7|5|4|7|4
 archers|Archers|3|t|A|5|6|0|4|5|0
 minions|Minions|3|t|AX|7|0|0|5|0|0
-goblin-gang|Goblin Gang|3|t|X|6|0|0|6|0|0
+goblin-gang|Goblin Gang|3|t|AX|6|0|0|6|0|0
 skeleton-barrel|Skeleton Barrel|3|t|W|5|7|0|5|10|0
 firecracker|Firecracker|3|t|AS|4|4|0|2|6|0
 cannon|Cannon|3|b|B|4|5|0|4|6|0
@@ -90,7 +90,7 @@ giant|Giant|5|t|WT|7|0|7|3|0|5
 wizard|Wizard|5|t|AS|4|6|4|2|8|5
 royal-hogs|Royal Hogs|5|t|W|6|6|0|2|6|0
 inferno-tower|Inferno Tower|5|b|BKA|5|0|0|3|0|0
-goblin-hut|Goblin Hut|4|b|B|7|0|0|8|0|0
+goblin-hut|Goblin Hut|4|b|BA|7|0|0|8|0|0
 balloon|Balloon|5|t|W|6|0|6|5|0|5
 witch|Witch|5|t|AS|4|5|0|1|4|0
 prince|Prince|5|t|K|5|0|0|4|0|0
@@ -315,7 +315,11 @@ const META_EXTRA=[
  ['bats','fireball','goblin-hut','ice-wizard','minion-giant','ronin','skeletons','zap']
 ];
 // Pairs seen together in this week's top decks get a small synergy bonus.
-META.concat(META2).concat(META_EXTRA.map(c=>({cards:c}))).forEach(d=>{const ids=d.cards.map(x=>x.split(':')[0]);for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const k=sk(ids[i],ids[j]);if(!SYN[k])SYN[k]={w:0.5,why:'Played together in a top Ranked deck this week',meta:true};}});
+function linkMetaPairs(){ // rebuilt whenever the top-deck lists change, so the bonus follows the live meta
+  for(const k of Object.keys(SYN))if(SYN[k].meta)delete SYN[k];
+  META.concat(META2).concat(META_EXTRA.map(c=>({cards:c}))).forEach(d=>{const ids=d.cards.map(x=>x.split(':')[0]).filter(i=>C[i]);for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){const k=sk(ids[i],ids[j]);if(!SYN[k])SYN[k]={w:0.5,why:'Played together in a top deck this week',meta:true};}});
+}
+linkMetaPairs();
 const RARITY={};
 `rare:heal-spirit ice-golem suspicious-bush mega-minion dart-goblin elixir-golem tombstone earthquake valkyrie musketeer mini-pekka hog-rider battle-ram zappies flying-machine battle-healer goblin-demolisher minion-giant bomb-tower furnace goblin-cage fireball giant wizard royal-hogs inferno-tower goblin-hut barbarian-hut elixir-collector rocket three-musketeers
 epic:mirror wall-breakers barbarian-barrel rage goblin-curse skeleton-army guards goblin-barrel tornado clone vines void baby-dragon dark-prince hunter rune-giant goblin-drill freeze poison balloon witch prince bowler executioner cannon-cart electro-dragon giant-skeleton goblin-giant x-bow lightning pekka electro-giant golem
@@ -391,7 +395,7 @@ const COUNTERS={
 'royal-giant':['inferno-tower','inferno-dragon','mini-pekka','skeleton-army','guards','barbarians','goblin-cage','hunter','ronin','pekka','elite-barbarians','minion-horde','lumberjack','prince','mighty-miner','sparky'],
 'golem':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','elite-barbarians','minion-horde','mighty-miner','sparky'],
 'giant':['inferno-tower','inferno-dragon','pekka','mini-pekka','hunter','skeleton-army','barbarians','minion-horde','ronin','elite-barbarians','mighty-miner','sparky','lumberjack','prince'],
-'electro-giant':['pekka','mini-pekka','skeleton-army','barbarians','hunter','tornado','lightning','minion-horde','bowler','elite-barbarians'],
+'electro-giant':['inferno-tower','inferno-dragon','pekka','mini-pekka','cannon','tesla','barbarians','hunter','tornado','bowler','elite-barbarians','goblin-cage','bomb-tower'],
 'goblin-giant':['inferno-tower','inferno-dragon','mini-pekka','pekka','executioner','valkyrie','bowler','minion-horde'],
 'elixir-golem':['inferno-tower','pekka','mini-pekka','executioner','bowler','valkyrie'],
 'lava-hound':['wizard','executioner','baby-dragon','electro-dragon','minions','inferno-dragon','musketeer','skeleton-dragons','phoenix','archer-queen','little-prince','minion-horde','inferno-tower','tesla','mega-minion','hunter','magic-archer','flying-machine'],

@@ -495,7 +495,7 @@ function prosCons(d){
   const cycle=cycleCost(d.ids);
   if(cycle<=8)pros.push({t:'Fast cycle',d:'Only '+cycle+' elixir to get back to your win condition'});
   if(d.k.air>=3)pros.push({t:'Strong air defense',d:d.k.air+' cards hit air'});
-  if(d.forms&&d.forms.value>=24)pros.push({t:'Strong special slots',d:d.forms.specials.map(x=>displayName(x.id,x.form==='champ'?null:x.form)).join(', ')+' are strong this week'});
+  if(d.forms&&d.forms.sum>=25)pros.push({t:'Strong special slots',d:d.forms.specials.map(x=>displayName(x.id,x.form==='champ'?null:x.form)).join(', ')+' are strong this week'});
   if(d.syn.parts.cov===100)pros.push({t:'Covers every role',d:'Air defense, splash, both spell sizes, a tank killer and cheap cycle'});
   d.syn.notes.forEach(n=>cons.push({t:'Shared weakness',d:n}));
   const k=d.k;
@@ -573,7 +573,7 @@ function winAnswersHTML(decks){ // decks: [{ids}] — answers come from every de
 }
 function scoreSumHTML(d,shown,duo){ // 1v1 only: the real parts of the Forge score, scaled to the number shown
   const F=0.82,cards=d.ids.map(i=>C[i]);
-  const strength=cards.reduce((a,c)=>a+(duo?c.p2:c.p),0)/8*6,slots=d.forms?d.forms.value*1.3-d.forms.empty*25:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
+  const strength=cards.reduce((a,c)=>a+(duo?c.p2:c.p),0)/8*6,slots=d.slotPts!=null?d.slotPts:-60,syn=d.synPct*0.32,vs=d.vs?d.vs.score:0;
   const parts=[['Card strength',strength,'How strong these 8 cards are in the current meta'],['Evo, Hero and Wild slots',slots,d.forms&&d.forms.empty?d.forms.empty+' of 3 special slots empty':'All 3 special slots filled with forms this player owns'],['Synergy',syn,d.synPct+'% of the possible combo, support and coverage credit']];
   if(d.vs)parts.push(d.vs.meta?['Against the current meta',vs*(d.vs.w||1),'Answers to the strongest win conditions and spells being played now']:['Against their deck',vs,'Answers to the opponent\'s win conditions and spells']);
   const rows=parts.map(([t,v,why])=>({t,v:Math.round(v*F),why}));

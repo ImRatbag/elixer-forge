@@ -94,3 +94,26 @@ console.log('engine rule tests passed:', decks, 'decks checked');
   assert.ok(sp.some(x => x.id === 'goblin-barrel' && x.form === 'evo'), 'Evo Goblin Barrel takes a slot in 2v2');
   console.log('slot choice test passed');
 }
+
+// Slot model: forms that add the most win the slots, and a stronger normal card never lowers a deck's score.
+{
+  const A = new Function(src + '; return {assignForms,scoreDeck,C,generate,generateDuo,syncCards,CARD_IDS,ID_TO_CARD};')();
+  const ctx = duo => ({ forms: {}, ban: {}, maxChamps: 1, duo, tag: duo ? 'd|' : '', maxAvg: 9, style: 'any' });
+  const pick = A.assignForms(['mirror', 'little-prince', 'bomb-tower', 'firecracker', 'furnace', 'knight', 'barbarian-barrel', 'archers'], ctx(true)).specials.map(x => x.id);
+  assert.ok(pick.includes('firecracker') && pick.includes('knight'), 'biggest gains take the slots');
+  const ids = ['royal-giant', 'fisherman', 'hunter', 'royal-ghost', 'fireball', 'the-log', 'skeletons', 'electro-spirit'];
+  const before = A.scoreDeck(ids, ctx(false)).s; A.C['royal-giant'].p += 1;
+  const after = A.scoreDeck(ids, { ...ctx(false), tag: 'x|' }).s; A.C['royal-giant'].p -= 1;
+  assert.ok(after >= before - 1e-9, 'a stronger normal card must not lower the score');
+  // The elixir limit holds when nothing is pinned.
+  for (const cap of [3.0, 3.4]) {
+    for (const d of A.generate({ locked: [], forms: {}, exclude: new Set(), ban: {}, style: 'any', maxAvg: cap, count: 3, maxChamps: 1, restarts: 60 })) assert.ok(d.avg <= cap + 1e-9, '1v1 deck over the elixir limit');
+    const sd = () => ({ locked: [], forms: {}, exclude: new Set(), ban: {}, style: 'any', role: 'flex' });
+    for (const p of A.generateDuo({ A: sd(), B: sd(), maxAvg: cap, count: 2, priority: 'balanced', names: { A: 'A', B: 'B' } })) assert.ok(p.sa.avg <= cap + 1e-9 && p.sb.avg <= cap + 1e-9, '2v2 deck over the elixir limit');
+  }
+  // Two cards swapping game IDs must both stay reachable.
+  const a = A.CARD_IDS.vines, b = A.CARD_IDS['spirit-empress'];
+  A.syncCards({ ids: { vines: b, 'spirit-empress': a } });
+  assert.equal(A.ID_TO_CARD[b], 'vines'); assert.equal(A.ID_TO_CARD[a], 'spirit-empress');
+  console.log('slot model, elixir limit and ID swap tests passed');
+}

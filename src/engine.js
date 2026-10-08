@@ -2,8 +2,12 @@
 let memo=new Map();
 // A Champion fills the Hero slot at slightly under its card rating: its ability is single-use per deployment,
 // but Champions sit in about four in ten top decks, so the discount is small.
-const CHAMP_SLOT=0.92;
-const SLOT_BASE_1V1=2.1,SLOT_BASE_2V2=3.4; // typical gain of a chosen form in each mode's ratings
+const CHAMP_SLOT=0.92; // kept for callers that rate a Champion on its own
+// A Champion's ability is what its slot adds. It is single-use per deployment, so it counts for a little less than a
+// typical Evo or Hero gain; Champions sit in about four in ten top decks, which this is tuned to match.
+const CHAMP_GAIN=1;
+// Every filled special slot is worth a flat SLOT_K, plus the form's gain counted at the same weight as card strength.
+const SLOT_K_1V1=8.6,SLOT_K_2V2=8.6;
 const NOBAN=new Set();
 function assignForms(ids,ctx){
   const key=(ctx.tag||'')+[...ids].sort().join(',');
@@ -12,7 +16,7 @@ function assignForms(ids,ctx){
   const mand=[],opts=[];
   for(const id of ids){
     const c=C[id],f=ctx.forms[id]||'any',ban=(ctx.ban&&ctx.ban[id])||NOBAN;
-    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)*CHAMP_SLOT});continue;}
+    if(isChamp(c)){mand.push({id,form:'champ',v:pw(c,ctx)+CHAMP_GAIN});continue;}
     if(f==='evo'){if(!c.ev||ban.has('evo'))return done(null);mand.push({id,form:'evo',v:evP(c,ctx)});continue;}
     if(f==='hero'){if(!c.he||ban.has('hero'))return done(null);mand.push({id,form:'hero',v:heP(c,ctx)});continue;}
     if(f==='normal'){if(ban.has('normal'))return done(null);continue;}
@@ -35,12 +39,11 @@ function assignForms(ids,ctx){
       if(e>2||h>2)return;
       if(total===3&&(e<1||h<1))return;
       if(mustSpecial.some(id=>!all.some(x=>x.id===id)))return;
-      // A slot is worth the form's strength plus what it adds over the normal card, so Evo Goblin Barrel (a weak card
-      // made strong) beats Hero Barbarian Barrel (a strong card made slightly stronger). SLOT_BASE takes the typical
-      // gain back off so scores keep the scale they had when slots counted strength alone.
-      const SLOT_BASE=ctx.duo?SLOT_BASE_2V2:SLOT_BASE_1V1;
-      const v=all.reduce((a,x)=>a+x.v+(x.form==='champ'?SLOT_BASE:Math.max(0,x.v-pw(C[x.id],ctx)))-SLOT_BASE,0);
-      if(!best||v>best.value)best={specials:all,value:v,empty:3-total};
+      // Slots go to the forms that ADD the most over their normal card: a slotted card plays at its form's rating,
+      // an unslotted one at its normal rating, so the best deck is the one with the largest total gain. (Filling by
+      // the form's own rating put Hero Barbarian Barrel ahead of Evo Goblin Barrel.) `sum` is kept for display.
+      const g=all.reduce((a,x)=>a+x.v-pw(C[x.id],ctx),0);
+      if(!best||g>best.value+1e-9)best={specials:all,value:g,sum:all.reduce((a,x)=>a+x.v,0),empty:3-total};
     };
     const rec=(start,sel)=>{
       if(sel.length===need){test(sel);return;}
@@ -125,10 +128,11 @@ function scoreDeck(ids,ctx){
   let s=cards.reduce((a,c)=>a+pw(c,ctx),0)/8*(ctx.wPow||6);
   let syn=0;const pairs=[];
   for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const x=SYN[sk(ids[i],ids[j])];if(x){syn+=x.w;pairs.push({a:ids[i],b:ids[j],...x});}}
-  if(!forms)s-=60;else s+=forms.value*1.3-forms.empty*25;
+  const slotPts=forms?forms.value/8*(ctx.wPow||6)+(3-forms.empty)*(ctx.duo?SLOT_K_2V2:SLOT_K_1V1)-forms.empty*25:-60;
+  s+=slotPts;
   // 1v1 decks must have a win condition. In 2v2 a pure support deck is allowed as long as the partner brings one
   // (teamScore checks the pair), so here it only costs a little: a win condition in both decks is still preferred.
-  if(k.wc===0)s-=ctx.duo?9:40;else if(k.wc>2)s-=18*(k.wc-2);
+  if(k.wc===0)s-=ctx.duo?5:40;else if(k.wc>2)s-=18*(k.wc-2);
   // A deck needs a card that can carry a game. Chip cards (Miner, Wall Breakers, Skeleton Barrel, Suspicious Bush,
   // Boss Bandit) count as win conditions, but one of them alone is not a plan; two together are a real chip deck.
   const mainW=cards.filter(c=>has(c,'W')&&!MINOR_WIN.has(c.id)).length;
@@ -142,7 +146,8 @@ function scoreDeck(ids,ctx){
   const wins=ids.filter(i=>has(C[i],'W'));
   const clash=wins.length>=2&&!((SYN[sk(wins[0],wins[1])]||{}).w>=2)&&!(ctx.style==='hyperbait'&&wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'));
   const baitPair=wins.length===2&&wins.every(i=>BAIT_CORE.has(i)||i==='wall-breakers'||i==='miner');
-  if(clash&&!(ctx.style==='hyperbait'&&baitPair))s-=ctx.role==='attack'?5:10;
+  const clashHurts=clash&&!(ctx.style==='hyperbait'&&baitPair);
+  if(clashHurts)s-=ctx.role==='attack'?5:10;
   // Air cover: troops and buildings that hit air, with damaging air spells standing in for up to one of them.
   const airEff=k.air+Math.min(1,k.airSp*0.5);
   if(airEff<2)s-=10*(2-airEff);else if(k.air>=3)s+=2;
@@ -154,7 +159,7 @@ function scoreDeck(ids,ctx){
   if(k.bld>2)s-=6*(k.bld-2);
   if(k.cheap<2)s-=4;
   const avg=k.sum/8;
-  if(avg>ctx.maxAvg)s-=(avg-ctx.maxAvg)*40;
+  if(avg>ctx.maxAvg)s-=6+(avg-ctx.maxAvg)*60; // the search steers hard under the cap; the picker then enforces it
   if(avg<2.5)s-=(2.5-avg)*30;
   // Siege wins by out-cycling: an X-Bow or Mortar deck weighed down with heavy support can't defend its own building.
   if(ids.includes('x-bow')&&avg>3.5)s-=(avg-3.5)*25;
@@ -196,9 +201,9 @@ function scoreDeck(ids,ctx){
   let adj=0;
   if(ctx.vs&&ctx.vs.length){vs=matchup(ids,ctx.vs);vs.meta=!!ctx.metaVs;const w=ctx.vsW||1;s+=vs.score*w;if(ctx.metaVs){adj=vs.score*(w-META_SHOW);vs.w=META_SHOW;}}
   const sy=synergyOf(ids,k,pairs);
-  if(clash){sy.pct=Math.max(0,sy.pct-10);sy.notes.push('Two win conditions ('+C[wins[0]].name+', '+C[wins[1]].name+') that don\'t support each other');}
+  if(clashHurts){sy.pct=Math.max(0,sy.pct-10);sy.notes.push('Two win conditions ('+C[wins[0]].name+', '+C[wins[1]].name+') that don\'t support each other');}
   s+=sy.pct*(ctx.wSyn||0.32);
-  return{s,forms,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs,adj};
+  return{s,forms,slotPts,pairs,k,avg,synPct:sy.pct,syn:sy,role:ctx.role||'flex',lv,vs,adj};
 }
 
 function addHeur(c,deck,ctx){
@@ -217,8 +222,10 @@ function addHeur(c,deck,ctx){
     if(has(c,'W')&&pc.some(p=>p.id===c.id))v-=6;
     if(has(c,'T')&&c.e>=6&&pc.some(p=>has(p,'T')&&p.e>=6))v-=8;
   }
-  const formPot=isChamp(c)?pw(c,ctx)*CHAMP_SLOT:Math.max(evP(c,ctx),heP(c,ctx));
-  v+=formPot*0.35;
+  // A card that brings a usable Evo or Hero is worth more: by what that form adds, and only if the player owns it.
+  const fb=(ctx.ban&&ctx.ban[c.id])||NOBAN;
+  const formGain=isChamp(c)?CHAMP_GAIN:Math.max(0,(c.ev&&!fb.has('evo')?evP(c,ctx):0)-pw(c,ctx),(c.he&&!fb.has('hero')?heP(c,ctx):0)-pw(c,ctx));
+  v+=formGain*0.9;
   if(has(c,'W')){if(k.wc===0)v+=6;else if(k.wc>=2)v-=10;else v-=3;
     if(ctx.style!=='any'&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id))v-=8;}
   if(c.type!=='s'&&has(c,'A')&&c.e>1&&k.air<2)v+=3;
@@ -235,6 +242,13 @@ function addHeur(c,deck,ctx){
   return v;
 }
 
+/* Starting win condition: a weighted draw, so stronger ones lead more searches but every one gets a turn.
+   (Taking the top of rating + noise never once started a search from Hog Rider or Goblin Barrel.) */
+function drawWin(list){
+  const w=list.map(x=>Math.pow(Math.max(1,x.v-2),1.6));let r=Math.random()*w.reduce((a,b)=>a+b,0);
+  for(let i=0;i<list.length;i++){r-=w[i];if(r<=0)return list[i].id;}
+  return list[list.length-1].id;
+}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 /* "Meta counter" playstyle: the cards a deck most needs answers for right now. The six strongest win conditions and
@@ -268,8 +282,7 @@ function generate(opts){
     if(deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
       const wins=rpool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style)));
       if(wins.length){
-        const scored=wins.map(id=>({id,v:C[id].p+Math.random()*7})).sort((a,b)=>b.v-a.v);
-        deck.push(scored[0].id);fixedN=deck.length;
+        deck.push(drawWin(wins.map(id=>({id,v:pw(C[id],ctx)}))));fixedN=deck.length;
       }
     }
     while(deck.length<8){
@@ -296,7 +309,9 @@ function generate(opts){
     const key=[...deck].sort().join(',');
     if(!found.has(key)){found.set(key,{ids:deck,...cur});deck.forEach(id=>usedN[id]=(usedN[id]||0)+1);}
   }
-  const all=[...found.values()].sort((a,b)=>b.s-a.s);
+  let all=[...found.values()].sort((a,b)=>b.s-a.s);
+  // The elixir limit is a limit: over-cap decks are dropped unless pinned cards leave nothing under it.
+  {const under=all.filter(d=>d.avg<=opts.maxAvg+1e-9);if(under.length)all=under;}
   // Pick decks one at a time. A deck loses points for every free card already used in a picked deck,
   // and for repeating a win condition, so one strong card can't flood every result.
   // opts.avoid: cards shown in the previous results, so pressing Forge again brings different options.
@@ -391,7 +406,7 @@ function buildDeck(side,ctx,pool,objective,partner){
   const free=partner&&ctx.style==='any'&&partner.some(i=>has(C[i],'W'))&&Math.random()<0.3;
   if(!free&&deck.length<8&&(!lc.some(c=>has(c,'W'))||!fitsStyle(lc,ctx.style))){
     const wins=pool.filter(id=>!deck.includes(id)&&has(C[id],'W')&&(ctx.style==='any'||(ARCH[id]||[]).includes(ctx.style))&&!(partner&&partner.includes(id)));
-    if(wins.length){const sc=wins.map(id=>{let v=pw(C[id],ctx)+Math.random()*7;if(partner)for(const p of partner){const x=SYN[sk(id,p)];if(x&&!x.meta)v+=x.w*1.5;}return{id,v};}).sort((a,b)=>b.v-a.v);deck.push(sc[0].id);fixedN=deck.length;}
+    if(wins.length){deck.push(drawWin(wins.map(id=>{let v=pw(C[id],ctx);if(partner)for(const p of partner){const x=SYN[sk(id,p)];if(x&&!x.meta)v+=x.w*1.5;}return{id,v};})));fixedN=deck.length;}
   }
   const hctx={...ctx,partner};
   while(deck.length<8){
@@ -460,7 +475,8 @@ function generateDuo(o){
       if(!found.has(key)){found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});fol.forEach(id=>usedF[id]=(usedF[id]||0)+1);}
     }
   }
-  const all=[...found.values()].sort((a,b)=>b.s-a.s);
+  let all=[...found.values()].sort((a,b)=>b.s-a.s);
+  {const under=all.filter(p=>p.sa.avg<=o.maxAvg+1e-9&&p.sb.avg<=o.maxAvg+1e-9);if(under.length)all=under;}
   const picked=[],uses={...(o.avoid||{})},seenPair=new Set();
   // Nothing more than DFLOOR points (about 4 on the displayed team score) below the best pair is shown for variety's sake.
   const DFLOOR=6.5,okN=all.length?all.filter(p=>p.s>=all[0].s-DFLOOR).length:0,shownN={},cap=Math.max(1,Math.ceil(o.count/3))*2;
@@ -492,7 +508,7 @@ function matchup(mine,opp){
     if(!cs.length){score-=6;notes.push('Nothing in this deck is a clean answer to '+C[w].name);}
   }
   const oppAir=opp.filter(i=>C[i]&&C[i].type!=='s'&&(['lava-hound','balloon','minion-giant','bats','minions','minion-horde','mega-minion','baby-dragon','inferno-dragon','electro-dragon','skeleton-dragons','phoenix','flying-machine'].includes(i))).length;
-  const myAir=mine.filter(i=>C[i].type!=='s'&&has(C[i],'A')).length;
+  const myAir=mine.filter(i=>C[i].type!=='s'&&has(C[i],'A')&&C[i].e>1).length;
   if(oppAir>=3&&myAir<3){score-=8;notes.push('Their deck has '+oppAir+' air cards; you have only '+myAir+' that hit air');}
   const spells=opp.filter(i=>SPELL_VULN[i]);
   for(const sp of spells){
@@ -604,8 +620,10 @@ function syncCards(payload){
   const added=[];
   for(const [k,id] of Object.entries((payload&&payload.ids)||{})){
     if(!C[k]||!id||CARD_IDS[k]===id)continue;
-    delete ID_TO_CARD[CARD_IDS[k]];CARD_IDS[k]=id;ID_TO_CARD[id]=k;
+    CARD_IDS[k]=id;
   }
+  for(const k of Object.keys(ID_TO_CARD))delete ID_TO_CARD[k];
+  for(const [k,id] of Object.entries(CARD_IDS))ID_TO_CARD[id]=k; // rebuilt whole, so two cards swapping IDs can't orphan one
   // Elixir costs follow the game too (balance changes move them).
   let moved=false;
   for(const [k,e] of Object.entries((payload&&payload.elixir)||{})){if(C[k]&&Number.isFinite(e)&&e>0&&C[k].e!==e){C[k].e=e;moved=true;}}
@@ -636,6 +654,7 @@ function applyMeta(meta){
       if(list.length>=5){const target=mode==='ranked'?META:META2;target.length=0;list.forEach(x=>target.push(x));}
     }
   }
+  linkMetaPairs();
   normForms();memo=new Map();scCache=new Map();
   return true;
 }
