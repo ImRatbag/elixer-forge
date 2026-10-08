@@ -130,11 +130,12 @@ function scoreDeck(ids,ctx){
   let s=cards.reduce((a,c)=>a+pw(c,ctx),0)/8*(ctx.wPow||6);
   let syn=0;const pairs=[];
   for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const x=SYN[sk(ids[i],ids[j])];if(x){syn+=x.w;pairs.push({a:ids[i],b:ids[j],...x});}}
-  const slotPts=forms?forms.value/8*(ctx.wPow||6)+(3-forms.empty)*(ctx.duo?SLOT_K_2V2:SLOT_K_1V1)-forms.empty*25:-60;
+  const slotPts=forms?forms.value/8*(ctx.wPow||6)+(3-forms.empty)*(ctx.duo?SLOT_K_2V2:SLOT_K_1V1)-forms.empty*(ctx.gimmick?0:25):-60; // a theme with few Evos and Heroes (all spells) can't fill its slots, and isn't punished twice for it
   s+=slotPts;
+  const sBal=s; // structure checks start here; gimmick decks break them on purpose
   // 1v1 decks must have a win condition. In 2v2 a pure support deck is allowed as long as the partner brings one
   // (teamScore checks the pair), so here it only costs a little: a win condition in both decks is still preferred.
-  if(k.wc===0)s-=ctx.duo?5:40;else if(k.wc>2)s-=18*(k.wc-2);
+  if(k.wc===0)s-=ctx.gimmick?0:ctx.duo?5:40; // a gimmick deck may win by spells aloneelse if(k.wc>2)s-=18*(k.wc-2);
   // A deck needs a card that can carry a game. Chip cards (Miner, Wall Breakers, Skeleton Barrel, Suspicious Bush,
   // Boss Bandit) count as win conditions, but one of them alone is not a plan; two together are a real chip deck.
   const mainW=cards.filter(c=>has(c,'W')&&!MINOR_WIN.has(c.id)).length;
@@ -170,9 +171,13 @@ function scoreDeck(ids,ctx){
   if(ids.includes('graveyard')&&!cards.some(c=>has(c,'T')||has(c,'M')||(isChamp(c)&&c.type==='t'&&c.e>=4)))s-=6;
   const bigTanks=cards.filter(c=>has(c,'T')&&c.e>=6).length;
   if(bigTanks>1)s-=8*(bigTanks-1);
+  // A gimmick deck gives up balance by design, so missing roles cost it only a little: enough to prefer the
+  // better-rounded version of the same gimmick, not enough to bury every gimmick at the bottom of the scale.
+  if(ctx.gimmick&&s<sBal)s=sBal+(s-sBal)*0.3;
   if(!fitsStyle(cards,ctx.style))s-=40;
   else if(ctx.style!=='any'){const off=cards.filter(c=>has(c,'W')&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id)).length;s-=12*off;}
   // Air playstyle: the win condition flying isn't enough; the attack needs at least three flying cards in all.
+  if(ctx.gimmickMin){const m=ctx.gimmickMin,n=ids.filter(i=>m.ids.includes(i)).length;if(n<m.n)s-=25*(m.n-n);}
   if(ctx.style==='air'){const fly=ids.filter(i=>FLYING.has(i)).length;if(fly<3)s-=12*(3-fly);else if(fly>=4)s+=3;}
   if(ctx.style==='hyperbait'){
     const sv=ids.filter(i=>SMALL_VULN.has(i)).length,bw=ids.filter(i=>BAIT_CORE.has(i)||i==='wall-breakers').length;
@@ -270,7 +275,7 @@ function generate(opts){
   memo=new Map();
   const counter=opts.style==='counter'&&!(opts.vs&&opts.vs.length);
   if(opts.style==='counter')opts={...opts,style:'any',vs:counter?metaThreats(!!opts.duo):opts.vs};
-  const ctx={metaVs:counter,vsW:counter?1.4:1,forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
+  const ctx={gimmick:!!opts.gimmick,gimmickMin:opts.gimmickMin||null,metaVs:counter,vsW:counter?1.4:1,forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
   const locked=opts.locked;
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
@@ -310,7 +315,7 @@ function generate(opts){
       }
       if(!improved)break;
     }
-    if(!cur.forms||cur.k.wc<1)continue;
+    if(!cur.forms||(cur.k.wc<1&&!opts.gimmick))continue;
     const key=[...deck].sort().join(',');
     if(!found.has(key)){found.set(key,{ids:deck,...cur});deck.forEach(id=>usedN[id]=(usedN[id]||0)+1);}
   }
@@ -437,7 +442,7 @@ function generateDuo(o){
   memo=new Map();scCache=new Map();
   const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names};
   const mk=(tag,sd)=>{const counter=sd.style==='counter'&&!(o.vs&&o.vs.length);const x=mk0(tag,sd.style==='counter'?{...sd,style:'any'}:sd);if(counter){x.vs=metaThreats(true);x.metaVs=true;x.vsW=1.4;}return x;};
-  const mk0=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
+  const mk0=(tag,sd)=>({tag,duo:true,gimmick:!!o.gimmick,gimmickMin:sd.gimmickMin||null,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
   const ctxA=mk('A',o.A),ctxB=mk('B',o.B);
   const poolA=CARDS.filter(c=>!o.A.exclude.has(c.id)).map(c=>c.id);
   const poolB=CARDS.filter(c=>!o.B.exclude.has(c.id)).map(c=>c.id);
@@ -474,7 +479,7 @@ function generateDuo(o){
       fol=improve(fol,F.sd.locked.length,fp,x=>ts(lead,x).s,1);
       if(!valid(lead,L.ctx)||!valid(fol,F.ctx))continue;
       if(lead.filter(i=>fol.includes(i)).length>2)continue;
-      if(!lead.concat(fol).some(i=>has(C[i],'W')))continue;
+      if(!o.gimmick&&!lead.concat(fol).some(i=>has(C[i],'W')))continue;
       const A=flip?fol:lead,B=flip?lead:fol;
       const key=[...A].sort().join(',')+'/'+[...B].sort().join(',');
       if(!found.has(key)){found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});fol.forEach(id=>usedF[id]=(usedF[id]||0)+1);}

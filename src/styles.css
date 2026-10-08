@@ -806,3 +806,12 @@ html{overflow-x:clip}
   .toast:has(.undo){white-space:normal}
 }
 @media (max-width:540px){.sheet .btn.sm,#out .btn.sm{min-height:40px}}
+
+/* Gimmick decks tab */
+.panel.gimmick h2{margin:0 0 4px}
+.gchips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.gchip{font:inherit;font-weight:700;font-size:13.5px;padding:9px 14px;min-height:40px;border-radius:999px;border:1px solid var(--line2);background:color-mix(in srgb,var(--panel) 80%,transparent);color:inherit;cursor:pointer}
+.gchip[aria-pressed="true"]{background:linear-gradient(180deg,var(--action-hi),var(--action) 45%,var(--action-lo));color:var(--action-ink);border-color:transparent}
+.gabout{border-top:1px solid var(--line);padding-top:10px}
+.gabout p{margin:0 0 8px;font-size:14px}
+.gabout .btn{margin-top:4px}

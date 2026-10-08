@@ -94,7 +94,7 @@ window.addEventListener('unhandledrejection',e=>{try{toast('Something went wrong
 
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
-const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:cleanSaved(store.get('ef2-saved',[])),api:null};
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},gimmick:{key:'spells',decks:null,pairs:null,mode:null,busy:false,error:null},last:[],lastDuo:[],lastOpts:null,saved:cleanSaved(store.get('ef2-saved',[])),api:null};
 /* Cards from recent results, so the next Forge leans toward different ones. Halves each round. */
 const recent={duo:{},'1v1':{}};
 function noteShown(mode,idLists){const r=recent[mode];for(const k in r){r[k]*=0.5;if(r[k]<0.1)delete r[k];}for(const ids of idLists)for(const id of ids)r[id]=Math.min(1.6,(r[id]||0)+0.7);}
@@ -1092,12 +1092,13 @@ $('out').addEventListener('click',e=>{
 
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
-  state.view=v;['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  state.view=v;['gen','meta','creator','gimmick','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
   if(window.updateFab)window.updateFab();
   if(quiet)return;
   if(v==='meta')renderMeta();
   else if(v==='check')renderCheck();
   else if(v==='creator')renderCreator();
+  else if(v==='gimmick')renderGimmick();
   else if(v==='unlock')renderUnlock();
   else if(v==='saved')renderSaved();
   else if(state.mode==='duo'&&state.lastDuo.length){renderDuo(state.lastDuo);setStatus(state.lastDuo.length+' team pairs');}
@@ -1112,7 +1113,7 @@ function playerChanged(key){
   if(state.check.result){state.check.result=null;if(state.view==='check'&&checkReady())runCheck();}
   if(state.view!=='gen'&&state.view!=='check')rerender();
 }
-['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>{setView(x);const t=document.querySelector('main .tabs');if(t&&t.getBoundingClientRect().top<0)t.scrollIntoView({block:'start'});$('tab-'+x).scrollIntoView({block:'nearest',inline:'center'});}));
+['gen','meta','creator','gimmick','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>{setView(x);const t=document.querySelector('main .tabs');if(t&&t.getBoundingClientRect().top<0)t.scrollIntoView({block:'start'});$('tab-'+x).scrollIntoView({block:'nearest',inline:'center'});}));
 function setMode(m){
   if(state.mode!==m){const u=state.unlock;u.result=null;u.auto=null;u.stale=u.busy;}
   state.mode=m;store.set('ef2-mode',m);
@@ -1197,3 +1198,65 @@ Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).th
   place();mq.addEventListener&&mq.addEventListener('change',place);})();
 /* Tiles are pictures only, and phones have no hover: tapping a card names it. */
 document.addEventListener('click',e=>{const t=e.target.closest('.tile.pic[data-cardname]');if(t&&!e.target.closest('button,a'))toast(t.dataset.cardname);});
+
+/* ---------- Gimmick decks: off-meta decks built around one odd idea, from the player's own cards ---------- */
+function gimmickOpts(key,g){
+  const so=sideOpts(key),pool=new Set(CARDS.filter(g.pool).map(c=>c.id)),exclude=new Set(so.exclude);
+  CARDS.forEach(c=>{if(!pool.has(c.id))exclude.add(c.id);});
+  const core=(g.core||[]).filter(i=>!exclude.has(i));
+  const free=CARDS.filter(c=>!exclude.has(c.id)).length;
+  return{opts:{...so,locked:core,forms:{},exclude,style:'any',role:'flex',gimmickMin:g.min?{n:g.min.n,ids:CARDS.filter(g.min.of).map(c=>c.id)}:null},
+    free,missingCore:(g.core||[]).filter(i=>exclude.has(i))};
+}
+async function runGimmick(){
+  const st=state.gimmick,g=GIMMICKS.find(x=>x.key===st.key);if(!g)return;if(st.busy){st.again=true;return;}
+  const duo=state.mode==='duo';st.busy=true;st.error=null;st.decks=null;st.pairs=null;st.mode=state.mode;renderGimmick();
+  try{
+    const a=gimmickOpts('A',g),b=duo?gimmickOpts('B',g):null,N=names();
+    const short=[a,b].map((x,i)=>x&&(x.missingCore.length?(i?N.B:N.A)+' doesn\'t have '+x.missingCore.map(id=>C[id].name).join(' and '):x.free<8?(i?N.B:N.A)+' owns only '+x.free+' cards that fit':'')).filter(Boolean);
+    const both=duo?CARDS.filter(c=>!a.opts.exclude.has(c.id)||!b.opts.exclude.has(c.id)).length:99;
+    if(short.length)st.error=short.join('. ')+', so this gimmick can\'t be built.';
+    else if(duo&&both<14)st.error='Only '+both+' cards fit '+g.name+', and in 2v2 your two decks can share just 2 cards, so there aren\'t enough for both of you. Try it in 1v1.';
+    else if(duo)st.pairs=await runJob('duo',{A:a.opts,B:b.opts,maxAvg:9,count:2,priority:'balanced',names:N,vs:null,levelW:$('levelmatch').checked?1:0,gimmick:true});
+    else st.decks=await runJob('gen',{...a.opts,maxAvg:9,count:2,maxChamps:1,vs:null,levelW:$('levelmatch').checked?1:0,gimmick:true,restarts:90});
+    if(!st.error&&!((st.decks||st.pairs||[]).length))st.error='No legal deck fits this gimmick with these cards.';
+  }catch(e){st.error='The build hit an error: '+e.message;}
+  st.busy=false;st.runKey=g.key;
+  if(st.again){st.again=false;st.decks=null;st.pairs=null;st.error=null;return runGimmick();} // a different theme was picked meanwhile
+  if(state.view==='gimmick')renderGimmick();
+}
+function renderGimmick(){
+  const st=state.gimmick,g=GIMMICKS.find(x=>x.key===st.key)||GIMMICKS[0],duo=state.mode==='duo';
+  if(!st.busy&&!st.error&&!(st.decks||st.pairs)||st.mode&&st.mode!==state.mode){st.mode=state.mode;setTimeout(runGimmick,0);}
+  const chips=GIMMICKS.map(x=>`<button type="button" class="gchip" data-gkey="${x.key}" aria-pressed="${x.key===g.key}">${esc(x.name)}</button>`).join('');
+  let body='';
+  if(st.busy||st.again)body='<p class="status">Building '+esc(g.name)+(duo?' for both of you':'')+'…</p>';
+  else if(st.error)body='<p class="err">'+esc(st.error)+'</p>';
+  else if(duo&&st.pairs)body=st.pairs.map((p,i)=>duoArticle(p,i,true)).join('');
+  else if(st.decks){const lv=$('levelmatch').checked?prof('A').levels:null;
+    body=st.decks.map((d,i)=>{const t=towerFor('A',d,d.ids,false);d._tower=t.id;
+      return `<article class="deck">
+        <div class="dhead"><div><h2 class="dtitle">${esc(g.name)}${d.ids.some(x=>has(C[x],'W'))?': '+esc(d.ids.filter(x=>has(C[x],'W')).map(x=>C[x].name).join(' + ')):''}</h2>
+          <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span></div></div>
+          ${scoreBtn(showScore(d.s),'Gimmick score')}</div>
+        ${reportHTML(d,showScore(d.s))}
+        ${tilesHTML(d.ids,d.forms,lv)}
+        ${towerHTML(t)}
+        <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-gcopy="${i}">Copy list</button><button class="btn" type="button" data-gsave="${i}">Save</button><button class="btn" type="button" data-gedit="${i}">Edit</button></div>
+      </article>`;}).join('');}
+  $('out').innerHTML=`<section class="panel gimmick">
+      <h2>Gimmick decks</h2>
+      <p class="hint">Off-meta decks that bet everything on one strange idea. They win by surprise and can lose just as badly, so their score only compares builds of the same gimmick, not real meta decks.${duo?' In 2v2 both of you get a deck in the same theme.':''}</p>
+      <div class="gchips" role="group" aria-label="Gimmick">${chips}</div>
+      <div class="gabout"><p><b>${esc(g.name)}.</b> ${esc(g.blurb)}</p><p><b>How it wins:</b> ${esc(g.how)}</p><p><b>The risk:</b> ${esc(g.risk)}</p>
+        <button class="btn" type="button" data-gagain="1" ${st.busy?'disabled':''}>Build another version</button></div>
+    </section>${body}`;
+}
+$('out').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset,st=state.gimmick;
+  if(d.gkey){st.key=d.gkey;if(st.busy){st.again=true;renderGimmick();return;}st.decks=null;st.pairs=null;st.error=null;runGimmick();}
+  if(d.gagain){st.decks=null;st.pairs=null;runGimmick();}
+  if(d.gcopy!=null&&st.decks){const x=st.decks[+d.gcopy];copyText(deckText(x.ids,x.forms,x._tower),b);}
+  if(d.gsave!=null&&st.decks){const x=st.decks[+d.gsave],g=GIMMICKS.find(y=>y.key===st.key);saveEntry({at:Date.now(),mode:'1v1',title:g.name+' (gimmick)',w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:x._tower}]});}
+  if(d.gedit!=null&&st.decks){const x=st.decks[+d.gedit];startEdit(x.ids,null,null);}
+});

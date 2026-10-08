@@ -117,3 +117,17 @@ console.log('engine rule tests passed:', decks, 'decks checked');
   assert.equal(A.ID_TO_CARD[b], 'vines'); assert.equal(A.ID_TO_CARD[a], 'spirit-empress');
   console.log('slot model, elixir limit and ID swap tests passed');
 }
+
+// Gimmick decks stay inside their theme and keep their core cards.
+{
+  const G = new Function(src + '; return {generate,GIMMICKS,CARDS,C};')();
+  for (const key of ['spells', 'rocket', 'fortress']) {
+    const g = G.GIMMICKS.find(x => x.key === key), pool = new Set(G.CARDS.filter(g.pool).map(c => c.id));
+    const exclude = new Set(G.CARDS.filter(c => !pool.has(c.id)).map(c => c.id));
+    const ds = G.generate({ locked: g.core || [], forms: {}, exclude, ban: {}, style: 'any', maxAvg: 9, count: 2, maxChamps: 1, gimmick: true, restarts: 50,
+      gimmickMin: g.min ? { n: g.min.n, ids: G.CARDS.filter(g.min.of).map(c => c.id) } : null });
+    assert.ok(ds.length, 'a ' + key + ' deck is built');
+    for (const d of ds) { assert.ok(d.ids.every(i => pool.has(i)), key + ' stays in theme'); (g.core || []).forEach(i => assert.ok(d.ids.includes(i), key + ' keeps ' + i)); }
+  }
+  console.log('gimmick test passed');
+}

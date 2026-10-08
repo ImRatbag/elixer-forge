@@ -835,6 +835,15 @@ html{overflow-x:clip}
 }
 @media (max-width:540px){.sheet .btn.sm,#out .btn.sm{min-height:40px}}
 
+/* Gimmick decks tab */
+.panel.gimmick h2{margin:0 0 4px}
+.gchips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.gchip{font:inherit;font-weight:700;font-size:13.5px;padding:9px 14px;min-height:40px;border-radius:999px;border:1px solid var(--line2);background:color-mix(in srgb,var(--panel) 80%,transparent);color:inherit;cursor:pointer}
+.gchip[aria-pressed="true"]{background:linear-gradient(180deg,var(--action-hi),var(--action) 45%,var(--action-lo));color:var(--action-ink);border-color:transparent}
+.gabout{border-top:1px solid var(--line);padding-top:10px}
+.gabout p{margin:0 0 8px;font-size:14px}
+.gabout .btn{margin-top:4px}
+
 </style>
 <div class="wrap">
   <header class="top">
@@ -906,6 +915,7 @@ html{overflow-x:clip}
         <button role="tab" id="tab-gen" aria-selected="true">Your decks</button>
         <button role="tab" id="tab-meta" aria-selected="false">Top decks</button>
         <button role="tab" id="tab-creator" aria-selected="false">Player decks</button>
+        <button role="tab" id="tab-gimmick" aria-selected="false">Gimmicks</button>
         <button role="tab" id="tab-check" aria-selected="false">Check a deck</button>
         <button role="tab" id="tab-unlock" aria-selected="false">Unlock next</button>
         <button role="tab" id="tab-saved" aria-selected="false">Saved</button>
@@ -916,7 +926,7 @@ html{overflow-x:clip}
       <footer class="foot">
         <div class="footbrand"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20.5" fill="none" stroke="url(#lg-ring)" stroke-width="1.6" opacity=".9"/><path d="M22 7.5c5.2 7 10 12 10 17.6a10 10 0 0 1-20 0c0-5.600 4.800-10.600 10-17.600z" fill="url(#lg-drop)"/></svg><span>Elixir Forge</span></div>
         <p id="datanote"></p>
-        <p class="ver">Site version Oct 7, 11:25 PM</p>
+        <p class="ver">Site version Oct 8, 2:13 PM</p>
         <p>Your collections, saved decks and results are stored only in this browser. Looking up a player tag sends that tag to the Elixir Forge server, which asks Supercell's official API for the public profile.</p>
         <p>This material is unofficial and is not endorsed by Supercell. For more information see Supercell's Fan Content Policy: www.supercell.com/fan-content-policy.</p>
       </footer>
@@ -1354,6 +1364,23 @@ const PRESET_PLAYERS=[];
 /* Featured players for the player-decks tab: their recent decks come from their public battle log.
    Set tag to the player's tag (letters and digits only, no #). An entry without a tag is not shown. */
 const CREATORS=[{key:'ken',name:'Ken',tag:'QQUUCL'}];
+/* Gimmick decks: off-meta decks that commit all eight cards to one odd idea. Each theme has a pool (cards allowed),
+   optional core cards (always in the deck), and optional `min`: at least n cards from a set (e.g. six buildings).
+   They win by surprise and lose badly when the opponent has the answer; the score only compares builds of the
+   same gimmick. */
+const GIMMICKS=[
+ {key:'spells',name:'All Spells',pool:c=>c.type==='s',blurb:'Eight spells and not a single troop.',how:'Chip the towers with Rocket, Fireball and Lightning, and let Goblin Barrel or Graveyard do the rest. Every defense is a spell, so time them on big pushes.',risk:'A tank you can\'t out-damage walks straight to your tower.'},
+ {key:'rocket',name:'Rocket Insanity',core:['rocket','mirror'],pool:c=>c.e<=3||c.id==='rocket',blurb:'Rocket, Mirror for a second Rocket, and the cheapest cards you have to cycle back to them.',how:'Defend with cheap cards, cycle fast, and fire Rocket plus a Mirrored Rocket at the same Princess Tower.',risk:'Every Rocket you miss or spend on defense puts you far behind.'},
+ {key:'skeletons',name:'Skeleton Crew',pool:c=>['skeletons','skeleton-army','skeleton-barrel','skeleton-dragons','skeleton-king','graveyard','tombstone','witch','giant-skeleton','bomber','wall-breakers','guards','balloon'].includes(c.id),blurb:'Only skeletons, from Wall Breakers to Giant Skeleton.',how:'Flood the board with bones: Graveyard or Skeleton Barrel on offense, Tombstone and Guards on defense.',risk:'One Arrows, Log or Tornado can wipe half of your deck.'},
+ {key:'goblins',name:'Goblins Only',pool:c=>['goblins','spear-goblins','goblin-gang','goblin-barrel','goblin-hut','goblin-cage','goblin-giant','goblin-drill','goblin-machine','goblinstein','goblin-curse','goblin-demolisher','dart-goblin','suspicious-bush'].includes(c.id),blurb:'Every card is a goblin or makes goblins.',how:'Spread goblins everywhere so the opponent runs out of answers, with Goblin Barrel and Drill hitting the tower.',risk:'Splash damage and small spells make short work of goblins.'},
+ {key:'fortress',name:'Fortress',pool:c=>c.type==='b'||c.type==='s',min:{n:6,of:c=>c.type==='b'},blurb:'Buildings and spells only, at least six buildings.',how:'Plant buildings to block every lane, then let X-Bow, Mortar or Goblin Drill grind the tower down.',risk:'Earthquake, Lightning and Miner tear a building deck apart.'},
+ {key:'royals',name:'Royal Court',pool:c=>['royal-giant','royal-hogs','royal-recruits','royal-ghost','royal-delivery','prince','dark-prince','princess','little-prince','archer-queen','skeleton-king','golden-knight'].includes(c.id),blurb:'Royalty only: princes, princesses, queens and the royal family.',how:'Royal Giant or Royal Hogs lead, with Princes charging behind them.',risk:'Swarms and Inferno shut down the slow royal pushes.'},
+ {key:'air',name:'Air Force',pool:c=>FLYING_IDS.includes(c.id)||c.type==='s',min:{n:5,of:c=>FLYING_IDS.includes(c.id)},blurb:'Flying troops and spells only. Nothing walks.',how:'Ground decks with few air answers simply can\'t touch you. Send Lava Hound, Balloon or Minion Giant with fliers behind.',risk:'Wizards, Musketeers and Inferno Towers shoot every card you have.'},
+ {key:'cheap',name:'Nothing Over Two',pool:c=>c.e<=2,blurb:'Every card costs one or two elixir.',how:'Cycle faster than anything can answer, and swarm the tower with cheap chip damage.',risk:'One splash troop or a big tank can be too much for cards this small.'},
+ {key:'heavy',name:'Heavyweights',pool:c=>c.e>=5,blurb:'Every card costs five elixir or more.',how:'Wait for a full bar, then drop one huge unit at a time and build the biggest push in the game.',risk:'A fast cycle deck takes a tower before you can play your second card.'},
+ {key:'pump',name:'Pump It Up',core:['elixir-collector','three-musketeers'],pool:c=>true,blurb:'Elixir Collector to pay for Three Musketeers, the classic meme.',how:'Pump behind the King Tower, then split the Three Musketeers at the bridge to pressure both lanes at once.',risk:'Rocket, Lightning or a fast push punishes every Collector you place.'}
+];
+const FLYING_IDS='lava-hound balloon minion-giant bats minions minion-horde mega-minion baby-dragon inferno-dragon electro-dragon skeleton-dragons phoenix flying-machine'.split(' ');
 const DATA_DATE='Oct 7, 2026';
 
 /* ---------- special-slot assignment ---------- */
@@ -1488,11 +1515,12 @@ function scoreDeck(ids,ctx){
   let s=cards.reduce((a,c)=>a+pw(c,ctx),0)/8*(ctx.wPow||6);
   let syn=0;const pairs=[];
   for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){const x=SYN[sk(ids[i],ids[j])];if(x){syn+=x.w;pairs.push({a:ids[i],b:ids[j],...x});}}
-  const slotPts=forms?forms.value/8*(ctx.wPow||6)+(3-forms.empty)*(ctx.duo?SLOT_K_2V2:SLOT_K_1V1)-forms.empty*25:-60;
+  const slotPts=forms?forms.value/8*(ctx.wPow||6)+(3-forms.empty)*(ctx.duo?SLOT_K_2V2:SLOT_K_1V1)-forms.empty*(ctx.gimmick?0:25):-60; // a theme with few Evos and Heroes (all spells) can't fill its slots, and isn't punished twice for it
   s+=slotPts;
+  const sBal=s; // structure checks start here; gimmick decks break them on purpose
   // 1v1 decks must have a win condition. In 2v2 a pure support deck is allowed as long as the partner brings one
   // (teamScore checks the pair), so here it only costs a little: a win condition in both decks is still preferred.
-  if(k.wc===0)s-=ctx.duo?5:40;else if(k.wc>2)s-=18*(k.wc-2);
+  if(k.wc===0)s-=ctx.gimmick?0:ctx.duo?5:40; // a gimmick deck may win by spells aloneelse if(k.wc>2)s-=18*(k.wc-2);
   // A deck needs a card that can carry a game. Chip cards (Miner, Wall Breakers, Skeleton Barrel, Suspicious Bush,
   // Boss Bandit) count as win conditions, but one of them alone is not a plan; two together are a real chip deck.
   const mainW=cards.filter(c=>has(c,'W')&&!MINOR_WIN.has(c.id)).length;
@@ -1528,9 +1556,13 @@ function scoreDeck(ids,ctx){
   if(ids.includes('graveyard')&&!cards.some(c=>has(c,'T')||has(c,'M')||(isChamp(c)&&c.type==='t'&&c.e>=4)))s-=6;
   const bigTanks=cards.filter(c=>has(c,'T')&&c.e>=6).length;
   if(bigTanks>1)s-=8*(bigTanks-1);
+  // A gimmick deck gives up balance by design, so missing roles cost it only a little: enough to prefer the
+  // better-rounded version of the same gimmick, not enough to bury every gimmick at the bottom of the scale.
+  if(ctx.gimmick&&s<sBal)s=sBal+(s-sBal)*0.3;
   if(!fitsStyle(cards,ctx.style))s-=40;
   else if(ctx.style!=='any'){const off=cards.filter(c=>has(c,'W')&&!(ARCH[c.id]||[]).includes(ctx.style)&&!['miner','wall-breakers'].includes(c.id)).length;s-=12*off;}
   // Air playstyle: the win condition flying isn't enough; the attack needs at least three flying cards in all.
+  if(ctx.gimmickMin){const m=ctx.gimmickMin,n=ids.filter(i=>m.ids.includes(i)).length;if(n<m.n)s-=25*(m.n-n);}
   if(ctx.style==='air'){const fly=ids.filter(i=>FLYING.has(i)).length;if(fly<3)s-=12*(3-fly);else if(fly>=4)s+=3;}
   if(ctx.style==='hyperbait'){
     const sv=ids.filter(i=>SMALL_VULN.has(i)).length,bw=ids.filter(i=>BAIT_CORE.has(i)||i==='wall-breakers').length;
@@ -1628,7 +1660,7 @@ function generate(opts){
   memo=new Map();
   const counter=opts.style==='counter'&&!(opts.vs&&opts.vs.length);
   if(opts.style==='counter')opts={...opts,style:'any',vs:counter?metaThreats(!!opts.duo):opts.vs};
-  const ctx={metaVs:counter,vsW:counter?1.4:1,forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
+  const ctx={gimmick:!!opts.gimmick,gimmickMin:opts.gimmickMin||null,metaVs:counter,vsW:counter?1.4:1,forms:opts.forms,ban:opts.ban||{},maxChamps:opts.maxChamps,style:opts.style,maxAvg:opts.maxAvg,levels:opts.levels||null,levelRef:opts.levelRef||0,levelW:opts.levelW||0,vs:opts.vs||null,duo:!!opts.duo,tag:opts.duo?'d|':''};
   const locked=opts.locked;
   const pool=CARDS.filter(c=>!opts.exclude.has(c.id)).map(c=>c.id);
   const found=new Map();
@@ -1668,7 +1700,7 @@ function generate(opts){
       }
       if(!improved)break;
     }
-    if(!cur.forms||cur.k.wc<1)continue;
+    if(!cur.forms||(cur.k.wc<1&&!opts.gimmick))continue;
     const key=[...deck].sort().join(',');
     if(!found.has(key)){found.set(key,{ids:deck,...cur});deck.forEach(id=>usedN[id]=(usedN[id]||0)+1);}
   }
@@ -1795,7 +1827,7 @@ function generateDuo(o){
   memo=new Map();scCache=new Map();
   const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names};
   const mk=(tag,sd)=>{const counter=sd.style==='counter'&&!(o.vs&&o.vs.length);const x=mk0(tag,sd.style==='counter'?{...sd,style:'any'}:sd);if(counter){x.vs=metaThreats(true);x.metaVs=true;x.vsW=1.4;}return x;};
-  const mk0=(tag,sd)=>({tag,duo:true,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
+  const mk0=(tag,sd)=>({tag,duo:true,gimmick:!!o.gimmick,gimmickMin:sd.gimmickMin||null,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
   const ctxA=mk('A',o.A),ctxB=mk('B',o.B);
   const poolA=CARDS.filter(c=>!o.A.exclude.has(c.id)).map(c=>c.id);
   const poolB=CARDS.filter(c=>!o.B.exclude.has(c.id)).map(c=>c.id);
@@ -1832,7 +1864,7 @@ function generateDuo(o){
       fol=improve(fol,F.sd.locked.length,fp,x=>ts(lead,x).s,1);
       if(!valid(lead,L.ctx)||!valid(fol,F.ctx))continue;
       if(lead.filter(i=>fol.includes(i)).length>2)continue;
-      if(!lead.concat(fol).some(i=>has(C[i],'W')))continue;
+      if(!o.gimmick&&!lead.concat(fol).some(i=>has(C[i],'W')))continue;
       const A=flip?fol:lead,B=flip?lead:fol;
       const key=[...A].sort().join(',')+'/'+[...B].sort().join(',');
       if(!found.has(key)){found.set(key,{A,B,...teamScore(A,B,ctxA,ctxB,w)});fol.forEach(id=>usedF[id]=(usedF[id]||0)+1);}
@@ -2120,7 +2152,7 @@ window.addEventListener('unhandledrejection',e=>{try{toast('Something went wrong
 
 /* ---------- app state ---------- */
 const blankRules=()=>({locks:[],exclude:new Map(),style:'any',role:'flex',tower:'auto'});
-const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},last:[],lastDuo:[],lastOpts:null,saved:cleanSaved(store.get('ef2-saved',[])),api:null};
+const state={mode:store.get('ef2-mode','duo'),view:'gen',rules:{A:blankRules(),B:blankRules()},vs:[],check:{ids:[],idsB:null,base:null,result:null,busy:false},creator:{tag:'',name:'',decks:null,busy:false,error:null},unlock:{result:null,busy:false,done:0,total:0},gimmick:{key:'spells',decks:null,pairs:null,mode:null,busy:false,error:null},last:[],lastDuo:[],lastOpts:null,saved:cleanSaved(store.get('ef2-saved',[])),api:null};
 /* Cards from recent results, so the next Forge leans toward different ones. Halves each round. */
 const recent={duo:{},'1v1':{}};
 function noteShown(mode,idLists){const r=recent[mode];for(const k in r){r[k]*=0.5;if(r[k]<0.1)delete r[k];}for(const ids of idLists)for(const id of ids)r[id]=Math.min(1.6,(r[id]||0)+0.7);}
@@ -3118,12 +3150,13 @@ $('out').addEventListener('click',e=>{
 
 /* ---------- tabs and mode ---------- */
 function setView(v,quiet){
-  state.view=v;['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
+  state.view=v;['gen','meta','creator','gimmick','check','unlock','saved'].forEach(x=>$('tab-'+x).setAttribute('aria-selected',x===v));
   if(window.updateFab)window.updateFab();
   if(quiet)return;
   if(v==='meta')renderMeta();
   else if(v==='check')renderCheck();
   else if(v==='creator')renderCreator();
+  else if(v==='gimmick')renderGimmick();
   else if(v==='unlock')renderUnlock();
   else if(v==='saved')renderSaved();
   else if(state.mode==='duo'&&state.lastDuo.length){renderDuo(state.lastDuo);setStatus(state.lastDuo.length+' team pairs');}
@@ -3138,7 +3171,7 @@ function playerChanged(key){
   if(state.check.result){state.check.result=null;if(state.view==='check'&&checkReady())runCheck();}
   if(state.view!=='gen'&&state.view!=='check')rerender();
 }
-['gen','meta','creator','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>{setView(x);const t=document.querySelector('main .tabs');if(t&&t.getBoundingClientRect().top<0)t.scrollIntoView({block:'start'});$('tab-'+x).scrollIntoView({block:'nearest',inline:'center'});}));
+['gen','meta','creator','gimmick','check','unlock','saved'].forEach(x=>$('tab-'+x).addEventListener('click',()=>{setView(x);const t=document.querySelector('main .tabs');if(t&&t.getBoundingClientRect().top<0)t.scrollIntoView({block:'start'});$('tab-'+x).scrollIntoView({block:'nearest',inline:'center'});}));
 function setMode(m){
   if(state.mode!==m){const u=state.unlock;u.result=null;u.auto=null;u.stale=u.busy;}
   state.mode=m;store.set('ef2-mode',m);
@@ -3223,6 +3256,68 @@ Promise.all([detectApi().then(loadLinkedTags).then(refreshStale),loadMeta()]).th
   place();mq.addEventListener&&mq.addEventListener('change',place);})();
 /* Tiles are pictures only, and phones have no hover: tapping a card names it. */
 document.addEventListener('click',e=>{const t=e.target.closest('.tile.pic[data-cardname]');if(t&&!e.target.closest('button,a'))toast(t.dataset.cardname);});
+
+/* ---------- Gimmick decks: off-meta decks built around one odd idea, from the player's own cards ---------- */
+function gimmickOpts(key,g){
+  const so=sideOpts(key),pool=new Set(CARDS.filter(g.pool).map(c=>c.id)),exclude=new Set(so.exclude);
+  CARDS.forEach(c=>{if(!pool.has(c.id))exclude.add(c.id);});
+  const core=(g.core||[]).filter(i=>!exclude.has(i));
+  const free=CARDS.filter(c=>!exclude.has(c.id)).length;
+  return{opts:{...so,locked:core,forms:{},exclude,style:'any',role:'flex',gimmickMin:g.min?{n:g.min.n,ids:CARDS.filter(g.min.of).map(c=>c.id)}:null},
+    free,missingCore:(g.core||[]).filter(i=>exclude.has(i))};
+}
+async function runGimmick(){
+  const st=state.gimmick,g=GIMMICKS.find(x=>x.key===st.key);if(!g)return;if(st.busy){st.again=true;return;}
+  const duo=state.mode==='duo';st.busy=true;st.error=null;st.decks=null;st.pairs=null;st.mode=state.mode;renderGimmick();
+  try{
+    const a=gimmickOpts('A',g),b=duo?gimmickOpts('B',g):null,N=names();
+    const short=[a,b].map((x,i)=>x&&(x.missingCore.length?(i?N.B:N.A)+' doesn\'t have '+x.missingCore.map(id=>C[id].name).join(' and '):x.free<8?(i?N.B:N.A)+' owns only '+x.free+' cards that fit':'')).filter(Boolean);
+    const both=duo?CARDS.filter(c=>!a.opts.exclude.has(c.id)||!b.opts.exclude.has(c.id)).length:99;
+    if(short.length)st.error=short.join('. ')+', so this gimmick can\'t be built.';
+    else if(duo&&both<14)st.error='Only '+both+' cards fit '+g.name+', and in 2v2 your two decks can share just 2 cards, so there aren\'t enough for both of you. Try it in 1v1.';
+    else if(duo)st.pairs=await runJob('duo',{A:a.opts,B:b.opts,maxAvg:9,count:2,priority:'balanced',names:N,vs:null,levelW:$('levelmatch').checked?1:0,gimmick:true});
+    else st.decks=await runJob('gen',{...a.opts,maxAvg:9,count:2,maxChamps:1,vs:null,levelW:$('levelmatch').checked?1:0,gimmick:true,restarts:90});
+    if(!st.error&&!((st.decks||st.pairs||[]).length))st.error='No legal deck fits this gimmick with these cards.';
+  }catch(e){st.error='The build hit an error: '+e.message;}
+  st.busy=false;st.runKey=g.key;
+  if(st.again){st.again=false;st.decks=null;st.pairs=null;st.error=null;return runGimmick();} // a different theme was picked meanwhile
+  if(state.view==='gimmick')renderGimmick();
+}
+function renderGimmick(){
+  const st=state.gimmick,g=GIMMICKS.find(x=>x.key===st.key)||GIMMICKS[0],duo=state.mode==='duo';
+  if(!st.busy&&!st.error&&!(st.decks||st.pairs)||st.mode&&st.mode!==state.mode){st.mode=state.mode;setTimeout(runGimmick,0);}
+  const chips=GIMMICKS.map(x=>`<button type="button" class="gchip" data-gkey="${x.key}" aria-pressed="${x.key===g.key}">${esc(x.name)}</button>`).join('');
+  let body='';
+  if(st.busy||st.again)body='<p class="status">Building '+esc(g.name)+(duo?' for both of you':'')+'…</p>';
+  else if(st.error)body='<p class="err">'+esc(st.error)+'</p>';
+  else if(duo&&st.pairs)body=st.pairs.map((p,i)=>duoArticle(p,i,true)).join('');
+  else if(st.decks){const lv=$('levelmatch').checked?prof('A').levels:null;
+    body=st.decks.map((d,i)=>{const t=towerFor('A',d,d.ids,false);d._tower=t.id;
+      return `<article class="deck">
+        <div class="dhead"><div><h2 class="dtitle">${esc(g.name)}${d.ids.some(x=>has(C[x],'W'))?': '+esc(d.ids.filter(x=>has(C[x],'W')).map(x=>C[x].name).join(' + ')):''}</h2>
+          <div class="dmeta"><span>Average elixir <b>${d.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(d.ids)}</b></span><span>Synergy <b>${d.synPct}%</b></span></div></div>
+          ${scoreBtn(showScore(d.s),'Gimmick score')}</div>
+        ${reportHTML(d,showScore(d.s))}
+        ${tilesHTML(d.ids,d.forms,lv)}
+        ${towerHTML(t)}
+        <div class="actions">${linkBtn(d.ids,d.forms,t.id)}<button class="btn" type="button" data-gcopy="${i}">Copy list</button><button class="btn" type="button" data-gsave="${i}">Save</button><button class="btn" type="button" data-gedit="${i}">Edit</button></div>
+      </article>`;}).join('');}
+  $('out').innerHTML=`<section class="panel gimmick">
+      <h2>Gimmick decks</h2>
+      <p class="hint">Off-meta decks that bet everything on one strange idea. They win by surprise and can lose just as badly, so their score only compares builds of the same gimmick, not real meta decks.${duo?' In 2v2 both of you get a deck in the same theme.':''}</p>
+      <div class="gchips" role="group" aria-label="Gimmick">${chips}</div>
+      <div class="gabout"><p><b>${esc(g.name)}.</b> ${esc(g.blurb)}</p><p><b>How it wins:</b> ${esc(g.how)}</p><p><b>The risk:</b> ${esc(g.risk)}</p>
+        <button class="btn" type="button" data-gagain="1" ${st.busy?'disabled':''}>Build another version</button></div>
+    </section>${body}`;
+}
+$('out').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;const d=b.dataset,st=state.gimmick;
+  if(d.gkey){st.key=d.gkey;if(st.busy){st.again=true;renderGimmick();return;}st.decks=null;st.pairs=null;st.error=null;runGimmick();}
+  if(d.gagain){st.decks=null;st.pairs=null;runGimmick();}
+  if(d.gcopy!=null&&st.decks){const x=st.decks[+d.gcopy];copyText(deckText(x.ids,x.forms,x._tower),b);}
+  if(d.gsave!=null&&st.decks){const x=st.decks[+d.gsave],g=GIMMICKS.find(y=>y.key===st.key);saveEntry({at:Date.now(),mode:'1v1',title:g.name+' (gimmick)',w:0,l:0,decks:[{key:'A',who:prof('A').name,ids:x.ids,specials:x.forms.specials,empty:x.forms.empty,tower:x._tower}]});}
+  if(d.gedit!=null&&st.decks){const x=st.decks[+d.gedit];startEdit(x.ids,null,null);}
+});
 
 </script>
 
