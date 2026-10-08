@@ -35,7 +35,11 @@ function assignForms(ids,ctx){
       if(total===3&&(e<1||h<1))return;
       if(mustSpecial.some(id=>!all.some(x=>x.id===id)))return;
       const v=all.reduce((a,x)=>a+x.v,0);
-      if(!best||v>best.value)best={specials:all,value:v,empty:3-total};
+      // Choose by what the slot adds, not just how strong the form is: Evo Goblin Barrel lifts a weak card a long way,
+      // while Hero Barbarian Barrel barely improves a card that is already strong. `o` ranks the options; the
+      // reported value stays the plain sum so scores keep their scale.
+      const o=all.reduce((a,x)=>a+x.v+(x.form==='champ'?0:Math.max(0,x.v-pw(C[x.id],ctx))),0);
+      if(!best||o>best.o)best={specials:all,value:v,empty:3-total,o};
     };
     const rec=(start,sel)=>{
       if(sel.length===need){test(sel);return;}
