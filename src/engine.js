@@ -227,7 +227,7 @@ function addHeur(c,deck,ctx){
   if(ctx.style==='air'&&FLYING.has(c.id))v+=4;
   if(ctx.partner){
     const shared=deck.filter(d=>ctx.partner.includes(d)).length;
-    for(const d of ctx.partner){if(d===c.id)v-=shared>=2?40:2;const x=SYN[sk(c.id,d)];if(x&&!x.meta)v+=x.w*1.8;}
+    for(const d of ctx.partner){if(d===c.id)v-=shared>=(ctx.maxShare??2)?40:2;const x=SYN[sk(c.id,d)];if(x&&!x.meta)v+=x.w*1.8;}
     const pc=ctx.partner.map(i=>C[i]);
     if(has(c,'W')&&pc.some(p=>p.id===c.id))v-=6;
     if(has(c,'T')&&c.e>=6&&pc.some(p=>has(p,'T')&&p.e>=6))v-=8;
@@ -353,7 +353,7 @@ const PRIORITY={balanced:{wPow:6,wSyn:0.32,wTeam:0.6},synergy:{wPow:3.5,wSyn:0.4
 let scCache=new Map();
 function scoreCached(ids,ctx){const key=ctx.tag+[...ids].sort().join(',');let v=scCache.get(key);if(!v){v=scoreDeck(ids,ctx);scCache.set(key,v);}return v;}
 const isBeatdown=(ids,avg)=>ids.some(i=>has(C[i],'T')&&has(C[i],'W')&&C[i].e>=5)||avg>=3.95;
-function teamAnalysis(A,B,sa,sb,names){
+function teamAnalysis(A,B,sa,sb,names,maxShare=2){
   const NAMES=names||{A:'Player 1',B:'Player 2'};
   const all=A.concat(B);
   const cross=[];
@@ -380,7 +380,7 @@ function teamAnalysis(A,B,sa,sb,names){
   const sameWin=winsA.filter(i=>winsB.includes(i));
   if(sameWin.length){comp-=0.3;notes.push('Same win condition in both decks ('+sameWin.map(i=>C[i].name).join(', ')+'): one set of counters stops both players');}
   const dup=A.filter(i=>B.includes(i));
-  if(dup.length>2){comp-=0.6;notes.push('Both decks run '+dup.map(i=>C[i].name).join(', ')+'; only 2 shared cards are allowed');}
+  if(dup.length>maxShare){comp-=0.6;notes.push('Both decks run '+dup.map(i=>C[i].name).join(', ')+'; only 2 shared cards are allowed');}
   else comp-=dup.length*0.05;
   // Each deck must hold its own when the partner is out of cycle: air defense plus a tank answer.
   const selfDef=k=>k.air>=2&&(k.kill>=1||k.bld>=1);
@@ -404,8 +404,8 @@ function teamAnalysis(A,B,sa,sb,names){
 }
 function teamScore(A,B,ctxA,ctxB,w){
   const sa=scoreCached(A,ctxA),sb=scoreCached(B,ctxB);
-  const t=teamAnalysis(A,B,sa,sb,w.names);
-  const extra=Math.max(0,t.dup.length-2);
+  const ms=w.maxShare??2,t=teamAnalysis(A,B,sa,sb,w.names,ms);
+  const extra=Math.max(0,t.dup.length-ms);
   const noWin=(sa.k.wc===0&&sb.k.wc===0)?45:0; // the team still needs a way to take a tower
   return{s:(sa.s+sb.s)/2-noWin+t.pct*w.wTeam-1.5*Math.min(2,t.dup.length)-30*extra-8*t.sameWin.length-(t.bdA&&t.bdB&&!(sa.role==='attack'||sb.role==='attack')?10:0),sa,sb,t};
 }
@@ -440,9 +440,9 @@ function improve(deck,fixedN,pool,objective,passes){
 }
 function generateDuo(o){
   memo=new Map();scCache=new Map();
-  const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names};
+  const w={...(PRIORITY[o.priority]||PRIORITY.balanced),names:o.names,maxShare:o.gimmick?8:2}; // gimmick pairs may repeat cards: a theme like Skeleton Crew has too few cards for two separate decks
   const mk=(tag,sd)=>{const counter=sd.style==='counter'&&!(o.vs&&o.vs.length);const x=mk0(tag,sd.style==='counter'?{...sd,style:'any'}:sd);if(counter){x.vs=metaThreats(true);x.metaVs=true;x.vsW=1.4;}return x;};
-  const mk0=(tag,sd)=>({tag,duo:true,gimmick:!!o.gimmick,gimmickMin:sd.gimmickMin||null,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
+  const mk0=(tag,sd)=>({tag,duo:true,gimmick:!!o.gimmick,maxShare:w.maxShare,gimmickMin:sd.gimmickMin||null,role:sd.role||'flex',forms:sd.forms,ban:sd.ban||{},levels:sd.levels||null,levelRef:sd.levelRef||0,levelW:o.levelW||0,vs:o.vs||null,maxChamps:1,style:sd.style,maxAvg:o.maxAvg,wPow:w.wPow,wSyn:w.wSyn});
   const ctxA=mk('A',o.A),ctxB=mk('B',o.B);
   const poolA=CARDS.filter(c=>!o.A.exclude.has(c.id)).map(c=>c.id);
   const poolB=CARDS.filter(c=>!o.B.exclude.has(c.id)).map(c=>c.id);
@@ -478,7 +478,7 @@ function generateDuo(o){
       lead=improve(lead,L.sd.locked.length,thin(L.pool,usedL,seeds.size,L.sd.locked),x=>ts(x,fol).s,1);
       fol=improve(fol,F.sd.locked.length,fp,x=>ts(lead,x).s,1);
       if(!valid(lead,L.ctx)||!valid(fol,F.ctx))continue;
-      if(lead.filter(i=>fol.includes(i)).length>2)continue;
+      if(lead.filter(i=>fol.includes(i)).length>w.maxShare)continue;
       if(!o.gimmick&&!lead.concat(fol).some(i=>has(C[i],'W')))continue;
       const A=flip?fol:lead,B=flip?lead:fol;
       const key=[...A].sort().join(',')+'/'+[...B].sort().join(',');

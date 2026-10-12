@@ -1214,9 +1214,7 @@ async function runGimmick(){
   try{
     const a=gimmickOpts('A',g),b=duo?gimmickOpts('B',g):null,N=names();
     const short=[a,b].map((x,i)=>x&&(x.missingCore.length?(i?N.B:N.A)+' doesn\'t have '+x.missingCore.map(id=>C[id].name).join(' and '):x.free<8?(i?N.B:N.A)+' owns only '+x.free+' cards that fit':'')).filter(Boolean);
-    const both=duo?CARDS.filter(c=>!a.opts.exclude.has(c.id)||!b.opts.exclude.has(c.id)).length:99;
     if(short.length)st.error=short.join('. ')+', so this gimmick can\'t be built.';
-    else if(duo&&both<14)st.error='Only '+both+' cards fit '+g.name+', and in 2v2 your two decks can share just 2 cards, so there aren\'t enough for both of you. Try it in 1v1.';
     else if(duo)st.pairs=await runJob('duo',{A:a.opts,B:b.opts,maxAvg:9,count:2,priority:'balanced',names:N,vs:null,levelW:$('levelmatch').checked?1:0,gimmick:true});
     else st.decks=await runJob('gen',{...a.opts,maxAvg:9,count:2,maxChamps:1,vs:null,levelW:$('levelmatch').checked?1:0,gimmick:true,restarts:90});
     if(!st.error&&!((st.decks||st.pairs||[]).length))st.error='No legal deck fits this gimmick with these cards.';
@@ -1246,7 +1244,7 @@ function renderGimmick(){
       </article>`;}).join('');}
   $('out').innerHTML=`<section class="panel gimmick">
       <h2>Gimmick decks</h2>
-      <p class="hint">Off-meta decks that bet everything on one strange idea. They win by surprise and can lose just as badly, so their score only compares builds of the same gimmick, not real meta decks.${duo?' In 2v2 both of you get a deck in the same theme.':''}</p>
+      <p class="hint">Off-meta decks that bet everything on one strange idea. They win by surprise and can lose just as badly, so their score only compares builds of the same gimmick, not real meta decks.${duo?' In 2v2 both of you get a deck in the same theme, and for gimmicks your two decks may repeat cards.':''}</p>
       <div class="gchips" role="group" aria-label="Gimmick">${chips}</div>
       <div class="gabout"><p><b>${esc(g.name)}.</b> ${esc(g.blurb)}</p><p><b>How it wins:</b> ${esc(g.how)}</p><p><b>The risk:</b> ${esc(g.risk)}</p>
         <button class="btn" type="button" data-gagain="1" ${st.busy?'disabled':''}>Build another version</button></div>
