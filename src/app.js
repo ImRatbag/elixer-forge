@@ -12,6 +12,8 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTim
 
 /* ---------- profiles (a player's collection) ---------- */
 const allEvo=()=>EVO_CARDS.slice(),allHero=()=>HERO_CARDS.slice();
+// Forms players can have today (announced ones appear on their release day); used for counts and the collection editor.
+const liveEvo=()=>EVO_CARDS.filter(i=>!unreleased(i,'evo')),liveHero=()=>HERO_CARDS.filter(i=>!unreleased(i,'hero'));
 function newProfile(name,extra){return Object.assign({id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,tag:null,source:'unset',col:{base:null,evo:allEvo(),hero:allHero(),towers:TOWER_IDS.slice()},levels:null,updated:Date.now()},extra||{});}
 /* Everything read back from this browser's storage or from a pasted backup code goes through these, so an entry from
    an older version, a hand-edited value or a crafted code can't break the page or put markup into it. */
@@ -216,7 +218,7 @@ function playerHTML(key){
     <div class="phead"><span class="pbadge" aria-hidden="true">${key==='A'?1:2}</span>
       <input class="pname" id="pname-${key}" value="${esc(p.name)}" aria-label="Player name" maxlength="24">
       <select class="pswitch" id="pswitch-${key}" aria-label="Switch player">${opts}<option value="__new">New player</option><option value="__code">Add from share code</option>${profiles.length>2?`<option value="__del">Remove ${esc(p.name)}</option>`:''}</select></div>
-    <div class="colsum">${meter('e','Evos',cs.evo.size,EVO_CARDS.length)}${meter('h','Heroes',cs.hero.size,HERO_CARDS.length)}${meter('','Cards',baseHave,BASE_CARDS.length)}</div>
+    <div class="colsum">${meter('e','Evos',liveEvo().filter(i=>cs.evo.has(i)).length,liveEvo().length)}${meter('h','Heroes',liveHero().filter(i=>cs.hero.has(i)).length,liveHero().length)}${meter('','Cards',baseHave,BASE_CARDS.length)}</div>
     ${sourceLine(p)}
     <div class="field"><label class="lbl" for="tag-${key}">Player tag</label>
       <div class="tagrow"><input type="text" id="tag-${key}" placeholder="#2PP" value="${p.tag?'#'+esc(p.tag):''}" autocomplete="off" spellcheck="false"><button class="btn" type="button" data-act="lookup">Load</button></div>
@@ -349,15 +351,15 @@ function closeSheet(){const k=editor&&editor.key;$('sheet').hidden=true;$('sheet
 function editorItems(){
   const p=prof(editor.key),cs=colSets(p);const q=editor.q.toLowerCase();
   let list;
-  if(editor.tab==='evo')list=EVO_CARDS.map(id=>({id,on:cs.evo.has(id)}));
-  else if(editor.tab==='hero')list=HERO_CARDS.map(id=>({id,on:cs.hero.has(id)}));
+  if(editor.tab==='evo')list=liveEvo().map(id=>({id,on:cs.evo.has(id)}));
+  else if(editor.tab==='hero')list=liveHero().map(id=>({id,on:cs.hero.has(id)}));
   else if(editor.tab==='base')list=BASE_CARDS.map(id=>({id,on:!cs.base||cs.base.has(id)}));
   else return TOWERS.map(t=>({id:t.id,tower:true,on:cs.towers.has(t.id)}));
   return list.filter(x=>!q||C[x.id].name.toLowerCase().includes(q)).sort((a,b)=>C[a.id].name.localeCompare(C[b.id].name));
 }
 function renderEditor(){
   const p=prof(editor.key),cs=colSets(p);
-  const tabs=[['evo','Evolutions',cs.evo.size+'/'+EVO_CARDS.length],['hero','Heroes',cs.hero.size+'/'+HERO_CARDS.length],['base','Cards',(cs.base?cs.base.size:BASE_CARDS.length)+'/'+BASE_CARDS.length],['tower','Tower troops',cs.towers.size+'/'+TOWERS.length]];
+  const tabs=[['evo','Evolutions',liveEvo().filter(i=>cs.evo.has(i)).length+'/'+liveEvo().length],['hero','Heroes',liveHero().filter(i=>cs.hero.has(i)).length+'/'+liveHero().length],['base','Cards',(cs.base?cs.base.size:BASE_CARDS.length)+'/'+BASE_CARDS.length],['tower','Tower troops',cs.towers.size+'/'+TOWERS.length]];
   const help={evo:'Tap every Evolution '+p.name+' has unlocked.',hero:'Tap every Hero '+p.name+' has unlocked.',base:'Most players own nearly every card. Untap any '+p.name+' hasn\'t unlocked yet.',tower:'Tap the tower troops '+p.name+' has.'}[editor.tab];
   const items=editorItems();
   $('sheet').innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ed-h">
@@ -1004,9 +1006,11 @@ $('out').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='crtag
 /* ---------- Unlock next: which Evo or Hero this player doesn't own would lift their best deck the most ---------- */
 function unlockCandidates(){
   const p=prof('A'),cs=colSets(p),duo=state.mode==='duo';
-  const own=id=>!cs.base||cs.base.has(id);
-  const evo=EVO_CARDS.filter(id=>!cs.evo.has(id)&&own(id)).map(id=>({id,form:'evo',pw:duo?C[id].ev2:C[id].ev}));
-  const hero=HERO_CARDS.filter(id=>!cs.hero.has(id)&&own(id)).map(id=>({id,form:'hero',pw:duo?C[id].he2:C[id].he}));
+  const own=id=>!cs.base||cs.base.has(id),r=state.rules.A;
+  // Leave out forms that aren't released yet and cards the player has ruled out under Never use.
+  const out=(id,f)=>{if(unreleased(id,f))return true;const x=r&&r.exclude.get&&r.exclude.get(id);return x==='all'||x===f;};
+  const evo=EVO_CARDS.filter(id=>!cs.evo.has(id)&&own(id)&&!out(id,'evo')).map(id=>({id,form:'evo',pw:duo?C[id].ev2:C[id].ev}));
+  const hero=HERO_CARDS.filter(id=>!cs.hero.has(id)&&own(id)&&!out(id,'hero')).map(id=>({id,form:'hero',pw:duo?C[id].he2:C[id].he}));
   const top=(a,n)=>a.sort((x,y)=>y.pw-x.pw).slice(0,n);
   return{missing:evo.length+hero.length,list:[...top(evo,7),...top(hero,5)]};
 }
@@ -1135,7 +1139,7 @@ const metaLive={ranked:false,duo:false};
 function setDataNote(date,live){
   setDataNote.last=[date,live];
   $('datachip').textContent='Meta data: '+(state.mode==='duo'?(metaLive.duo?date:DATA_DATE):(metaLive.ranked?date:DATA_DATE));
-  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s stats from late September, adjusted by hand for the Season 88 balance changes ('+DATA_DATE+')';
+  const api='Supercell\'s official battle data (top players\' recent games) as of '+date,ra='RoyaleAPI\'s stats from late September, adjusted by hand for the October 6 and October 19 balance changes ('+DATA_DATE+')';
   $('datanote').textContent=(metaLive.ranked===metaLive.duo?'Card strength comes from '+(metaLive.ranked?api:ra)+': Ranked numbers drive 1v1, 2v2 numbers drive team mode.':'1v1 card strength comes from '+(metaLive.ranked?api:ra)+'. 2v2 card strength comes from '+(metaLive.duo?api:ra)+', because top players\' logs hold too few 2v2 games to measure.')+' Rarely played cards are pulled toward average so a small sample can\'t dominate.';
   if(NEW_FORMS.length)$('datanote').textContent+=' '+NEW_FORMS.length+' newer Evo or Hero form'+(NEW_FORMS.length>1?'s were':' was')+' picked up from the game ('+NEW_FORMS.slice(0,6).map(x=>displayName(x.id,x.form)).join(', ')+(NEW_FORMS.length>6?' and more':'')+'); their strength is estimated until it is measured.';
 }

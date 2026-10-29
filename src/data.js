@@ -24,13 +24,13 @@ knight|Knight|3|t|M|5|7|5|4|7|4
 archers|Archers|3|t|A|5|6|0|4|5|0
 minions|Minions|3|t|AX|7|0|0|5|0|0
 goblin-gang|Goblin Gang|3|t|AX|6|0|0|6|0|0
-skeleton-barrel|Skeleton Barrel|3|t|W|5|7|0|5|10|0
+skeleton-barrel|Skeleton Barrel|3|t|W|6|7|0|6|8|0
 firecracker|Firecracker|3|t|AS|4|4|0|2|6|0
 cannon|Cannon|3|b|B|4|5|0|4|6|0
 arrows|Arrows|3|s|s|6|0|0|6|0|0
 royal-delivery|Royal Delivery|3|s|s|5|0|0|3|0|0
 mega-minion|Mega Minion|3|t|AK|6|0|6|5|0|7
-dart-goblin|Dart Goblin|3|t|A|5|5|0|6|5|0
+dart-goblin|Dart Goblin|3|t|A|4|5|0|5|5|0
 elixir-golem|Elixir Golem|3|t|WT|6|0|0|1|0|0
 tombstone|Tombstone|3|b|BX|5|0|7|5|0|8
 earthquake|Earthquake|3|s||6|0|0|5|0|0
@@ -55,11 +55,11 @@ mini-pekka|Mini P.E.K.K.A|4|t|K|6|0|5|3|0|3
 hog-rider|Hog Rider|4|t|W|4|0|0|6|0|0
 battle-ram|Battle Ram|4|t|W|6|8|0|5|10|0
 zappies|Zappies|4|t|A|7|0|0|8|0|0
-flying-machine|Flying Machine|4|t|A|7|0|0|8|0|0
+flying-machine|Flying Machine|4|t|A|7|0|0|9|0|0
 battle-healer|Battle Healer|4|t|M|6|0|0|3|0|0
 goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
-minion-giant|Minion Giant|4|t|W|7|0|0|9|0|0
-rune-giant|Rune Giant|4|t|T|7|0|0|10|0|0
+minion-giant|Minion Giant|4|t|W|6|0|0|8|0|0
+rune-giant|Rune Giant|4|t|T|5|0|0|7|0|0
 bomb-tower|Bomb Tower|4|b|BS|7|0|0|5|0|0
 furnace|Furnace|4|t|AS|8|6|0|9|10|0
 goblin-cage|Goblin Cage|4|b|BK|6|7|0|6|7|0
@@ -72,7 +72,7 @@ freeze|Freeze|4|s||7|0|0|3|0|0
 poison|Poison|4|s|F|6|0|0|10|0|0
 lumberjack|Lumberjack|4|t|K|6|6|0|7|10|0
 inferno-dragon|Inferno Dragon|4|t|AK|6|7|0|4|9|0
-electro-wizard|Electro Wizard|4|t|A|7|0|8|9|0|9
+electro-wizard|Electro Wizard|4|t|A|7|0|9|9|0|10
 night-witch|Night Witch|4|t||7|0|0|5|0|0
 magic-archer|Magic Archer|4|t|AS|5|0|5|3|0|4
 mother-witch|Mother Witch|4|t|A|8|0|0|10|0|0
@@ -86,7 +86,7 @@ skeleton-dragons|Skeleton Dragons|4|t|AS|7|0|0|5|0|0
 barbarians|Barbarians|5|t|KX|6|7|0|2|3|0
 minion-horde|Minion Horde|5|t|AXK|5|7|0|2|6|0
 rascals|Rascals|5|t|AM|8|0|0|7|0|0
-giant|Giant|5|t|WT|7|0|7|3|0|5
+giant|Giant|5|t|WT|7|8|7|3|5|5
 wizard|Wizard|5|t|AS|4|6|4|2|8|5
 royal-hogs|Royal Hogs|5|t|W|6|6|0|2|6|0
 inferno-tower|Inferno Tower|5|b|BKA|5|0|0|3|0|0
@@ -96,8 +96,8 @@ witch|Witch|5|t|AS|4|5|0|1|4|0
 prince|Prince|5|t|K|5|0|0|4|0|0
 bowler|Bowler|5|t|S|7|0|7|7|0|9
 executioner|Executioner|5|t|AS|5|5|0|4|7|0
-cannon-cart|Cannon Cart|5|t|M|9|0|0|9|0|0
-electro-dragon|Electro Dragon|5|t|AS|5|6|0|4|7|0
+cannon-cart|Cannon Cart|5|t|M|8|0|0|8|0|0
+electro-dragon|Electro Dragon|5|t|AS|6|7|0|5|7|0
 ram-rider|Ram Rider|5|t|W|7|0|0|8|0|0
 goblin-machine|Goblin Machine|5|t|W|6|0|0|5|0|0
 ronin|Ronin|5|t|KM|6|0|0|10|0|0
@@ -123,7 +123,7 @@ lava-hound|Lava Hound|7|t|WT|8|0|0|7|0|0
 mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
 golem|Golem|8|t|WT|7|0|0|5|0|0
 three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
-mirror|Mirror|3|s||3|0|0|2|0|0`;
+mirror|Mirror|3|s||3|4|0|2|3|0`;
 
 const CARDS=RAW.trim().split('\n').map(l=>{const[id,name,e,type,tags,p,ev,he,p2,ev2,he2]=l.split('|');return{id,name,e:+e,type,tags,p:+p,ev:+ev,he:+he,p2:+p2,ev2:+ev2,he2:+he2}});
 /* An Evo or Hero is the same card with something extra, so it can never be rated below its own card. Usage-based
@@ -269,28 +269,24 @@ SYN_RAW.trim().split('\n').forEach(l=>{const[a,b,w,...r]=l.split(',');SYN[sk(a,b
 
 /* Top Ranked decks, RoyaleAPI 7-day, week ending Sept 30 2026. ':evo' / ':hero' marks the form. */
 const META=[
+ {n:'Royal Hogs Evo Recruits Evo Cage',wr:56.1,cards:['royal-hogs','goblin-cage:evo','barbarian-barrel:hero','royal-recruits:evo','arrows','zappies','flying-machine','fireball']},
+ {n:'Mortar Evo Skeleton Barrel Hero Ice Wizard',wr:55.4,cards:['mortar:evo','skeleton-barrel:evo','ice-wizard:hero','barbarian-barrel','goblin-gang','fireball','rascals','cannon-cart']},
+ {n:'Mortar Goblinstein Evo Minion Horde',wr:55.1,cards:['mortar:evo','minion-horde:evo','goblinstein','barbarian-barrel','goblin-gang','mother-witch','fireball','cannon-cart']},
+ {n:'Hero Goblins Mortar Bait',wr:54.2,cards:['mortar:evo','skeleton-barrel:evo','goblins:hero','barbarian-barrel','minions','fireball','rascals','cannon-cart']},
+ {n:'P.E.K.K.A Evo Ram Hero Magic Archer',wr:53.8,cards:['pekka','battle-ram:evo','royal-ghost:evo','magic-archer:hero','bandit','electro-wizard','zap','fireball']},
+ {n:'Hog EQ Evo Firecracker Evo Cannon',wr:53.7,cards:['hog-rider','firecracker:evo','cannon:evo','skeletons','electro-spirit','barbarian-barrel','earthquake','mighty-miner']},
+ {n:'Giant Skeleton Evo Ram Hero Wizard',wr:53.3,cards:['giant-skeleton','battle-ram:evo','royal-ghost:evo','wizard:hero','barbarian-barrel','vines','zappies','mother-witch']},
+ {n:'Hero Balloon Miner Bomb Tower',wr:53.0,cards:['balloon:hero','miner','skeletons:evo','musketeer:evo','ice-golem','barbarian-barrel','giant-snowball','bomb-tower']},
  {n:'Hero E-Wiz Goblin Giant Sparky',wr:56.9,cards:['goblin-giant:evo','sparky','electro-wizard:hero','elite-barbarians:evo','dark-prince','heal-spirit','rage','zap']},
  {n:'Hero E-Wiz GK Bandit Evo Ram',wr:59.2,cards:['battle-ram:evo','electro-wizard:hero','golden-knight','bandit','royal-ghost','ronin','mother-witch','arrows']},
  {n:'E-Giant Golden Knight Hero Bowler',wr:52.3,cards:['electro-giant','bowler:hero','baby-dragon:evo','barbarian-barrel','tornado','goblin-hut','lightning','golden-knight']},
  {n:'Hero E-Wiz P.E.K.K.A Bridge Spam',wr:52.1,cards:['pekka','battle-ram:evo','royal-ghost:evo','electro-wizard:hero','bandit','magic-archer','zap','fireball']},
- {n:'Hero E-Wiz Ram Rider',wr:53.3,cards:['ram-rider','pekka','electro-wizard:hero','baby-dragon:evo','giant-snowball:evo','bandit','barbarian-barrel','lightning']},
- {n:'Golem Evo E-Drag Beatdown',wr:53.6,cards:['golem','electro-dragon:evo','berserker:hero','elite-barbarians:evo','barbarian-barrel','tornado','skeleton-dragons','elixir-collector']},
- {n:'GK Bandit Evo Ram',wr:55.4,cards:['battle-ram:evo','golden-knight','royal-ghost:evo','ronin','electro-wizard','bandit','furnace','arrows']},
- {n:'Rune Giant Minion Giant 2.9 Cycle',wr:55.3,cards:['cannon:evo','little-prince','bats:evo','minion-giant','rune-giant','poison','skeletons','barbarian-barrel']},
- {n:'Evo Mortar Cannon Cart Bait',wr:55.0,cards:['skeleton-barrel:evo','ice-wizard:hero','mortar:evo','cannon-cart','fireball','goblin-gang','rascals','barbarian-barrel']},
- {n:'Goblinstein Evo Musketeer Goblin Hut',wr:53.7,cards:['royal-ghost:evo','goblinstein','musketeer:evo','minion-giant','fireball','goblin-hut','skeletons','barbarian-barrel']},
- {n:'Goblinstein 3.3 Cycle',wr:53.5,cards:['archers:evo','goblinstein','skeletons:evo','minion-giant','lightning','electro-spirit','barbarian-barrel','bomb-tower']},
- {n:'Golem Double Dragon Pump',wr:53.2,cards:['electro-dragon:evo','berserker:hero','elite-barbarians:evo','golem','skeleton-dragons','tornado','barbarian-barrel','elixir-collector']},
- {n:'Hero Knight Log Bait',wr:52.9,cards:['goblin-barrel:evo','knight:hero','skeleton-army:evo','princess','dart-goblin','ice-spirit','the-log','inferno-tower']},
- {n:'X-Bow Hero Knight 3.0',wr:51.8,cards:['archers:evo','knight:hero','tesla:evo','x-bow','fireball','skeletons','electro-spirit','the-log']},
- {n:'Graveyard Evo Baby Dragon Tornado',wr:51.3,cards:['baby-dragon:evo','tombstone:hero','ice-wizard:hero','graveyard','knight','poison','tornado','barbarian-barrel']},
- {n:'Evo Royal Giant Fisherman Hunter',wr:51.4,cards:['royal-giant:evo','barbarian-barrel:hero','royal-ghost:evo','hunter','fisherman','fireball','skeletons','electro-spirit']},
- {n:'Hog Mighty Miner 2.8',wr:51.0,cards:['firecracker:evo','mighty-miner','tesla:evo','hog-rider','earthquake','skeletons','electro-spirit','barbarian-barrel']},
- {n:'Evo Royal Hogs Archer Queen',wr:50.8,cards:['royal-hogs:evo','archer-queen','cannon:evo','earthquake','skeletons','ice-spirit','royal-delivery','the-log']}
 ];
 /* Top 2v2 decks (RoyaleAPI, Normal Battle 2v2, 7 days to Sept 30 2026). Samples are small, so win rates run high. */
 const META2=[
- {n:'Rune Giant Evo Cannon Evo Bats',wr:70.4,cards:['barbarian-barrel','bats:evo','cannon:evo','little-prince','minion-giant','poison','rune-giant','skeletons']},
+ {n:'Evo E-Giant Hero Bowler (2v2)',wr:70.2,cards:['electro-giant:evo','baby-dragon:evo','bowler:hero','barbarian-barrel','tornado','electro-wizard','goblin-hut','lightning']},
+ {n:'Evo Royal Hogs Archer Queen EQ',wr:59.1,cards:['royal-hogs:evo','cannon:evo','archer-queen','skeletons','ice-spirit','the-log','earthquake','royal-delivery']},
+ {n:'Evo Goblin Drill Hero Knight',wr:66.3,cards:['goblin-drill:evo','giant-snowball:evo','knight:hero','skeletons','fire-spirit','goblin-demolisher','tesla','poison']},
  {n:'Boss Bandit Evo Furnace',wr:70.0,cards:['boss-bandit','fireball','firecracker:evo','furnace:evo','goblin-curse','guards','lightning','ronin']},
  {n:'GK Bandit Evo Ram E-Wiz',wr:68.5,cards:['arrows','bandit','battle-ram:evo','electro-wizard','furnace','golden-knight','ronin','royal-ghost:evo']},
  {n:'Goblinstein Evo Musketeer Goblin Hut',wr:67.6,cards:['barbarian-barrel','fireball','goblin-hut','goblinstein','minion-giant','musketeer:evo','royal-ghost:evo','skeletons']},
@@ -298,8 +294,6 @@ const META2=[
  {n:'Graveyard Evo Baby Dragon Tornado',wr:62.2,cards:['baby-dragon:evo','barbarian-barrel','graveyard','ice-wizard:hero','knight','poison','tombstone:hero','tornado']},
  {n:'Giant Skeleton Evo Ram Hero Wizard',wr:60.8,cards:['barbarian-barrel','battle-ram:evo','giant-skeleton','mother-witch','royal-ghost:evo','vines','wizard:hero','zappies']},
  {n:'Golem Double Dragon Pump',wr:59.9,cards:['barbarian-barrel','berserker:hero','electro-dragon:evo','elite-barbarians:evo','elixir-collector','golem','skeleton-dragons','tornado']},
- {n:'Hog Evo Executioner Hero Goblins',wr:58.0,cards:['executioner:evo','goblins:hero','hog-rider','ice-spirit','rocket','the-log','tornado','valkyrie:evo']},
- {n:'Hog Hero Musketeer 2.6',wr:null,cards:['cannon:evo','fireball','hog-rider','ice-golem','ice-spirit','musketeer:hero','skeletons:evo','the-log']}
 ];
 /* More of this week's top Ranked decks, used only for combo data. */
 const META_EXTRA=[
@@ -442,4 +436,7 @@ const GIMMICKS=[
  {key:'pump',name:'Pump It Up',core:['elixir-collector','three-musketeers'],pool:c=>true,blurb:'Elixir Collector to pay for Three Musketeers, the classic meme.',how:'Pump behind the King Tower, then split the Three Musketeers at the bridge to pressure both lanes at once.',risk:'Rocket, Lightning or a fast push punishes every Collector you place.'}
 ];
 const FLYING_IDS='lava-hound balloon minion-giant bats minions minion-horde mega-minion baby-dragon inferno-dragon electro-dragon skeleton-dragons phoenix flying-machine'.split(' ');
-const DATA_DATE='Oct 7, 2026';
+/* Forms announced for an upcoming season. Until their release day nobody can own them, so the builder blocks them
+   even for a collection marked "own all". After that day, a player tag lookup reports them like any other form. */
+const RELEASES={'giant':{evo:'2026-11-02'},'mirror':{evo:'2026-11-09'}};
+const DATA_DATE='Oct 28, 2026';

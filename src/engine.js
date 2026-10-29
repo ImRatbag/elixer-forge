@@ -574,7 +574,7 @@ function orderDeck(ids,forms){
    The code is version + three bitfields in base-36, using the card list order, so it stays short. */
 // Collection codes store Evos and Heroes as bit positions, so forms released after launch go at the END of these
 // lists (in release order) however early their card sits in the table. Otherwise every older code would shift.
-const LATE_EVO=['electro-giant'],LATE_HERO=['electro-wizard'];
+const LATE_EVO=['electro-giant','giant','mirror'],LATE_HERO=['electro-wizard']; // in release order
 const lateLast=(ids,late)=>ids.filter(i=>!late.includes(i)).concat(late.filter(i=>ids.includes(i)));
 const EVO_CARDS=lateLast(CARDS.filter(c=>c.ev).map(c=>c.id),LATE_EVO),HERO_CARDS=lateLast(CARDS.filter(c=>c.he).map(c=>c.id),LATE_HERO),BASE_CARDS=CARDS.map(c=>c.id),TOWER_IDS=TOWERS.map(t=>t.id);
 function bitsToStr(list,set){let b=0n;list.forEach((id,i)=>{if(set.has(id))b|=1n<<BigInt(i);});return b.toString(36);}
@@ -591,12 +591,14 @@ function decodeCollection(code){
   return{evo,hero,base,towers};
 }
 /* Turn a player's collection into generator inputs: cards they lack are excluded, forms they lack are banned. */
+const unreleased=(id,f)=>{const d=(RELEASES[id]||{})[f];return !!d&&Date.now()<Date.parse(d+'T09:00:00Z');};
 function collectionToRules(col){
   const exclude=new Set(),ban={};
   if(col.base)BASE_CARDS.forEach(id=>{if(!col.base.has(id))exclude.add(id);});
   const add=(id,f)=>{(ban[id]=ban[id]||new Set()).add(f);};
   EVO_CARDS.forEach(id=>{if(!col.evo.has(id))add(id,'evo');});
   HERO_CARDS.forEach(id=>{if(!col.hero.has(id))add(id,'hero');});
+  for(const [id,r] of Object.entries(RELEASES))for(const f of Object.keys(r))if(unreleased(id,f))add(id,f); // not out yet
   return{exclude,ban};
 }
 /* Level reference: the average of the player's 12 highest card levels. */

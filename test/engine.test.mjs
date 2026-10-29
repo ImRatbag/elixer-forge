@@ -53,7 +53,7 @@ console.log('engine rule tests passed:', decks, 'decks checked');
 // Forms released after launch sit at the end of the Evo/Hero lists, so older collection codes keep their meaning.
 {
   const E2 = new Function(src + '; return {EVO_CARDS,HERO_CARDS,encodeCollection,decodeCollection,C};')();
-  assert.equal(E2.EVO_CARDS.at(-1), 'electro-giant'); assert.equal(E2.HERO_CARDS.at(-1), 'electro-wizard');
+  assert.deepEqual(E2.EVO_CARDS.slice(-3), ['electro-giant', 'giant', 'mirror']); assert.equal(E2.HERO_CARDS.at(-1), 'electro-wizard');
   assert.equal(E2.C.furnace.type, 't', 'Furnace is a troop');
   const col = { base: null, evo: new Set(['knight', 'electro-giant']), hero: new Set(['electro-wizard']), towers: new Set(['tower-princess']) };
   const back = E2.decodeCollection(E2.encodeCollection(col));
@@ -130,4 +130,15 @@ console.log('engine rule tests passed:', decks, 'decks checked');
     for (const d of ds) { assert.ok(d.ids.every(i => pool.has(i)), key + ' stays in theme'); (g.core || []).forEach(i => assert.ok(d.ids.includes(i), key + ' keeps ' + i)); }
   }
   console.log('gimmick test passed');
+}
+
+// Forms announced for a later release are blocked until their day, even for a collection that owns everything.
+{
+  const R = new Function(src + '; return {collectionToRules,EVO_CARDS,HERO_CARDS,RELEASES};')();
+  const rules = R.collectionToRules({ base: null, evo: new Set(R.EVO_CARDS), hero: new Set(R.HERO_CARDS) });
+  for (const [id, r] of Object.entries(R.RELEASES)) for (const [f, d] of Object.entries(r)) {
+    const out = Date.now() >= Date.parse(d + 'T09:00:00Z');
+    assert.equal(!!(rules.ban[id] && rules.ban[id].has(f)), !out, id + ' ' + f + ' gated by its release date');
+  }
+  console.log('release gating test passed');
 }
