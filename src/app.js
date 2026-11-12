@@ -786,17 +786,40 @@ function duoArticle(p,i,plain){
     </article>`;}
 function renderDuo(pairs){$('out').innerHTML=pairs.map((p,i)=>duoArticle(p,i)).join('');}
 
+/* ---------- collection filter: show only the decks a player (or both players) can build right now ---------- */
+const missingFor=(key,cards)=>{const cs=colSets(prof(key));return cards.map(x=>x.split(':')).filter(([a,f])=>(f==='evo'&&(!cs.evo.has(a)||unreleased(a,'evo')))||(f==='hero'&&(!cs.hero.has(a)||unreleased(a,'hero')))||(cs.base&&!cs.base.has(a))).map(([a,f])=>f&&f!=='base'&&f!=='normal'?formLabel[f]+' '+C[a].name:C[a].name);};
+let ownFilter=store.get('ef2-ownfilter','all');
+function ownOptions(){
+  const duo=state.mode==='duo',N=names();
+  const o=[['all','All decks'],['A',N.A+' can build']];
+  if(duo&&prof('B').source!=='unset')o.push(['B',N.B+' can build'],['either','Either of us'],['both','Both of us']);
+  o.push(['near','One card away']);
+  return o;
+}
+function ownPass(cards){
+  const duo=state.mode==='duo'&&prof('B').source!=='unset',f=ownOptions().some(o=>o[0]===ownFilter)?ownFilter:'all';
+  const a=missingFor('A',cards).length,b=duo?missingFor('B',cards).length:99;
+  return f==='all'||(f==='A'&&!a)||(f==='B'&&!b)||(f==='either'&&(!a||!b))||(f==='both'&&!a&&!b)||(f==='near'&&Math.min(a,b)<=1);
+}
+function ownBarHTML(shown,total){
+  const cur=ownOptions().some(o=>o[0]===ownFilter)?ownFilter:'all';
+  return `<section class="panel ownbar"><div class="gchips" role="group" aria-label="Filter by collection">${ownOptions().map(([k,t])=>`<button type="button" class="gchip" data-ownf="${k}" aria-pressed="${k===cur}">${esc(t)}</button>`).join('')}</div>
+    ${cur==='all'?'':`<p class="hint">${shown} of ${total} decks match.${shown?'':' Try "One card away", or open Unlock next to see what would get you there.'}</p>`}</section>`;
+}
+$('out').addEventListener('click',e=>{const b=e.target.closest('[data-ownf]');if(!b)return;ownFilter=b.dataset.ownf;store.set('ef2-ownfilter',ownFilter);rerender();});
+
 /* ---------- top decks tab ---------- */
 function renderMeta(){
   const duo=state.mode==='duo';const list=duo?META2:META;
   setStatus(duo?(metaLive.duo?'2v2 decks with the best results in top players\' recent games. Samples are small, so treat win rates as a guide.':'Top 2v2 decks by RoyaleAPI rating. These are single decks with small samples, so win rates run high.'):(metaLive.ranked?'Ranked decks with the best results in top players\' recent games. Samples are small, so treat win rates as a guide.':'Top Ranked (Path of Legends) decks by RoyaleAPI rating.'));
   const keys=duo?['A','B']:['A'];
-  $('out').innerHTML=list.map((d,i)=>{
+  const shown=list.map((d,i)=>({d,i})).filter(x=>ownPass(x.d.cards));
+  $('out').innerHTML=ownBarHTML(shown.length,list.length)+shown.map(({d,i})=>{
     const ids=d.cards.map(x=>x.split(':')[0]);
     const forms=Object.fromEntries(d.cards.map(x=>{const[a,b]=x.split(':');return[a,b||'normal'];}));
     memo=new Map();
     const sc=scoreDeck(ids,{forms,maxChamps:1,style:'any',maxAvg:5,duo,tag:'meta'});
-    const notes=keys.map(k=>{const p=prof(k),cs=colSets(p);const miss=d.cards.map(x=>x.split(':')).filter(([a,f])=>(f==='evo'&&!cs.evo.has(a))||(f==='hero'&&!cs.hero.has(a))||(cs.base&&!cs.base.has(a))).map(([a,f])=>f&&f!=='base'?formLabel[f]+' '+C[a].name:C[a].name);
+    const notes=keys.map(k=>{const p=prof(k),miss=missingFor(k,d.cards);
       return miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`;}).join('');
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(d.n)}</h2><div class="dmeta"><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span><span>Synergy <b>${sc.synPct}%</b></span></div></div>
@@ -955,19 +978,21 @@ function renderCreator(){
   if(state.api===false)body='<p class="hint">Recent decks need the Elixir Forge server, which isn\'t running on this copy.</p>';
   else if(cr.busy)body='<p class="status">Loading recent battles…</p>';
   else if(cr.error)body=`<p class="err">${esc(cr.error)}</p>`;
-  const list=(cr.decks||[]).map((d,i)=>{
+  const crShown=(cr.decks||[]).map((d,i)=>({d,i})).filter(x=>ownPass(x.d.cards));
+  const list=crShown.map(({d,i})=>{
     const ids=d.cards.map(x=>x.split(':')[0]);
     const forms=Object.fromEntries(d.cards.map(x=>{const[a,b]=x.split(':');return[a,b||'normal'];}));
     memo=new Map();
     const sc=scoreDeck(ids,{forms,maxChamps:1,style:'any',maxAvg:5,duo:d.modes.includes('2v2'),tag:'cr'});
-    const miss=d.cards.map(x=>x.split(':')).filter(([a,f])=>(f==='evo'&&!cs.evo.has(a))||(f==='hero'&&!cs.hero.has(a))||(cs.base&&!cs.base.has(a))).map(([a,f])=>f?formLabel[f]+' '+C[a].name:C[a].name);
+    const crKeys=state.mode==='duo'&&prof('B').source!=='unset'?['A','B']:['A'];
+    const crNotes=crKeys.map(k=>{const m=missingFor(k,d.cards),nm=prof(k).name;return m.length?`<p class="miss">${esc(nm)} doesn't have: ${esc(m.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(nm)} owns everything in this deck</p>`;}).join('');
     const tw=TOWERS.find(t=>t.tid===d.tower);
     return `<article class="deck">
       <div class="dhead"><div><h2 class="dtitle">${esc(archLabel(ids))}</h2><div class="dmeta"><span>${esc(d.modes.join(', '))}</span><span>Average elixir <b>${sc.avg.toFixed(1)}</b></span><span>Cycle cost <b>${cycleCost(ids)}</b></span></div></div>
         <div class="score"><span class="num">${d.wins}–${d.losses}</span><small>${d.games} recent game${d.games>1?'s':''}</small></div></div>
       ${reportHTML({...sc,ids},showScore(sc.s),d.modes.includes('2v2'))}
       ${tilesHTML(ids,sc.forms,null)}
-      ${miss.length?`<p class="miss">${esc(p.name)} doesn't have: ${esc(miss.join(', '))}</p>`:`<p class="hint" style="color:var(--good);font-weight:800">${esc(p.name)} owns everything in this deck</p>`}
+      ${crNotes}
       <div class="actions">${linkBtn(ids,sc.forms,tw?tw.id:'tower-princess')}<button class="btn" type="button" data-report="1" aria-expanded="false">Forge score ${showScore(sc.s)}</button><button class="btn" type="button" data-credit="${i}">Check with my cards</button></div>
     </article>`;}).join('');
   if(cr.decks&&!cr.decks.length&&!cr.busy)body='<p class="hint">No recent battles with a full deck were found for this player.</p>';
@@ -979,7 +1004,7 @@ function renderCreator(){
         <div class="tagrow"><input type="text" id="crtag" placeholder="#2PP" value="${cr.tag?'#'+esc(cr.tag):''}" autocomplete="off" spellcheck="false"><button class="btn" type="button" data-crgo="1">Show decks</button></div></div>
       ${body}
       ${cr.decks&&cr.decks.length?'<p class="hint">Not affiliated with or endorsed by this player. Evo and Hero forms are read from deck slot order, so an unusual slot setup can be shown as the normal card.</p>':''}
-    </section>${list}`;
+    </section>${cr.decks&&cr.decks.length?ownBarHTML(crShown.length,cr.decks.length):''}${list}`;
   setStatus('');
 }
 async function loadCreator(raw){
@@ -1027,11 +1052,19 @@ function renderUnlock(){
       body+=`<p class="hint">${esc(r.name)}'s best ${r.duo?'2v2':'1v1'} deck scores <b style="color:var(--fg)">${b0}</b> today. Each row shows the best deck that becomes possible with one more unlock.</p>
       <ol class="unlocks">${r.rows.map(x=>{const g=showScore(x.s)-b0;return `<li>
         ${miniCard(x.id,x.form)||`<span class="badge ${x.form}">${formLabel[x.form]}</span>`}
-        <div class="swtxt"><b>${esc(displayName(x.id,x.form))}</b><span>Best deck with it scores ${showScore(x.s)}${g>0?', up '+g:g<0?', down '+(-g):', no change'}</span>
+        <div class="swtxt"><b>${esc(displayName(x.id,x.form))}</b>${x.form==='evo'&&EVO_STATS[x.id]?`<span>Ranked: ${EVO_STATS[x.id][0].toFixed(1)}% win rate, in ${EVO_STATS[x.id][1]}% of decks</span>`:''}<span>Best deck with it scores ${showScore(x.s)}${g>0?', up '+g:g<0?', down '+(-g):', no change'}</span>
           <div class="strip" aria-label="Deck: ${esc(orderDeck(x.ids,x.forms).map(o=>displayName(o.id,o.form)).join(', '))}">${orderDeck(x.ids,x.forms).map(o=>miniCard(o.id,o.form)||`<span class="chip" style="padding:1px 8px;font-size:12px">${esc(C[o.id].name)}</span>`).join('')}</div></div>
         <span class="gain ${g>0?'up':''}">${g>0?'+'+g:g}</span></li>`;}).join('')}</ol>
       <p class="hint">Tested the ${r.rows.length} strongest of ${r.missing} missing Evos and Heroes. Scores come from a quick search, so a difference of a point or two is noise.</p>`;
     }
+  }
+  // Evo shards: the player's missing Evos ranked by how they are doing in real Ranked games right now.
+  if(p.source!=='unset'){
+    const cs=colSets(p),miss=liveEvo().filter(id=>!cs.evo.has(id)&&(!cs.base||cs.base.has(id))&&EVO_STATS[id]).sort((a,b)=>EVO_STATS[b][0]-EVO_STATS[a][0]);
+    if(miss.length)body+=`<h3 class="shardh">Spending Evo shards?</h3>
+      <p class="hint">An Evolution costs 6 shards. These are the Evos ${esc(p.name)} is missing, ranked by win rate in Ranked over the three weeks to ${EVO_STATS_DATE} (the average Evo deck wins ${EVO_STATS_AVG}%). A high win rate with decent use is the safest pick; the rows above show whether it fits your own cards.</p>
+      <ol class="unlocks shards">${miss.slice(0,8).map(id=>{const [w,us]=EVO_STATS[id],d=w-EVO_STATS_AVG;return `<li>${miniCard(id,'evo')||'<span class="badge evo">Evo</span>'}<div class="swtxt"><b>${esc(displayName(id,'evo'))}</b><span>${w.toFixed(1)}% win rate, in ${us}% of decks${us<2?' (few players use it, so the number is less certain)':''}</span></div><span class="gain ${d>0?'up':''}">${d>0?'+':''}${d.toFixed(1)}</span></li>`;}).join('')}</ol>
+      ${miss.length>8?`<p class="hint">${miss.length-8} more missing Evos are below these.</p>`:''}`;
   }
   if(p.source!=='unset'&&cand.missing&&!u.result&&!u.busy&&u.auto!==p.id+state.mode){u.auto=p.id+state.mode;setTimeout(runUnlock,0);}
   $('out').innerHTML=`<section class="panel"><h2>What to unlock next</h2>

@@ -815,3 +815,11 @@ html{overflow-x:clip}
 .gabout{border-top:1px solid var(--line);padding-top:10px}
 .gabout p{margin:0 0 8px;font-size:14px}
 .gabout .btn{margin-top:4px}
+
+/* Collection filter bar on the Top decks and Player decks tabs */
+.panel.ownbar{padding-block:10px}
+.ownbar .gchips{margin:0}
+.ownbar .hint{margin:8px 0 0}
+@media (max-width:540px){.ownbar .gchips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}.ownbar .gchip{flex:none;white-space:nowrap}}
+
+.shardh{margin:18px 0 4px;font-size:16px}

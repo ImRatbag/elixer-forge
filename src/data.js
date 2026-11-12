@@ -2,31 +2,31 @@
 /* id|name|elixir|type(t troop,s spell,b building)|tags|power|evoPower|heroPower
    tags: W win condition, T tank, A hits air, S splash, s small spell, F big spell, B building role, K tank killer, M mini tank, X swarm, C champion */
 const RAW=`skeletons|Skeletons|1|t|X|6|6|0|7|6|0
-ice-spirit|Ice Spirit|1|t|A|5|5|0|4|5|0
+ice-spirit|Ice Spirit|1|t|A|5|3|0|4|5|0
 fire-spirit|Fire Spirit|1|t|AS|5|0|0|2|0|0
 electro-spirit|Electro Spirit|1|t|A|6|0|0|6|0|0
 heal-spirit|Heal Spirit|1|t|A|8|0|0|4|0|0
 goblins|Goblins|2|t|X|6|0|7|4|0|8
-bomber|Bomber|2|t|S|6|6|0|4|5|0
+bomber|Bomber|2|t|S|6|5|0|4|5|0
 spear-goblins|Spear Goblins|2|t|AX|6|0|0|3|0|0
-bats|Bats|2|t|AX|4|7|0|5|8|0
+bats|Bats|2|t|AX|4|6|0|5|8|0
 berserker|Berserker|2|t||6|0|8|6|0|5
 ice-golem|Ice Golem|2|t|M|6|0|5|3|0|6
 suspicious-bush|Suspicious Bush|2|t|W|7|0|0|8|0|0
-wall-breakers|Wall Breakers|2|t|W|7|6|0|4|7|0
+wall-breakers|Wall Breakers|2|t|W|7|5|0|4|7|0
 zap|Zap|2|s|s|6|8|0|6|8|0
 giant-snowball|Giant Snowball|2|s|s|6|6|0|2|5|0
 the-log|The Log|2|s|s|4|0|0|7|0|0
 barbarian-barrel|Barbarian Barrel|2|s|s|7|0|7|9|0|8
 rage|Rage|2|s||6|0|0|2|0|0
 goblin-curse|Goblin Curse|2|s|s|7|0|0|6|0|0
-knight|Knight|3|t|M|5|7|5|4|7|4
+knight|Knight|3|t|M|5|6|5|4|7|4
 archers|Archers|3|t|A|5|6|0|4|5|0
 minions|Minions|3|t|AX|7|0|0|5|0|0
 goblin-gang|Goblin Gang|3|t|AX|6|0|0|6|0|0
-skeleton-barrel|Skeleton Barrel|3|t|W|6|7|0|6|8|0
-firecracker|Firecracker|3|t|AS|4|4|0|2|6|0
-cannon|Cannon|3|b|B|4|5|0|4|6|0
+skeleton-barrel|Skeleton Barrel|3|t|W|6|8|0|6|8|0
+firecracker|Firecracker|3|t|AS|4|6|0|2|6|0
+cannon|Cannon|3|b|B|4|6|0|4|6|0
 arrows|Arrows|3|s|s|6|0|0|6|0|0
 royal-delivery|Royal Delivery|3|s|s|5|0|0|3|0|0
 mega-minion|Mega Minion|3|t|AK|6|0|6|5|0|7
@@ -36,7 +36,7 @@ tombstone|Tombstone|3|b|BX|5|0|7|5|0|8
 earthquake|Earthquake|3|s||6|0|0|5|0|0
 skeleton-army|Skeleton Army|3|t|XK|4|7|0|3|5|0
 guards|Guards|3|t|X|6|0|0|6|0|0
-goblin-barrel|Goblin Barrel|3|s|W|5|6|0|4|7|0
+goblin-barrel|Goblin Barrel|3|s|W|5|7|0|4|7|0
 tornado|Tornado|3|s||7|0|0|7|0|0
 clone|Clone|3|s||5|0|0|1|0|0
 vines|Vines|3|s|s|6|0|0|6|0|0
@@ -45,11 +45,11 @@ ice-wizard|Ice Wizard|3|t|AS|6|0|5|5|0|7
 princess|Princess|3|t|AS|6|6|0|5|7|0
 miner|Miner|3|t|W|6|0|0|4|0|0
 bandit|Bandit|3|t|M|8|0|0|9|0|0
-royal-ghost|Royal Ghost|3|t|S|6|7|0|7|9|0
+royal-ghost|Royal Ghost|3|t|S|6|8|0|7|9|0
 fisherman|Fisherman|3|t||7|0|0|5|0|0
 spirit-empress|Spirit Empress|6|t|S|6|0|0|9|0|0
 little-prince|Little Prince|3|t|AC|7|0|0|8|0|0
-valkyrie|Valkyrie|4|t|SM|5|4|4|2|5|7
+valkyrie|Valkyrie|4|t|SM|5|5|4|2|5|7
 musketeer|Musketeer|4|t|A|5|6|5|4|9|6
 mini-pekka|Mini P.E.K.K.A|4|t|K|6|0|5|3|0|3
 hog-rider|Hog Rider|4|t|W|4|0|0|6|0|0
@@ -61,16 +61,16 @@ goblin-demolisher|Goblin Demolisher|4|t|S|7|0|0|7|0|0
 minion-giant|Minion Giant|4|t|W|6|0|0|8|0|0
 rune-giant|Rune Giant|4|t|T|5|0|0|7|0|0
 bomb-tower|Bomb Tower|4|b|BS|7|0|0|5|0|0
-furnace|Furnace|4|t|AS|8|6|0|9|10|0
+furnace|Furnace|4|t|AS|8|7|0|9|10|0
 goblin-cage|Goblin Cage|4|b|BK|6|7|0|6|7|0
 fireball|Fireball|4|s|F|6|0|0|5|0|0
-baby-dragon|Baby Dragon|4|t|AS|6|7|0|4|10|0
+baby-dragon|Baby Dragon|4|t|AS|6|8|0|4|10|0
 dark-prince|Dark Prince|4|t|SM|7|0|6|6|0|7
-hunter|Hunter|4|t|AK|7|6|0|5|5|0
+hunter|Hunter|4|t|AK|7|5|0|5|5|0
 goblin-drill|Goblin Drill|4|b|W|5|6|0|4|7|0
 freeze|Freeze|4|s||7|0|0|3|0|0
 poison|Poison|4|s|F|6|0|0|10|0|0
-lumberjack|Lumberjack|4|t|K|6|6|0|7|10|0
+lumberjack|Lumberjack|4|t|K|6|7|0|7|10|0
 inferno-dragon|Inferno Dragon|4|t|AK|6|7|0|4|9|0
 electro-wizard|Electro Wizard|4|t|A|7|0|9|9|0|10
 night-witch|Night Witch|4|t||7|0|0|5|0|0
@@ -83,16 +83,16 @@ golden-knight|Golden Knight|4|t|MC|7|0|0|10|0|0
 mortar|Mortar|4|b|W|6|8|0|4|7|0
 tesla|Tesla|4|b|BA|4|5|0|3|5|0
 skeleton-dragons|Skeleton Dragons|4|t|AS|7|0|0|5|0|0
-barbarians|Barbarians|5|t|KX|6|7|0|2|3|0
+barbarians|Barbarians|5|t|KX|6|6|0|2|3|0
 minion-horde|Minion Horde|5|t|AXK|5|7|0|2|6|0
 rascals|Rascals|5|t|AM|8|0|0|7|0|0
-giant|Giant|5|t|WT|7|8|7|3|5|5
+giant|Giant|5|t|WT|7|4|7|3|5|5
 wizard|Wizard|5|t|AS|4|6|4|2|8|5
-royal-hogs|Royal Hogs|5|t|W|6|6|0|2|6|0
+royal-hogs|Royal Hogs|5|t|W|6|7|0|2|6|0
 inferno-tower|Inferno Tower|5|b|BKA|5|0|0|3|0|0
 goblin-hut|Goblin Hut|4|b|BA|7|0|0|8|0|0
 balloon|Balloon|5|t|W|6|0|6|5|0|5
-witch|Witch|5|t|AS|4|5|0|1|4|0
+witch|Witch|5|t|AS|4|6|0|1|4|0
 prince|Prince|5|t|K|5|0|0|4|0|0
 bowler|Bowler|5|t|S|7|0|7|7|0|9
 executioner|Executioner|5|t|AS|5|5|0|4|7|0
@@ -106,7 +106,7 @@ archer-queen|Archer Queen|5|t|AKC|6|0|0|6|0|0
 monk|Monk|5|t|MC|6|0|0|6|0|0
 goblinstein|Goblinstein|5|t|WTC|7|0|0|10|0|0
 elite-barbarians|Elite Barbarians|6|t|K|5|7|0|3|6|0
-royal-giant|Royal Giant|6|t|WT|6|9|0|3|5|0
+royal-giant|Royal Giant|6|t|WT|6|5|0|3|5|0
 giant-skeleton|Giant Skeleton|6|t|T|7|0|0|8|0|0
 goblin-giant|Goblin Giant|6|t|WT|6|7|0|4|6|0
 x-bow|X-Bow|6|b|W|6|0|0|2|0|0
@@ -118,9 +118,9 @@ sparky|Sparky|6|t|SK|7|0|0|3|0|0
 boss-bandit|Boss Bandit|6|t|WMC|5|0|0|6|0|0
 royal-recruits|Royal Recruits|7|t|XM|6|7|0|4|7|0
 pekka|P.E.K.K.A|7|t|KT|6|6|0|3|4|0
-electro-giant|Electro Giant|7|t|WT|7|8|0|5|7|0
+electro-giant|Electro Giant|7|t|WT|7|6|0|5|7|0
 lava-hound|Lava Hound|7|t|WT|8|0|0|7|0|0
-mega-knight|Mega Knight|7|t|STM|5|4|0|4|6|0
+mega-knight|Mega Knight|7|t|STM|5|6|0|4|6|0
 golem|Golem|8|t|WT|7|0|0|5|0|0
 three-musketeers|Three Musketeers|9|t|A|7|0|0|5|0|0
 mirror|Mirror|3|s||3|4|0|2|3|0`;
@@ -439,4 +439,8 @@ const FLYING_IDS='lava-hound balloon minion-giant bats minions minion-horde mega
 /* Forms announced for an upcoming season. Until their release day nobody can own them, so the builder blocks them
    even for a collection marked "own all". After that day, a player tag lookup reports them like any other form. */
 const RELEASES={'giant':{evo:'2026-11-02'},'mirror':{evo:'2026-11-09'}};
-const DATA_DATE='Oct 28, 2026';
+/* How each Evolution is doing in Ranked: [win rate %, share of decks %]. RoyaleTracker, three weeks to EVO_STATS_DATE.
+   Shown in Unlock next so a player with Evo shards can see which missing Evo is winning the most. */
+const EVO_STATS={'witch':[48.4,11.7],'mega-knight':[48.7,10.5],'firecracker':[48.1,8.3],'skeleton-barrel':[51.9,8.0],'tesla':[47.9,6.9],'cannon':[49.7,6.8],'elite-barbarians':[51.1,6.6],'battle-ram':[53.0,6.5],'baby-dragon':[52.0,6.2],'goblin-barrel':[50.4,6.2],'zap':[52.5,5.8],'skeleton-army':[51.0,5.7],'royal-ghost':[52.7,5.6],'royal-hogs':[50.6,5.1],'valkyrie':[47.6,4.8],'lumberjack':[51.9,4.7],'mortar':[53.3,4.7],'musketeer':[50.0,4.5],'skeletons':[48.9,4.3],'furnace':[50.9,4.2],'inferno-dragon':[51.3,4.1],'giant-snowball':[50.4,3.9],'electro-giant':[50.4,3.6],'electro-dragon':[51.0,3.4],'wizard':[49.2,3.4],'bats':[49.8,3.3],'dart-goblin':[48.2,3.2],'archers':[50.2,3.1],'pekka':[49.7,3.1],'knight':[50.7,2.9],'executioner':[48.8,2.9],'royal-recruits':[52.0,2.9],'minion-horde':[51.4,2.8],'princess':[50.0,2.7],'goblin-cage':[52.7,2.5],'wall-breakers':[49.5,2.2],'royal-giant':[49.2,1.9],'goblin-drill':[49.9,1.9],'barbarians':[51.2,1.3],'hunter':[48.5,1.2],'giant':[48.5,1.0],'goblin-giant':[52.2,0.9],'bomber':[49.6,0.7],'ice-spirit':[46.5,0.5]};
+const EVO_STATS_DATE='Nov 11, 2026',EVO_STATS_AVG=50.3;
+const DATA_DATE='Nov 11, 2026';
