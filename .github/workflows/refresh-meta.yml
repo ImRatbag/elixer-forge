@@ -9,13 +9,25 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
+      # This job is optional: the site already refreshes its ratings daily through /api/meta. Without a CR_API_KEY
+      # repository secret it skips cleanly instead of failing (and emailing) every Monday.
+      - name: Check for the API key
+        id: key
+        env:
+          CR_API_KEY: ${{ secrets.CR_API_KEY }}
+        run: |
+          if [ -n "$CR_API_KEY" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "No CR_API_KEY secret set; skipping the weekly refresh."; fi
       - uses: actions/checkout@v4
+        if: steps.key.outputs.present == 'true'
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        if: steps.key.outputs.present == 'true'
+        with: { node-version: 22 }
       - run: node scripts/refresh-meta.mjs --players 300 --out data/meta.json
+        if: steps.key.outputs.present == 'true'
         env:
           CR_API_KEY: ${{ secrets.CR_API_KEY }}
       - name: Commit if changed
+        if: steps.key.outputs.present == 'true'
         run: |
           git config user.name "elixir-forge-bot"
           git config user.email "bot@users.noreply.github.com"
